@@ -1,0 +1,56 @@
+{
+  "name": "opia-rss-reader",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows desktop AI news RSS reader",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "build": "electron-vite build && electron-builder",
+    "build:dir": "electron-vite build"
+  },
+  "build": {
+    "appId": "com.opia.rssreader",
+    "productName": "Opia RSS Reader",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "out/**",
+      "plugins/**",
+      "resources/**"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "OpiaRSSReader-${version}-portable.${ext}"
+    }
+  },
+  "dependencies": {
+    "dompurify": "^3.4.13",
+    "electron-store": "^8.2.0",
+    "lucide-react": "^1.32.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "rss-parser": "^3.13.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "autoprefixer": "^10.5.4",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6"
+  }
+}

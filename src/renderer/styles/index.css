@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --t-bg: #f5f4ed;
+  --t-surface: #ffffff;
+  --t-card: #ffffff;
+  --t-border: #e5e2d8;
+  --t-text: #2b2823;
+  --t-text-secondary: #6f6a5e;
+  --t-accent: #d97757;
+  --t-accent-hover: #c1502e;
+  --t-on-accent: #ffffff;
+  --t-chip: #efede4;
+  --t-chip-text: #4a463c;
+  --t-read: #a8a396;
+  --t-font-heading: Georgia, 'Noto Serif SC', serif;
+  --t-font-body: 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --t-font-size-base: 14px;
+  --t-radius: 10px;
+  --t-spacing: 12px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  font-family: var(--t-font-body);
+  font-size: var(--t-font-size-base);
+  background: var(--t-bg);
+  color: var(--t-text);
+}
+
+/* ---- 主题切换过渡 ---- */
+body,
+article,
+header,
+nav,
+button,
+input,
+select,
+section,
+div.reader-body {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* ---- 卡片入场 ---- */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-enter {
+  animation: card-enter 0.28s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-enter {
+    animation: none;
+  }
+  * {
+    transition: none !important;
+  }
+}
+
+/* ---- 阅读视图排版（参照 juya-detail 样例） ---- */
+.article-content h1,
+.article-content h2,
+.article-content h3 {
+  font-family: var(--t-font-heading);
+  font-weight: 700;
+  color: var(--t-accent);
+  margin: 1.2em 0 0.5em;
+}
+
+.article-content h1 {
+  font-size: 1.5em;
+}
+
+.article-content h2 {
+  font-size: 1.25em;
+}
+
+.article-content h3 {
+  font-size: 1.1em;
+}
+
+.article-content p {
+  margin: 0.6em 0;
+}
+
+.article-content img {
+  max-width: 100%;
+  border-radius: var(--t-radius);
+  margin: 0.8em auto;
+  display: block;
+}
+
+.article-content blockquote {
+  border-left: 3px solid var(--t-accent);
+  background: var(--t-chip);
+  color: var(--t-chip-text);
+  padding: 0.6em 1em;
+  margin: 0.8em 0;
+  border-radius: 0 var(--t-radius) var(--t-radius) 0;
+}
+
+.article-content ul,
+.article-content ol {
+  padding-left: 1.4em;
+  margin: 0.6em 0;
+}
+
+.article-content a {
+  color: var(--t-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---- 杂志风首条 ---- */
+.magazine-featured img {
+  height: 16rem;
+}
+
+/* ---- 滚动条 ---- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--t-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,7 @@
+{
+  "id": "example-hello",
+  "name": "示例插件",
+  "version": "0.1.0",
+  "main": "index.cjs",
+  "provides": ["card-renderer"]
+}

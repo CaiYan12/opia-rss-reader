@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+out/
+build/
+dist/
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# WorkBuddy agent workspace data
+.workbuddy/

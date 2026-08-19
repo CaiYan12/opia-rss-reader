@@ -90,7 +90,6 @@ src/
 │   └── theme/            # CSS 变量注入
 └── shared/               # 主/渲染共用：types.ts、ipc-contract.ts、plugin-api.ts
 plugins/                  # 插件目录（含示例 example-hello）
-testfiles/                # UI 参考样例截图（橘鸦视频）
 ```
 
 ## 数据位置

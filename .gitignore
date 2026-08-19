@@ -20,3 +20,6 @@ Thumbs.db
 
 # WorkBuddy agent workspace data
 .workbuddy/
+
+# Local-only reference screenshots (UI design samples, not source)
+testfiles/

@@ -23,3 +23,7 @@ Thumbs.db
 
 # Local-only reference screenshots (UI design samples, not source)
 testfiles/
+
+# Temp scripts (agent-generated, not source)
+/_*.py
+/_*.js

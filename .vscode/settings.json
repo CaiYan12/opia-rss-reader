@@ -1,0 +1,17 @@
+{
+  "files.exclude": {
+    "**/build/**": true,
+    "**/out/**": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true,
+    "**/out/**": true,
+    "**/dist/**": true,
+    "**/node_modules/**": true
+  },
+  "search.exclude": {
+    "**/build/**": true,
+    "**/out/**": true,
+    "**/dist/**": true
+  }
+}

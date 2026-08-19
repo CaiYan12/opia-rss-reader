@@ -17,25 +17,58 @@ Windows 桌面 AI 新闻 RSS 阅读器。默认订阅 [橘鸦AI早报](https://d
 
 Electron 43 · electron-vite 5 · React 19 · TypeScript 6 · Tailwind CSS 3 · zustand · electron-store 8 · rss-parser
 
-## 开发
+## 开发 / 构建
+
+安装依赖：`npm install`
+
+项目提供两个一键脚本，分别用于开发调试与发布构建。两者均内置本机托管 Node 路径与 `ELECTRON_RUN_AS_NODE` 清除，双击即可运行。
+
+### Debug —— `start.bat`
+
+开发模式（热重载）。双击 `start.bat`，或手动：
 
 ```powershell
-# 安装依赖
-npm install
-
-# 开发模式（热更新）——或直接双击 start.bat
 npm run dev
-
-# 构建 portable exe 到 build/
-npm run build
-
-# 构建并自动启动
-powershell -File build.ps1 -Run
 ```
 
-> **注意（本机环境）**：若环境变量存在 `ELECTRON_RUN_AS_NODE=1`，Electron 会以纯 Node 模式运行而无法开窗。`start.bat` 与 `build.ps1` 已内置清除；在其它 shell 中手动运行前请自行 `unset ELECTRON_RUN_AS_NODE`（bash）或 `Remove-Item Env:ELECTRON_RUN_AS_NODE`（PowerShell）。
+`start.bat` 会切换到托管 Node 22.22.2、清除 `ELECTRON_RUN_AS_NODE`、优雅关闭上一轮遗留的 dev 实例（仅限本项目路径下的 electron，不影响 VSCode 等其它 Electron 应用），随后启动 `electron-vite dev`。`Ctrl+C` 停止。
+
+### Release —— `build.bat`
+
+一键发布构建。双击 `build.bat`，或在项目根运行：
+
+```powershell
+.\build.bat
+```
+
+流程：
+
+1. 调用 `build.ps1` 完成 electron-vite + electron-builder 生产构建 → `build/OpiaRSSReader-<version>-portable.exe`
+2. 精简 locales（仅保留 en-US / zh-CN）、删除残留 `default_app.asar` 与 `.pdb` 调试符号
+3. 组装完整可运行 app 到 `release/`，并生成 zip 与 portable exe
+
+产出（位于 `release/`，已被 `.gitignore` 忽略）：
+
+| 文件 | 说明 |
+|---|---|
+| `OpiaRSSReader-v<version>-win32-x64\` | 完整 app 目录（exe + dll + 资源） |
+| `OpiaRSSReader-v<version>-win32-x64.zip` | 同名压缩包，供 GitHub Releases 上传 |
+| `OpiaRSSReader-<version>-portable.exe` | 单文件便携版 |
+
+> 构建前若检测到 VSCode 正在运行，`build.bat` 会提示先关闭——VSCode 的 AI 扩展会扫描并锁定 `build/` 下的 asar 文件，导致 electron-builder 报 EBUSY。
+
+### 仅构建不发布 —— `build.ps1`
+
+`build.ps1` 是 `build.bat` 的构建核心，也可单独运行做快速验证。加 `-Run` 会在构建后启动 `build/win-unpacked/` 里的实际 exe（非 portable SFX，以便捕获 stdout），并 tail 日志直到出现 `initial refresh` 标记：
+
+```powershell
+powershell -File build.ps1        # 仅构建 portable exe 到 build/
+powershell -File build.ps1 -Run   # 构建并启动，tail 启动日志
+```
+
+> **本机环境注意**：若环境变量存在 `ELECTRON_RUN_AS_NODE=1`，Electron 会以纯 Node 模式运行而无法开窗。三个脚本均已内置清除；在其它 shell 中手动运行 `npm run dev` / `npm run build` 前请自行 `unset ELECTRON_RUN_AS_NODE`（bash）或 `Remove-Item Env:ELECTRON_RUN_AS_NODE`（PowerShell）。
 >
-> `start.bat` / `build.ps1` 中的 Node 路径为本机托管运行时路径，其它机器请改为自己的 Node 路径或移除该行使用系统 Node。
+> 脚本中的 Node 路径 `C:\Users\Einn Tzai\.workbuddy\binaries\node\versions\22.22.2` 为本机托管运行时，其它机器请改为自己的 Node 路径或移除该行改用系统 Node。
 
 ## 目录结构
 

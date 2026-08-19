@@ -24,7 +24,8 @@
     "win": {
       "target": [
         "portable"
-      ]
+      ],
+      "icon": "resources/icon.ico"
     },
     "portable": {
       "artifactName": "OpiaRSSReader-${version}-portable.${ext}"

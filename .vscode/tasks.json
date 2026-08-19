@@ -2,10 +2,15 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "start.bat: 构建并启动 (dev)",
+      "label": "build.ps1: 构建并测试运行",
       "type": "shell",
-      "command": "cmd",
-      "args": ["/d", "/c", "start.bat"],
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "build.ps1",
+        "-Run"
+      ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -13,6 +18,21 @@
         "kind": "build",
         "isDefault": true
       },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "clear": true
+      }
+    },
+    {
+      "label": "start.bat: 开发模式 (dev)",
+      "type": "shell",
+      "command": "cmd",
+      "args": ["/d", "/c", "start.bat"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",

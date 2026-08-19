@@ -5,9 +5,14 @@ node_modules/
 out/
 build/
 dist/
+release/
 
 # Logs
 *.log
+
+# Secrets / env
+.env
+.env.*
 
 # OS / editor
 .DS_Store

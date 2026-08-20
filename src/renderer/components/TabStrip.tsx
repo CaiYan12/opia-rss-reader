@@ -53,9 +53,36 @@ export function TabStrip(): JSX.Element {
     setHomeTabSource
   } = useAppStore()
   const [menu, setMenu] = useState<MenuAnchor | null>(null)
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const enabledSources = sources.filter((s) => s.enabled)
+
+  // 退出动画：先置 closing（.menu-pop 淡出），时长与 CSS transition 一致后再卸载
+  const closeMenu = (): void => {
+    if (!menu || closing) return
+    setClosing(true)
+    closeTimer.current = setTimeout(() => {
+      setMenu(null)
+      setClosing(false)
+    }, 180)
+  }
+
+  const toggleMenu = (tabId: string, left: number, top: number): void => {
+    // closing 期间再点 = 中断退出、重新展开
+    if (menu?.tabId === tabId && !closing) {
+      closeMenu()
+      return
+    }
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    setClosing(false)
+    setMenu({ tabId, left, top })
+  }
+
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+  }, [])
 
   // 菜单关闭：外部 mousedown / Escape / 标签容器滚动
   useEffect(() => {
@@ -68,12 +95,12 @@ export function TabStrip(): JSX.Element {
       ) {
         return
       }
-      setMenu(null)
+      closeMenu()
     }
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setMenu(null)
+      if (e.key === 'Escape') closeMenu()
     }
-    const onScroll = (): void => setMenu(null)
+    const onScroll = (): void => closeMenu()
     window.addEventListener('mousedown', onMouseDown)
     window.addEventListener('keydown', onKey)
     scrollRef.current?.addEventListener('scroll', onScroll)
@@ -82,7 +109,8 @@ export function TabStrip(): JSX.Element {
       window.removeEventListener('keydown', onKey)
       scrollRef.current?.removeEventListener('scroll', onScroll)
     }
-  }, [menu])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menu, closing])
 
   const pickSource = (tab: Extract<Tab, { kind: 'home' }>, sourceId: string): void => {
     // blank 主页切换到订阅视图；feed 主页仅切换激活源
@@ -91,7 +119,7 @@ export function TabStrip(): JSX.Element {
     } else {
       setActiveSource(sourceId)
     }
-    setMenu(null)
+    closeMenu()
   }
 
   const menuTab = menu ? tabs.find((t) => t.id === menu.tabId) : undefined
@@ -130,11 +158,7 @@ export function TabStrip(): JSX.Element {
                   onClick={(e) => {
                     e.stopPropagation()
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    setMenu(
-                      menu?.tabId === tab.id
-                        ? null
-                        : { tabId: tab.id, left: rect.left, top: rect.bottom + 2 }
-                    )
+                    toggleMenu(tab.id, rect.left, rect.bottom + 2)
                   }}
                   className={`flex shrink-0 items-center rounded p-0.5 text-text-secondary transition-colors hover:bg-chip hover:text-text ${
                     active ? 'opacity-70 hover:opacity-100' : 'opacity-0 group-hover:opacity-70'
@@ -173,8 +197,9 @@ export function TabStrip(): JSX.Element {
       {menu && menuHomeTab && (
         <div
           data-source-menu
+          data-closing={closing}
           style={{ position: 'fixed', left: menu.left, top: menu.top }}
-          className="z-50 min-w-[180px] rounded-card border border-border bg-card p-1 shadow-lg"
+          className="menu-pop z-50 min-w-[180px] rounded-card border border-border bg-card p-1 shadow-lg"
         >
           {enabledSources.length === 0 ? (
             <div className="px-3 py-1.5 text-sm text-text-secondary">当前暂无订阅</div>

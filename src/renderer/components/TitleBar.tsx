@@ -88,7 +88,7 @@ export function TitleBar({ showFavorites, onToggleFavorites }: Props): JSX.Eleme
         <button
           title="关闭"
           onClick={() => void window.opia.windowClose()}
-          className="flex h-8 w-10 items-center justify-center rounded-card text-text-secondary transition-colors hover:bg-[#e81123] hover:text-white"
+          className="flex h-8 w-10 items-center justify-center rounded-card text-text-secondary transition-colors hover:bg-accent hover:text-on-accent"
         >
           <X size={16} />
         </button>

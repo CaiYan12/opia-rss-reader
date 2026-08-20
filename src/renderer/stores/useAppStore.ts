@@ -41,6 +41,8 @@ interface AppState {
   toggleFavorite(guid: string): Promise<void>
   updateSettings(patch: Partial<Settings>): Promise<void>
   setTheme(id: string): Promise<void>
+  /** 内容区缩放（0.5–2，步进 0.05），持久化到 settings.uiZoom */
+  setZoom(z: number): void
   toggleMini(): Promise<void>
   reloadSources(): Promise<void>
   reloadThemes(): Promise<ThemeTokens[]>
@@ -244,6 +246,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!theme) return
     applyTheme(theme)
     await get().updateSettings({ activeThemeId: id })
+  },
+
+  setZoom(z) {
+    const next = Math.min(2, Math.max(0.5, Math.round(z * 100) / 100))
+    if (next === (get().settings?.uiZoom ?? 1)) return
+    void get().updateSettings({ uiZoom: next })
   },
 
   async toggleMini() {

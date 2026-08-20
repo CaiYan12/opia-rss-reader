@@ -73,8 +73,11 @@ export class ThemeService {
     for (const key of colorKeys) {
       if (!t.colors?.[key]) throw new Error(`theme.colors.${key} missing`)
     }
-    if (!t.fonts?.heading || !t.fonts?.body || typeof t.fonts.sizeBase !== 'number') {
+    if (!t.fonts?.heading || !t.fonts?.body) {
       throw new Error('theme.fonts incomplete')
+    }
+    if (t.colorScheme !== undefined && t.colorScheme !== 'light' && t.colorScheme !== 'dark') {
+      throw new Error('theme.colorScheme must be "light" or "dark"')
     }
   }
 }

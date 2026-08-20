@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Star, Trash2 } from 'lucide-react'
 import { useAppStore } from '../stores/useAppStore'
 import { ThemeEditor } from './ThemeEditor'
+import { Select } from './Select'
 import type { LayoutConfig, ShortcutConfig } from '../../shared/types'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): JSX.Element {
@@ -13,13 +14,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-/** 快捷键录入框：聚焦后按下组合键即录入（Esc 取消）；readOnly 使全局快捷键引擎跳过输入期 */
+/** 快捷键录入框：聚焦后按下组合键即录入（Esc 取消）；readOnly 使全局快捷键引擎跳过输入期。
+ *  modifierOnly 模式用于滚轮类快捷键：只录入修饰键组合（按下修饰键即实时录入，可叠加） */
 function ShortcutCapture({
   value,
-  onChange
+  onChange,
+  modifierOnly = false
 }: {
   value: string
   onChange: (combo: string) => void
+  modifierOnly?: boolean
 }): JSX.Element {
   const [capturing, setCapturing] = useState(false)
 
@@ -28,6 +32,16 @@ function ShortcutCapture({
     if (e.key === 'Escape') {
       setCapturing(false)
       e.currentTarget.blur()
+      return
+    }
+    if (modifierOnly) {
+      // 只响应修饰键，非修饰键忽略
+      if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
+      const mods: string[] = []
+      if (e.ctrlKey || e.metaKey) mods.push('Ctrl')
+      if (e.altKey) mods.push('Alt')
+      if (e.shiftKey) mods.push('Shift')
+      if (mods.length > 0) onChange(mods.join('+'))
       return
     }
     // 纯修饰键按下不录入，等待主键
@@ -45,7 +59,7 @@ function ShortcutCapture({
   return (
     <input
       readOnly
-      value={capturing ? '按下组合键…（Esc 取消）' : value}
+      value={capturing ? (modifierOnly ? '按住修饰键组合…' : '按下组合键…（Esc 取消）') : value}
       onFocus={() => setCapturing(true)}
       onBlur={() => setCapturing(false)}
       onKeyDown={onKeyDown}
@@ -171,62 +185,56 @@ export function SettingsPanel(): JSX.Element {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <label className="flex flex-col gap-1">
               <span className="text-text-secondary">外链打开方式</span>
-              <select
+              <Select
                 value={settings.externalLinkBehavior}
-                onChange={(e) =>
-                  void updateSettings({
-                    externalLinkBehavior: e.target.value as 'system' | 'builtin'
-                  })
+                onChange={(v) =>
+                  void updateSettings({ externalLinkBehavior: v as 'system' | 'builtin' })
                 }
-                className="rounded-card border border-border bg-surface px-2 py-1.5"
-              >
-                <option value="system">系统默认浏览器</option>
-                <option value="builtin">内置浏览器（新标签打开）</option>
-              </select>
+                options={[
+                  { value: 'system', label: '系统默认浏览器' },
+                  { value: 'builtin', label: '内置浏览器（新标签打开）' }
+                ]}
+              />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-text-secondary">点击卡片行为</span>
-              <select
+              <Select
                 value={settings.clickBehavior}
-                onChange={(e) =>
-                  void updateSettings({ clickBehavior: e.target.value as 'reader' | 'browser' })
+                onChange={(v) =>
+                  void updateSettings({ clickBehavior: v as 'reader' | 'browser' })
                 }
-                className="rounded-card border border-border bg-surface px-2 py-1.5"
-              >
-                <option value="reader">应用内阅读</option>
-                <option value="browser">浏览器打开原文</option>
-              </select>
+                options={[
+                  { value: 'reader', label: '应用内阅读' },
+                  { value: 'browser', label: '浏览器打开原文' }
+                ]}
+              />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-text-secondary">主页内容（「+」新建标签时）</span>
-              <select
+              <Select
                 value={settings.homeContent}
-                onChange={(e) =>
-                  void updateSettings({
-                    homeContent: e.target.value as 'defaultSource' | 'blank'
-                  })
+                onChange={(v) =>
+                  void updateSettings({ homeContent: v as 'defaultSource' | 'blank' })
                 }
-                className="rounded-card border border-border bg-surface px-2 py-1.5"
-              >
-                <option value="defaultSource">默认订阅视图</option>
-                <option value="blank">空页面</option>
-              </select>
+                options={[
+                  { value: 'defaultSource', label: '默认订阅视图' },
+                  { value: 'blank', label: '空页面' }
+                ]}
+              />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-text-secondary">启动时打开</span>
-              <select
+              <Select
                 value={settings.startupOpen}
-                onChange={(e) =>
-                  void updateSettings({
-                    startupOpen: e.target.value as 'home' | 'blank' | 'lastSession'
-                  })
+                onChange={(v) =>
+                  void updateSettings({ startupOpen: v as 'home' | 'blank' | 'lastSession' })
                 }
-                className="rounded-card border border-border bg-surface px-2 py-1.5"
-              >
-                <option value="home">仅主页</option>
-                <option value="blank">空页面</option>
-                <option value="lastSession">上一次标签会话</option>
-              </select>
+                options={[
+                  { value: 'home', label: '仅主页' },
+                  { value: 'blank', label: '空页面' },
+                  { value: 'lastSession', label: '上一次标签会话' }
+                ]}
+              />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-text-secondary">自动刷新间隔（分钟，0 为关闭）</span>
@@ -278,46 +286,67 @@ export function SettingsPanel(): JSX.Element {
                 onChange={(combo) => setShortcut('prevTab', combo)}
               />
             </div>
+            <div className="flex items-center gap-3">
+              <span className="w-24 text-text-secondary">缩放（滚轮）</span>
+              <ShortcutCapture
+                modifierOnly
+                value={settings.shortcuts.zoomWheel}
+                onChange={(combo) => setShortcut('zoomWheel', combo)}
+              />
+              <span className="text-xs text-text-secondary">
+                按住该组合后滚动滚轮缩放内容区
+              </span>
+            </div>
           </div>
         </Section>
 
         <Section title="布局">
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <span className="text-text-secondary">预设</span>
-              <select
+          <div className="flex flex-col gap-1.5 text-sm">
+            <label className="flex min-h-9 items-center gap-3">
+              <span className="w-24 shrink-0 text-text-secondary">预设</span>
+              <Select
                 value={layout.preset}
-                onChange={(e) => setLayout({ preset: e.target.value as LayoutConfig['preset'] })}
-                className="rounded-card border border-border bg-surface px-2 py-1.5"
-              >
-                <option value="compact">紧凑列表</option>
-                <option value="grid">卡片网格</option>
-                <option value="magazine">杂志风</option>
-              </select>
+                onChange={(v) => setLayout({ preset: v as LayoutConfig['preset'] })}
+                options={[
+                  { value: 'compact', label: '紧凑列表' },
+                  { value: 'grid', label: '卡片网格' },
+                  { value: 'magazine', label: '杂志风' }
+                ]}
+              />
             </label>
-            <label className="flex items-center gap-2">
-              <span className="text-text-secondary">列数</span>
+            <label className="flex min-h-9 items-center gap-3">
+              <span className="w-24 shrink-0 text-text-secondary">列数</span>
               <input
                 type="range"
                 min={1}
                 max={4}
                 value={layout.gridColumns}
                 onChange={(e) => setLayout({ gridColumns: Number(e.target.value) as 1 | 2 | 3 | 4 })}
+                style={
+                  {
+                    '--range-progress': `${((layout.gridColumns - 1) / 3) * 100}%`
+                  } as React.CSSProperties
+                }
               />
-              <span>{layout.gridColumns}</span>
+              <span className="w-5 shrink-0 text-center tabular-nums">{layout.gridColumns}</span>
             </label>
-            {(Object.keys(layout.fields) as Array<keyof LayoutConfig['fields']>).map((key) => (
-              <label key={key} className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={layout.fields[key]}
-                  onChange={(e) =>
-                    setLayout({ fields: { ...layout.fields, [key]: e.target.checked } })
-                  }
-                />
-                {{ cover: '封面', summary: '摘要', pubDate: '时间', source: '来源' }[key]}
-              </label>
-            ))}
+            <div className="flex min-h-9 items-center gap-3">
+              <span className="w-24 shrink-0 text-text-secondary">显示字段</span>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {(Object.keys(layout.fields) as Array<keyof LayoutConfig['fields']>).map((key) => (
+                  <label key={key} className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={layout.fields[key]}
+                      onChange={(e) =>
+                        setLayout({ fields: { ...layout.fields, [key]: e.target.checked } })
+                      }
+                    />
+                    {{ cover: '封面', summary: '摘要', pubDate: '时间', source: '来源' }[key]}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         </Section>
 

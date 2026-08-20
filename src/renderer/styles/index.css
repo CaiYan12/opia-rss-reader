@@ -17,9 +17,161 @@
   --t-read: #a8a396;
   --t-font-heading: Georgia, 'Noto Serif SC', serif;
   --t-font-body: 'Segoe UI', 'Noto Sans SC', sans-serif;
-  --t-font-size-base: 14px;
   --t-radius: 10px;
   --t-spacing: 12px;
+}
+
+/* ---- 原生控件随主题 ----
+   浏览器原生表单控件（focus 外圈/checkbox/range/选区/下拉选项）默认取系统色而非页面 CSS 变量，
+   必须显式挂主题变量，否则切主题后残留系统橙/默认蓝 */
+:root {
+  accent-color: var(--t-accent);
+  /* 动效曲线 token（animate skill 配方） */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* ---- 滑条（range）自绘：track/thumb 原生渲染取 accent 暗色变体（不读主题 token，
+   浅色 UI 下突兀且随 accent 染色漂移）。track 用主题 chip 色，填充/手柄用 accent；
+   填充分割点由 --range-progress 变量驱动（组件按 (value-min)/(max-min) 换算注入） ---- */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--t-accent) 0%,
+    var(--t-accent) var(--range-progress, 0%),
+    var(--t-chip) var(--range-progress, 0%),
+    var(--t-chip) 100%
+  );
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--t-accent);
+  border: 2px solid var(--t-card);
+  box-shadow: 0 0 0 1px var(--t-border);
+  /* hover-gated 微放大（animate skill 按钮按压配方）：基态不缩放 */
+  transition: transform 120ms var(--ease-out);
+}
+
+input[type='range']:hover::-webkit-slider-thumb,
+input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input[type='range']::-webkit-slider-thumb {
+    transition: none;
+  }
+}
+
+/* ---- 下拉/弹出菜单动画：从触发器展开（scale 0.95 + 淡入），退出对称 ---- */
+.menu-pop {
+  transform-origin: top center;
+  /* 滚动链切断：菜单内部滚到边界后不再把滚动传播给外层页面（下拉内部滚轮仅滚内部） */
+  overscroll-behavior: contain;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+@starting-style {
+  .menu-pop {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.menu-pop[data-closing='true'] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* 向上展开的菜单：从触发器（底部）长出 */
+.menu-pop[data-dropup='true'] {
+  transform-origin: bottom center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-pop {
+    transition: opacity 120ms ease;
+    transform: none;
+  }
+  .menu-pop[data-closing='true'] {
+    transform: none;
+  }
+}
+
+/* 焦点外圈随主题：Chromium 的 UA focus 圈是 outline-style:auto，忽略作者 outline-color，
+   必须显式 solid 才挂得上主题变量。
+   基态即透明 solid 圈（同宽度同 offset），focus 只改 outline-color，
+   出现/消失因此可被 transition 淡入淡出。
+   负 offset 使圈覆盖在原有边框上（外缘与元件外缘齐平，视觉尺寸不变） */
+button,
+input,
+select,
+textarea,
+a {
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+}
+
+:focus-visible {
+  outline-color: var(--t-accent);
+}
+
+::selection {
+  background: var(--t-accent);
+  color: var(--t-on-accent);
+}
+
+select option {
+  background-color: var(--t-card);
+  color: var(--t-text);
+}
+
+select option:checked {
+  background-color: var(--t-accent);
+  color: var(--t-on-accent);
+}
+
+/* ---- 主题编辑器色块：整块显示颜色，hover/active 微缩放（按钮按压配方） ---- */
+.swatch {
+  transition:
+    transform 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .swatch:hover {
+    transform: scale(1.06);
+  }
+}
+
+.swatch:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swatch,
+  .swatch:hover,
+  .swatch:active {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* 隐藏 number 输入的原生步进器（Chromium），数值经键盘/滚轮调整即可 */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 html,
@@ -28,7 +180,8 @@ body,
   height: 100%;
   margin: 0;
   font-family: var(--t-font-body);
-  font-size: var(--t-font-size-base);
+  /* 基准字号与主题解耦：固定 14px，整体缩放走内容区 CSS zoom（设置 uiZoom） */
+  font-size: 14px;
   background: var(--t-bg);
   color: var(--t-text);
 }
@@ -41,12 +194,15 @@ nav,
 button,
 input,
 select,
+textarea,
+a,
 section,
 div.reader-body {
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
-    color 0.2s ease;
+    color 0.2s ease,
+    outline-color 0.2s ease;
 }
 
 /* ---- 卡片入场 ---- */

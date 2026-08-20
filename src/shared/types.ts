@@ -41,6 +41,8 @@ export interface ShortcutConfig {
   closeTab: string
   nextTab: string
   prevTab: string
+  /** 内容区缩放：与滚轮配合的修饰键组合（如 "Ctrl"、"Ctrl+Shift"） */
+  zoomWheel: string
 }
 
 export interface Settings {
@@ -58,6 +60,8 @@ export interface Settings {
   activeThemeId: string
   layout: LayoutConfig
   miniSize: { w: number; h: number }
+  /** 内容区缩放系数（1 = 100%），持久化 */
+  uiZoom: number
 }
 
 /** 持久化的标签会话（reader 存 guid，重启后从文章缓存解析） */
@@ -75,6 +79,9 @@ export interface ThemeTokens {
   id: string
   name: string
   builtin?: boolean
+  /** 亮/暗分类（用于 CSS color-scheme 与未来的亮暗主题区分）。
+   *  可选：旧自定义主题 JSON 无此字段时，applyTheme 按背景色亮度推导。 */
+  colorScheme?: 'light' | 'dark'
   colors: {
     bg: string
     surface: string
@@ -92,7 +99,6 @@ export interface ThemeTokens {
   fonts: {
     heading: string
     body: string
-    sizeBase: number
   }
   radius: number
   spacing: number
@@ -111,7 +117,7 @@ export const DEFAULT_SETTINGS: Settings = {
   externalLinkBehavior: 'system',
   homeContent: 'defaultSource',
   startupOpen: 'home',
-  shortcuts: { closeTab: 'Ctrl+W', nextTab: 'Ctrl+Tab', prevTab: 'Ctrl+Shift+Tab' },
+  shortcuts: { closeTab: 'Ctrl+W', nextTab: 'Ctrl+Tab', prevTab: 'Ctrl+Shift+Tab', zoomWheel: 'Ctrl' },
   refreshIntervalMin: 30,
   historyRetentionDays: 30,
   activeThemeId: 'windows-light',
@@ -120,7 +126,8 @@ export const DEFAULT_SETTINGS: Settings = {
     gridColumns: 2,
     fields: { cover: true, summary: true, pubDate: true, source: true }
   },
-  miniSize: { w: 360, h: 480 }
+  miniSize: { w: 360, h: 480 },
+  uiZoom: 1
 }
 
 export const DEFAULT_SOURCE: FeedSource = {

@@ -5,6 +5,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     id: 'windows-light',
     name: 'Windows Light',
     builtin: true,
+    colorScheme: 'light',
     colors: {
       bg: '#f3f3f3',
       surface: '#f9f9f9',
@@ -21,8 +22,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     },
     fonts: {
       heading: "'Segoe UI', 'Noto Sans SC', sans-serif",
-      body: "'Segoe UI', 'Noto Sans SC', sans-serif",
-      sizeBase: 14
+      body: "'Segoe UI', 'Noto Sans SC', sans-serif"
     },
     radius: 8,
     spacing: 12
@@ -31,6 +31,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     id: 'windows-dark',
     name: 'Windows Dark',
     builtin: true,
+    colorScheme: 'dark',
     colors: {
       bg: '#202020',
       surface: '#2b2b2b',
@@ -47,8 +48,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     },
     fonts: {
       heading: "'Segoe UI', 'Noto Sans SC', sans-serif",
-      body: "'Segoe UI', 'Noto Sans SC', sans-serif",
-      sizeBase: 14
+      body: "'Segoe UI', 'Noto Sans SC', sans-serif"
     },
     radius: 8,
     spacing: 12
@@ -57,6 +57,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     id: 'claude-design',
     name: 'Claude Design',
     builtin: true,
+    colorScheme: 'light',
     colors: {
       bg: '#f5f4ed',
       surface: '#faf9f5',
@@ -73,8 +74,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     },
     fonts: {
       heading: "Georgia, 'Noto Serif SC', serif",
-      body: "'Segoe UI', 'Noto Sans SC', sans-serif",
-      sizeBase: 14
+      body: "'Segoe UI', 'Noto Sans SC', sans-serif"
     },
     radius: 10,
     spacing: 12
@@ -83,6 +83,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     id: 'juya-daily',
     name: 'Juya Daily',
     builtin: true,
+    colorScheme: 'light',
     colors: {
       bg: '#f6f3ea',
       surface: '#fbf9f3',
@@ -99,8 +100,7 @@ export const BUILTIN_THEMES: ThemeTokens[] = [
     },
     fonts: {
       heading: "Georgia, 'Noto Serif SC', serif",
-      body: "'Segoe UI', 'Noto Sans SC', sans-serif",
-      sizeBase: 15
+      body: "'Segoe UI', 'Noto Sans SC', sans-serif"
     },
     radius: 12,
     spacing: 14

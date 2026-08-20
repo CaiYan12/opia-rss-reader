@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Rss } from 'lucide-react'
 import { useAppStore } from '../stores/useAppStore'
+import { Select } from './Select'
 
 interface Props {
   tabId: string
@@ -78,19 +79,18 @@ export function BlankPage({ tabId }: Props): JSX.Element {
             className="mb-3 w-full rounded-card border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
           />
           {sources.length > 0 && (
-            <select
+            <Select
               value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
-              className="mb-4 w-full rounded-card border border-border bg-bg px-3 py-2 text-sm text-text outline-none focus:border-accent"
-            >
-              <option value="">选择已有订阅…</option>
-              {sources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.isDefault ? '（默认）' : ''}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedId}
+              className="mb-4 w-full"
+              options={[
+                { value: '', label: '选择已有订阅…' },
+                ...sources.map((s) => ({
+                  value: s.id,
+                  label: `${s.name}${s.isDefault ? '（默认）' : ''}`
+                }))
+              ]}
+            />
           )}
           <button
             onClick={() => void submit()}

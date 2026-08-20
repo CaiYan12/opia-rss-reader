@@ -7,6 +7,7 @@ import { ReaderView } from './components/ReaderView'
 import { SettingsPanel } from './components/SettingsPanel'
 import { MiniView } from './components/MiniView'
 import { BrowserPage } from './components/BrowserPage'
+import { ZoomWidget } from './components/ZoomWidget'
 
 /** 解析组合串（如 "Ctrl+Shift+Tab"）为修饰键 + 主键 */
 function parseCombo(combo: string): { ctrl: boolean; shift: boolean; alt: boolean; key: string } {
@@ -19,6 +20,16 @@ function parseCombo(combo: string): { ctrl: boolean; shift: boolean; alt: boolea
   }
 }
 
+/** 解析纯修饰键组合串（如 "Ctrl+Shift"），用于滚轮缩放匹配 */
+function parseModifiers(combo: string): { ctrl: boolean; shift: boolean; alt: boolean } {
+  const parts = combo.split('+').map((p) => p.trim().toLowerCase())
+  return {
+    ctrl: parts.includes('ctrl') || parts.includes('cmd') || parts.includes('meta'),
+    shift: parts.includes('shift'),
+    alt: parts.includes('alt')
+  }
+}
+
 function isTypingTarget(e: KeyboardEvent): boolean {
   const el = e.target as HTMLElement | null
   if (!el) return false
@@ -28,7 +39,8 @@ function isTypingTarget(e: KeyboardEvent): boolean {
 }
 
 export default function App(): JSX.Element {
-  const { ready, init, mini, tabs, activeTabId, settings, closeTab, activateTab } = useAppStore()
+  const { ready, init, mini, tabs, activeTabId, settings, closeTab, activateTab, setZoom } =
+    useAppStore()
   const [showFavorites, setShowFavorites] = useState(false)
 
   useEffect(() => {
@@ -72,6 +84,22 @@ export default function App(): JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [settings, tabs, activeTabId, closeTab, activateTab])
 
+  // 内容区缩放：按住配置的修饰键组合（默认 Ctrl）滚动滚轮调节
+  useEffect(() => {
+    if (!settings) return
+    const mods = parseModifiers(settings.shortcuts.zoomWheel || 'Ctrl')
+    const onWheel = (e: WheelEvent): void => {
+      if ((e.ctrlKey || e.metaKey) !== mods.ctrl || e.shiftKey !== mods.shift || e.altKey !== mods.alt) {
+        return
+      }
+      e.preventDefault()
+      setZoom((settings.uiZoom ?? 1) + (e.deltaY < 0 ? 0.05 : -0.05))
+    }
+    // passive: false 才能拦截 Chromium 对 Ctrl+滚轮（触控板捏合）的默认页面缩放
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [settings, setZoom])
+
   if (!ready) {
     return (
       <div className="flex h-screen items-center justify-center bg-bg text-text-secondary">
@@ -95,20 +123,27 @@ export default function App(): JSX.Element {
     }
   }
 
+  const uiZoom = settings?.uiZoom ?? 1
+
   return (
     <div className="flex h-screen flex-col">
       <TitleBar showFavorites={showFavorites} onToggleFavorites={() => setShowFavorites((v) => !v)} />
       <TabStrip />
-      {/* keep-alive：inactive 标签隐藏但保留 DOM/webview/滚动状态 */}
-      <div className="flex min-h-0 flex-1">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={tab.id === activeTabId ? 'min-h-0 w-full' : 'hidden'}
-          >
-            {renderTab(tab)}
-          </div>
-        ))}
+      {/* 内容区缩放（类似浏览器页面缩放）：zoom 只作用于标签内容，标题栏/标签栏/缩放控件不受影响。
+          CSS zoom 会放大内部 px 尺寸但不放大百分比/flex 分配尺寸，故容器仍恰好填满可用空间。 */}
+      <div className="relative min-h-0 flex-1">
+        {/* keep-alive：inactive 标签隐藏但保留 DOM/webview/滚动状态 */}
+        <div className="flex h-full" style={{ zoom: uiZoom }}>
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={tab.id === activeTabId ? 'min-h-0 w-full' : 'hidden'}
+            >
+              {renderTab(tab)}
+            </div>
+          ))}
+        </div>
+        <ZoomWidget />
       </div>
     </div>
   )

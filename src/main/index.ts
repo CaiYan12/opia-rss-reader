@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, Menu, nativeTheme } from 'electron'
 import { createMainWindow, getMainWindow } from './window'
 import { StoreService } from './store/StoreService'
 import { FeedService } from './feed/FeedService'
@@ -29,6 +29,7 @@ app.whenReady().then(() => {
   const plugins = new PluginManager(feed)
   plugins.loadAll()
   for (const t of plugins.collectThemes()) theme.registerPluginTheme(t)
+  store.migrateThemeSettings(theme.list())
   console.log('[main] plugin registry:', JSON.stringify(plugins.snapshot()))
 
   feed.onUpdated = (sourceId) => {
@@ -37,6 +38,10 @@ app.whenReady().then(() => {
 
   registerIpc({ store, feed, theme })
   createMainWindow()
+
+  nativeTheme.on('updated', () => {
+    getMainWindow()?.webContents.send(IPC.ThemeSystemChanged, nativeTheme.shouldUseDarkColors)
+  })
 
   // 置空应用菜单：默认菜单的 Close Window 加速键（Ctrl+W）会抢渲染层标签快捷键
   Menu.setApplicationMenu(null)

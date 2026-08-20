@@ -8,6 +8,8 @@ import {
   type SavedSession,
   type Settings
 } from '../../shared/types'
+import { resolveThemeScheme } from '../../shared/theme'
+import type { ThemeTokens } from '../../shared/types'
 
 interface StoreShape {
   settings: Settings
@@ -53,8 +55,31 @@ export class StoreService {
     }
   }
 
+  /** v0.1.x 单主题设置迁移：保持当前外观，并为另一分类填入同分类内置回退。 */
+  migrateThemeSettings(themes: ThemeTokens[]): void {
+    const saved = this.store.get('settings') as Settings & {
+      activeThemeId?: string
+      themeMode?: Settings['themeMode']
+      lightThemeId?: string
+      darkThemeId?: string
+    }
+    if (saved.themeMode && saved.lightThemeId && saved.darkThemeId) return
+
+    const legacy = themes.find((theme) => theme.id === saved.activeThemeId)
+    const scheme = legacy ? resolveThemeScheme(legacy) : 'light'
+    const next: Settings = {
+      ...this.getSettings(),
+      themeMode: scheme,
+      lightThemeId: scheme === 'light' && legacy ? legacy.id : 'windows-light',
+      darkThemeId: scheme === 'dark' && legacy ? legacy.id : 'windows-dark'
+    }
+    delete next.activeThemeId
+    this.store.set('settings', next)
+  }
+
   setSettings(patch: Partial<Settings>): Settings {
     const next = { ...this.getSettings(), ...patch }
+    delete next.activeThemeId
     this.store.set('settings', next)
     return next
   }

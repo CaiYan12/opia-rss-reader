@@ -158,12 +158,68 @@ select option:checked {
   transform: scale(0.96);
 }
 
+/* ---- 主题模式卡：高频设置项只保留快速状态反馈，不移动卡片内容 ---- */
+.theme-mode-card {
+  border-radius: var(--t-radius);
+  transition:
+    transform 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+
+.theme-mode-preview {
+  box-shadow: 0 0 0 0 var(--t-accent);
+  transition:
+    border-color 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out);
+}
+
+.theme-mode-card.is-active .theme-mode-preview {
+  border-color: var(--t-accent);
+  box-shadow: 0 0 0 2px var(--t-accent);
+}
+
+.theme-mode-card.is-active {
+  color: var(--t-accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .theme-mode-card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.theme-mode-card:active {
+  transform: scale(0.98);
+}
+
+/* 配置区偶尔切换，以短距离入场说明内容已替换；退出不延迟用户操作。 */
+.theme-detail-enter {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+@starting-style {
+  .theme-detail-enter {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .swatch,
   .swatch:hover,
   .swatch:active {
     transform: none;
     transition: none;
+  }
+  .theme-mode-card,
+  .theme-mode-card:hover,
+  .theme-mode-card:active,
+  .theme-detail-enter {
+    transform: none;
   }
 }
 

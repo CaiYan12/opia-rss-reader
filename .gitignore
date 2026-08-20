@@ -27,6 +27,9 @@ Thumbs.db
 # Local-only reference screenshots (UI design samples, not source)
 testfiles/
 
+# Local-only UI verification screenshots (agent-generated, not source)
+screenshots/
+
 # Temp scripts (agent-generated, not source)
 /_*.py
 /_*.js

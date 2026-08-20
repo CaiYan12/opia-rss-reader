@@ -8,6 +8,7 @@ import type {
   ThemeTokens
 } from '../../shared/types'
 import { applyTheme } from '../theme/applyTheme'
+import { resolveThemeScheme, type ThemeScheme } from '../../shared/theme'
 
 export type Tab =
   | { id: string; kind: 'home'; homePage: 'feed' | 'blank' }
@@ -33,6 +34,7 @@ interface AppState {
   activeTabId: string
   mini: boolean
   refreshing: boolean
+  systemDark: boolean
 
   init(): Promise<void>
   refresh(sourceId?: string): Promise<void>
@@ -40,7 +42,8 @@ interface AppState {
   openArticle(article: Article): Promise<void>
   toggleFavorite(guid: string): Promise<void>
   updateSettings(patch: Partial<Settings>): Promise<void>
-  setTheme(id: string): Promise<void>
+  setThemeMode(mode: Settings['themeMode']): Promise<void>
+  setThemeForScheme(scheme: ThemeScheme, id: string): Promise<void>
   /** 内容区缩放（0.5–2，步进 0.05），持久化到 settings.uiZoom */
   setZoom(z: number): void
   toggleMini(): Promise<void>
@@ -65,6 +68,30 @@ interface AppState {
   setTabTitle(id: string, title: string): void
   /** 空页面引导页提交：该主页标签切换到订阅视图并选中指定源 */
   setHomeTabSource(tabId: string, sourceId: string): void
+}
+
+function effectiveScheme(settings: Settings, systemDark: boolean): ThemeScheme {
+  if (settings.themeMode === 'system') return systemDark ? 'dark' : 'light'
+  return settings.themeMode
+}
+
+function themeForScheme(
+  themes: ThemeTokens[],
+  settings: Settings,
+  scheme: ThemeScheme
+): ThemeTokens | null {
+  const selectedId = scheme === 'light' ? settings.lightThemeId : settings.darkThemeId
+  const fallbackId = scheme === 'light' ? 'windows-light' : 'windows-dark'
+  return (
+    themes.find((theme) => theme.id === selectedId && resolveThemeScheme(theme) === scheme) ??
+    themes.find((theme) => theme.id === fallbackId && resolveThemeScheme(theme) === scheme) ??
+    null
+  )
+}
+
+function applyConfiguredTheme(themes: ThemeTokens[], settings: Settings, systemDark: boolean): void {
+  const theme = themeForScheme(themes, settings, effectiveScheme(settings, systemDark))
+  if (theme) applyTheme(theme)
 }
 
 function serializeSession(tabs: Tab[], activeTabId: string): SavedSession {
@@ -116,16 +143,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTabId: '',
   mini: false,
   refreshing: false,
+  systemDark: false,
 
   async init() {
-    const [settings, sources, history, themes] = await Promise.all([
+    const [settings, sources, history, themes, systemDark] = await Promise.all([
       window.opia.settingsGet(),
       window.opia.feedSources(),
       window.opia.historyGet(),
-      window.opia.themeList()
+      window.opia.themeList(),
+      window.opia.themeSystemGet()
     ])
-    const theme = themes.find((t) => t.id === settings.activeThemeId) ?? themes[0]
-    if (theme) applyTheme(theme)
+    applyConfiguredTheme(themes, settings, systemDark)
 
     const enabled = sources.filter((s) => s.enabled)
     const articleEntries = await Promise.all(
@@ -168,7 +196,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       articles: Object.fromEntries(articleEntries),
       activeSourceId: initialSourceId,
       tabs,
-      activeTabId
+      activeTabId,
+      systemDark
     })
 
     // 后台刷新一次
@@ -178,6 +207,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       void window.opia.feedList(sourceId).then((list) => {
         set((st) => ({ articles: { ...st.articles, [sourceId]: list } }))
       })
+    })
+
+    window.opia.onThemeSystemChanged((dark) => {
+      set({ systemDark: dark })
+      const state = get()
+      if (state.settings?.themeMode === 'system') {
+        applyConfiguredTheme(state.themes, state.settings, dark)
+      }
     })
   },
 
@@ -241,11 +278,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ settings: next })
   },
 
-  async setTheme(id) {
-    const theme = get().themes.find((t) => t.id === id) ?? (await window.opia.themeGet(id))
-    if (!theme) return
-    applyTheme(theme)
-    await get().updateSettings({ activeThemeId: id })
+  async setThemeMode(mode) {
+    const next = await window.opia.settingsSet({ themeMode: mode })
+    set({ settings: next })
+    applyConfiguredTheme(get().themes, next, get().systemDark)
+  },
+
+  async setThemeForScheme(scheme, id) {
+    const theme = get().themes.find((item) => item.id === id) ?? (await window.opia.themeGet(id))
+    if (!theme || resolveThemeScheme(theme) !== scheme) return
+    const patch = scheme === 'light' ? { lightThemeId: id } : { darkThemeId: id }
+    const next = await window.opia.settingsSet(patch)
+    set({ settings: next })
+    if (effectiveScheme(next, get().systemDark) === scheme) applyTheme(theme)
   },
 
   setZoom(z) {

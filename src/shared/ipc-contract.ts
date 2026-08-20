@@ -19,7 +19,8 @@ export const IPC = {
   ThemeGet: 'theme:get',
   ThemeSave: 'theme:save',
   ThemeDelete: 'theme:delete',
-  ThemeApplied: 'theme:applied',
+  ThemeSystemGet: 'theme:system:get',
+  ThemeSystemChanged: 'theme:system-changed',
   WindowToggleMini: 'window:toggle-mini',
   WindowMinimize: 'window:minimize',
   WindowToggleMaximize: 'window:toggle-maximize',
@@ -48,6 +49,7 @@ export interface OpiaApi {
   themeGet(id: string): Promise<ThemeTokens | null>
   themeSave(theme: ThemeTokens): Promise<void>
   themeDelete(id: string): Promise<void>
+  themeSystemGet(): Promise<boolean>
   toggleMini(): Promise<boolean>
   windowMinimize(): Promise<void>
   windowToggleMaximize(): Promise<void>
@@ -55,4 +57,5 @@ export interface OpiaApi {
   openExternal(url: string): Promise<void>
   onFeedUpdated(cb: (payload: { sourceId: string }) => void): () => void
   onWindowMaximizeChanged(cb: (maximized: boolean) => void): () => void
+  onThemeSystemChanged(cb: (dark: boolean) => void): () => void
 }

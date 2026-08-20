@@ -21,6 +21,7 @@ const api: OpiaApi = {
   themeGet: (id) => ipcRenderer.invoke(IPC.ThemeGet, id),
   themeSave: (theme) => ipcRenderer.invoke(IPC.ThemeSave, theme),
   themeDelete: (id) => ipcRenderer.invoke(IPC.ThemeDelete, id),
+  themeSystemGet: () => ipcRenderer.invoke(IPC.ThemeSystemGet),
   toggleMini: () => ipcRenderer.invoke(IPC.WindowToggleMini),
   windowMinimize: () => ipcRenderer.invoke(IPC.WindowMinimize),
   windowToggleMaximize: () => ipcRenderer.invoke(IPC.WindowToggleMaximize),
@@ -36,6 +37,11 @@ const api: OpiaApi = {
     const listener = (_e: Electron.IpcRendererEvent, maximized: boolean): void => cb(maximized)
     ipcRenderer.on(IPC.WindowMaximizeChanged, listener)
     return () => ipcRenderer.removeListener(IPC.WindowMaximizeChanged, listener)
+  },
+  onThemeSystemChanged: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, dark: boolean): void => cb(dark)
+    ipcRenderer.on(IPC.ThemeSystemChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.ThemeSystemChanged, listener)
   }
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ThemeTokens } from '../../shared/types'
+import type { ThemeScheme } from '../../shared/theme'
 import { applyTheme } from '../theme/applyTheme'
 import { useAppStore } from '../stores/useAppStore'
 import { ColorPicker } from './ColorPicker'
@@ -175,37 +176,45 @@ function ColorSwatch({
   )
 }
 
-export function ThemeEditor(): JSX.Element {
-  const { settings, themes } = useAppStore()
-  const [draft, setDraft] = useState<ThemeTokens | null>(null)
+export function ThemeEditor({
+  scheme,
+  themes,
+  selectedId,
+  isEffective,
+  onSelect
+}: {
+  scheme: ThemeScheme
+  themes: ThemeTokens[]
+  selectedId: string
+  isEffective: boolean
+  onSelect: (id: string) => Promise<void>
+}): JSX.Element {
+  const selected = themes.find((theme) => theme.id === selectedId) ?? themes[0] ?? null
+  const [draft, setDraft] = useState<ThemeTokens | null>(() =>
+    selected ? structuredClone({ ...selected, colorScheme: scheme }) : null
+  )
   const [message, setMessage] = useState('')
 
-  const active = themes.find((t) => t.id === settings?.activeThemeId) ?? null
-
   useEffect(() => {
-    if (active && !draft) setDraft(structuredClone(active))
-  }, [active, draft])
-
-  // 切换主题后丢弃旧草稿，避免编辑器残留上一主题的色值
-  useEffect(() => {
-    if (active && draft && draft.id !== active.id) {
-      setDraft(structuredClone(active))
+    if (selected) {
+      setDraft(structuredClone({ ...selected, colorScheme: scheme }))
       setMessage('')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active?.id])
+  }, [selected?.id, scheme])
 
   if (!draft) return <div className="text-sm text-text-secondary">加载主题中…</div>
 
   const preview = (next: ThemeTokens): void => {
-    setDraft(next)
-    applyTheme(next) // 实时预览
+    const classified = { ...next, colorScheme: scheme }
+    setDraft(classified)
+    if (isEffective) applyTheme(classified)
   }
 
   const reset = (): void => {
-    if (active) {
-      setDraft(structuredClone(active))
-      applyTheme(active)
+    if (selected) {
+      const next = structuredClone({ ...selected, colorScheme: scheme })
+      setDraft(next)
+      if (isEffective) applyTheme(next)
     }
     setMessage('')
   }
@@ -218,10 +227,9 @@ export function ThemeEditor(): JSX.Element {
       : draft.id
     const name = isBuiltin ? `${draft.name} 副本` : draft.name
     try {
-      await window.opia.themeSave({ ...draft, id, name, builtin: false })
+      await window.opia.themeSave({ ...draft, id, name, builtin: false, colorScheme: scheme })
       await useAppStore.getState().reloadThemes()
-      await useAppStore.getState().setTheme(id)
-      setDraft(null)
+      await onSelect(id)
       setMessage(`已保存并应用「${name}」`)
     } catch (err) {
       setMessage(`保存失败：${String(err)}`)
@@ -229,11 +237,16 @@ export function ThemeEditor(): JSX.Element {
   }
 
   return (
-    <div className="border-t border-border pt-3">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-secondary">
-          自定义主题
-        </h3>
+    <div className="theme-detail-enter rounded-card border border-border bg-surface p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <div>
+          <h3 className="font-heading text-base font-bold">
+            {scheme === 'light' ? '亮色主题' : '暗色主题'}
+          </h3>
+          <p className="mt-0.5 text-xs text-text-secondary">
+            此区域仅显示并保存{scheme === 'light' ? '亮色' : '暗色'}主题
+          </p>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={reset}
@@ -245,28 +258,39 @@ export function ThemeEditor(): JSX.Element {
             onClick={() => void saveAs()}
             className="rounded-card bg-accent px-3 py-1 text-xs text-on-accent hover:bg-accent-hover"
           >
-            另存为新主题
+            {draft.builtin ? '另存为新主题' : '保存主题'}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+      <div className="mb-3 grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-border pb-3 text-sm">
+        <span className="font-medium">主题预设</span>
+        <Select
+          value={selected?.id ?? ''}
+          onChange={(id) => void onSelect(id)}
+          options={themes.map((theme) => ({ value: theme.id, label: theme.name }))}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
         {COLOR_FIELDS.map(({ key, label }) => (
-          <div key={key} className="flex items-center gap-2 text-xs">
+          <div key={key} className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-border py-2 text-sm">
+            <span>{label}</span>
+            <div className="flex min-w-0 items-center justify-end gap-3">
             <ColorSwatch
               value={draft.colors[key]}
               label={label}
               onChange={(v) => preview({ ...draft, colors: { ...draft.colors, [key]: v } })}
             />
-            <span className="w-14 text-text-secondary">{label}</span>
-            <span className="text-text-secondary">{draft.colors[key]}</span>
+              <span className="truncate font-mono text-xs text-text-secondary">{draft.colors[key]}</span>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-4 text-xs">
-        <label className="flex flex-col gap-1">
-          <span className="text-text-secondary">标题字体</span>
+      <div className="mt-3 space-y-0 text-sm">
+        <label className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-border py-2">
+          <span>标题字体</span>
           <Select
             value={draft.fonts.heading}
             onChange={(v) => preview({ ...draft, fonts: { ...draft.fonts, heading: v } })}
@@ -277,8 +301,8 @@ export function ThemeEditor(): JSX.Element {
             getDisplay={fontDisplay}
           />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-text-secondary">正文字体</span>
+        <label className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-border py-2">
+          <span>正文字体</span>
           <Select
             value={draft.fonts.body}
             onChange={(v) => preview({ ...draft, fonts: { ...draft.fonts, body: v } })}
@@ -289,19 +313,12 @@ export function ThemeEditor(): JSX.Element {
             getDisplay={fontDisplay}
           />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-text-secondary">亮/暗分类</span>
-          <Select
-            value={draft.colorScheme ?? 'light'}
-            onChange={(v) => preview({ ...draft, colorScheme: v as 'light' | 'dark' })}
-            options={[
-              { value: 'light', label: '亮色' },
-              { value: 'dark', label: '暗色' }
-            ]}
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-text-secondary">圆角：{draft.radius}px</span>
+        <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-border py-2">
+          <span>亮/暗分类</span>
+          <span className="text-right text-text-secondary">{scheme === 'light' ? '亮色（固定）' : '暗色（固定）'}</span>
+        </div>
+        <label className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-border py-2">
+          <span>圆角：{draft.radius}px</span>
           <input
             type="range"
             min={0}
@@ -312,6 +329,21 @@ export function ThemeEditor(): JSX.Element {
             style={
               {
                 '--range-progress': `${(draft.radius / 20) * 100}%`
+              } as React.CSSProperties
+            }
+          />
+        </label>
+        <label className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 py-2">
+          <span>间距：{draft.spacing}px</span>
+          <input
+            type="range"
+            min={4}
+            max={24}
+            value={draft.spacing}
+            onChange={(e) => preview({ ...draft, spacing: Number(e.target.value) })}
+            style={
+              {
+                '--range-progress': `${((draft.spacing - 4) / 20) * 100}%`
               } as React.CSSProperties
             }
           />

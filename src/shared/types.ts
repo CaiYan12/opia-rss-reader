@@ -57,7 +57,13 @@ export interface Settings {
   shortcuts: ShortcutConfig
   refreshIntervalMin: number
   historyRetentionDays: number
-  activeThemeId: string
+  /** 外观模式：跟随系统、固定亮色或固定暗色。 */
+  themeMode: 'system' | 'light' | 'dark'
+  /** 两个分类各自记忆主题，选择器不得跨分类使用。 */
+  lightThemeId: string
+  darkThemeId: string
+  /** 旧版本迁移字段；新逻辑不再读取或写入。 */
+  activeThemeId?: string
   layout: LayoutConfig
   miniSize: { w: number; h: number }
   /** 内容区缩放系数（1 = 100%），持久化 */
@@ -120,7 +126,9 @@ export const DEFAULT_SETTINGS: Settings = {
   shortcuts: { closeTab: 'Ctrl+W', nextTab: 'Ctrl+Tab', prevTab: 'Ctrl+Shift+Tab', zoomWheel: 'Ctrl' },
   refreshIntervalMin: 30,
   historyRetentionDays: 30,
-  activeThemeId: 'windows-light',
+  themeMode: 'light',
+  lightThemeId: 'windows-light',
+  darkThemeId: 'windows-dark',
   layout: {
     preset: 'grid',
     gridColumns: 2,

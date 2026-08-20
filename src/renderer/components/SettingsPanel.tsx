@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Plus, Star, Trash2 } from 'lucide-react'
+import { Monitor, Moon, Plus, Star, Sun, Trash2 } from 'lucide-react'
 import { useAppStore } from '../stores/useAppStore'
 import { ThemeEditor } from './ThemeEditor'
 import { Select } from './Select'
-import type { LayoutConfig, ShortcutConfig } from '../../shared/types'
+import type { LayoutConfig, Settings, ShortcutConfig, ThemeTokens } from '../../shared/types'
+import { resolveThemeScheme, type ThemeScheme } from '../../shared/theme'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): JSX.Element {
   return (
@@ -11,6 +12,65 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="mb-3 font-heading text-base font-bold">{title}</h2>
       {children}
     </section>
+  )
+}
+
+function ThemeMiniature({ theme, clip }: { theme: ThemeTokens; clip?: 'left' | 'right' }): JSX.Element {
+  const content = (
+    <div className="absolute inset-0" style={{ backgroundColor: theme.colors.bg }}>
+      <div className="absolute left-[12%] right-[12%] top-[14%] h-2 rounded-full" style={{ backgroundColor: theme.colors.border }} />
+      <div className="absolute left-[20%] right-[20%] top-[25%] h-1.5 rounded-full" style={{ backgroundColor: theme.colors.textSecondary }} />
+      <div className="absolute bottom-0 left-[8%] right-[8%] top-[38%] rounded-t-card border" style={{ backgroundColor: theme.colors.card, borderColor: theme.colors.border }}>
+        {[0, 1, 2].map((row) => (
+          <div key={row} className="flex h-1/3 items-center gap-2 border-b px-3 last:border-b-0" style={{ borderColor: theme.colors.border }}>
+            <span className="h-2 w-10 rounded-full" style={{ backgroundColor: theme.colors.accent }} />
+            <span className="h-1 flex-1 rounded-full" style={{ backgroundColor: theme.colors.chip }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+  if (!clip) return content
+  return <div className={`absolute inset-y-0 ${clip === 'left' ? 'left-0 right-1/2' : 'left-1/2 right-0'} overflow-hidden`}>{content}</div>
+}
+
+function ThemeModeCard({
+  mode,
+  active,
+  lightTheme,
+  darkTheme,
+  onClick
+}: {
+  mode: Settings['themeMode']
+  active: boolean
+  lightTheme: ThemeTokens
+  darkTheme: ThemeTokens
+  onClick: () => void
+}): JSX.Element {
+  const label = mode === 'system' ? '跟随系统' : mode === 'light' ? '亮色' : '暗色'
+  const Icon = mode === 'system' ? Monitor : mode === 'light' ? Sun : Moon
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`theme-mode-card min-w-0 text-left ${active ? 'is-active' : ''}`}
+    >
+      <div className="theme-mode-preview relative h-28 overflow-hidden rounded-card border border-border bg-surface">
+        {mode === 'system' ? (
+          <>
+            <ThemeMiniature theme={lightTheme} clip="left" />
+            <ThemeMiniature theme={darkTheme} clip="right" />
+          </>
+        ) : (
+          <ThemeMiniature theme={mode === 'light' ? lightTheme : darkTheme} />
+        )}
+      </div>
+      <span className="mt-2 flex items-center justify-center gap-2 text-sm font-medium">
+        <Icon size={15} />
+        {label}
+      </span>
+    </button>
   )
 }
 
@@ -71,7 +131,17 @@ function ShortcutCapture({
 }
 
 export function SettingsPanel(): JSX.Element {
-  const { settings, sources, themes, updateSettings, setTheme, reloadSources, refresh } =
+  const {
+    settings,
+    sources,
+    themes,
+    systemDark,
+    updateSettings,
+    setThemeMode,
+    setThemeForScheme,
+    reloadSources,
+    refresh
+  } =
     useAppStore()
   const [newName, setNewName] = useState('')
   const [newUrl, setNewUrl] = useState('')
@@ -80,6 +150,16 @@ export function SettingsPanel(): JSX.Element {
   if (!settings) return <div />
 
   const layout = settings.layout
+  const lightThemes = themes.filter((theme) => resolveThemeScheme(theme) === 'light')
+  const darkThemes = themes.filter((theme) => resolveThemeScheme(theme) === 'dark')
+  const lightTheme =
+    lightThemes.find((theme) => theme.id === settings.lightThemeId) ??
+    lightThemes.find((theme) => theme.id === 'windows-light')!
+  const darkTheme =
+    darkThemes.find((theme) => theme.id === settings.darkThemeId) ??
+    darkThemes.find((theme) => theme.id === 'windows-dark')!
+  const effectiveScheme: ThemeScheme =
+    settings.themeMode === 'system' ? (systemDark ? 'dark' : 'light') : settings.themeMode
 
   const setLayout = (patch: Partial<LayoutConfig>): void => {
     void updateSettings({ layout: { ...layout, ...patch } })
@@ -351,23 +431,41 @@ export function SettingsPanel(): JSX.Element {
         </Section>
 
         <Section title="主题">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {themes.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => void setTheme(t.id)}
-                className={`rounded-card border px-3 py-1.5 text-sm transition-colors ${
-                  t.id === settings.activeThemeId
-                    ? 'border-accent bg-accent text-on-accent'
-                    : 'border-border bg-surface hover:bg-chip'
-                }`}
-              >
-                {t.name}
-                {t.builtin ? '' : ' *'}
-              </button>
+          <p className="mb-3 text-xs text-text-secondary">
+            跟随系统会在下方分别配置的亮色与暗色主题之间自动切换。
+          </p>
+          <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {(['system', 'light', 'dark'] as const).map((mode) => (
+              <ThemeModeCard
+                key={mode}
+                mode={mode}
+                active={settings.themeMode === mode}
+                lightTheme={lightTheme}
+                darkTheme={darkTheme}
+                onClick={() => void setThemeMode(mode)}
+              />
             ))}
           </div>
-          <ThemeEditor />
+          <div className="space-y-4">
+            {(settings.themeMode === 'system' || settings.themeMode === 'light') && (
+              <ThemeEditor
+                scheme="light"
+                themes={lightThemes}
+                selectedId={lightTheme.id}
+                isEffective={effectiveScheme === 'light'}
+                onSelect={(id) => setThemeForScheme('light', id)}
+              />
+            )}
+            {(settings.themeMode === 'system' || settings.themeMode === 'dark') && (
+              <ThemeEditor
+                scheme="dark"
+                themes={darkThemes}
+                selectedId={darkTheme.id}
+                isEffective={effectiveScheme === 'dark'}
+                onSelect={(id) => setThemeForScheme('dark', id)}
+              />
+            )}
+          </div>
         </Section>
       </div>
     </div>

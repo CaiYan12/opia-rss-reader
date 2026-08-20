@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain, nativeTheme, shell } from 'electron'
 import { IPC } from '../shared/ipc-contract'
 import type { FeedSource, SavedSession, Settings, ThemeTokens } from '../shared/types'
 import type { StoreService } from './store/StoreService'
@@ -40,6 +40,7 @@ export function registerIpc({ store, feed, theme }: IpcDeps): void {
   ipcMain.handle(IPC.ThemeGet, (_e, id: string) => theme.get(id))
   ipcMain.handle(IPC.ThemeSave, (_e, t: ThemeTokens) => theme.save(t))
   ipcMain.handle(IPC.ThemeDelete, (_e, id: string) => theme.delete(id))
+  ipcMain.handle(IPC.ThemeSystemGet, () => nativeTheme.shouldUseDarkColors)
 
   ipcMain.handle(IPC.SessionGet, () => store.getSession())
   ipcMain.handle(IPC.SessionSave, (_e, session: SavedSession) => {

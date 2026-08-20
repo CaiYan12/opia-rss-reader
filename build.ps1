@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Run
 )
 
@@ -59,6 +59,26 @@ foreach ($d in $staleDirs) {
     }
 }
 
+# Also remove stale top-level build artifacts (old portable exe) and ALL old
+# release outputs, so release/ only ever contains artifacts from THIS build.
+# (Prevents same-version stale files from a previous build mixing in.)
+Get-ChildItem -Path "$PSScriptRoot\build" -Filter "*.exe" -File -ErrorAction SilentlyContinue |
+    ForEach-Object {
+        Write-Host "[build] removing stale $($_.Name) ..." -ForegroundColor DarkGray
+        Remove-Item -Force $_.FullName -ErrorAction SilentlyContinue
+    }
+if (Test-Path "$PSScriptRoot\release") {
+    Write-Host "[build] cleaning release\ (old artifacts) ..." -ForegroundColor DarkGray
+    Get-ChildItem -Path "$PSScriptRoot\release" -ErrorAction SilentlyContinue |
+        ForEach-Object { Remove-Item -Recurse -Force $_.FullName -ErrorAction SilentlyContinue }
+}
+
+# Release naming follows electron-builder's default artifact style:
+# productName (spaces stripped) + version + os-arch.
+$pkg = Get-Content "$PSScriptRoot\package.json" -Encoding UTF8 | ConvertFrom-Json
+$productName = ($pkg.build.productName -replace '\s', '')
+$releaseBase = "$productName-$($pkg.version)-win32-x64"
+
 Write-Host "[build] electron-vite build + electron-builder ..." -ForegroundColor Cyan
 npm run build
 if ($LASTEXITCODE -ne 0) {
@@ -84,6 +104,24 @@ Write-Host "[build] OK -> $($appExe.FullName)" -ForegroundColor Green
 if ($portable) {
     Write-Host "[build] portable -> $($portable.FullName)" -ForegroundColor DarkGray
 }
+
+# Stage release artifacts (all from THIS build): unpacked dir + zip + portable exe.
+$releaseDir = "$PSScriptRoot\release"
+New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+Write-Host "[release] staging $releaseBase\ ..." -ForegroundColor Cyan
+Copy-Item "$PSScriptRoot\build\win-unpacked" "$releaseDir\$releaseBase" -Recurse -Force
+
+Write-Host "[release] compressing $releaseBase.zip ..." -ForegroundColor Cyan
+Compress-Archive -Path "$releaseDir\$releaseBase" -DestinationPath "$releaseDir\$releaseBase.zip" -Force
+
+if ($portable) {
+    Write-Host "[release] copying $($portable.Name) ..." -ForegroundColor Cyan
+    Copy-Item $portable.FullName "$releaseDir\$($portable.Name)" -Force
+}
+
+Write-Host "[release] OK -> $releaseDir" -ForegroundColor Green
+Get-ChildItem $releaseDir | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor DarkGray }
 
 if ($Run) {
     $logFile = "$PSScriptRoot\build\run.log"

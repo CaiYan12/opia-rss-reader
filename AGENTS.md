@@ -31,6 +31,9 @@ Windows 桌面 RSS 阅读器（Electron + React + TypeScript），默认订阅�
 - Electron 二进制偶发未下载（报 "Electron uninstall"）：`node node_modules/electron/install.js` 修复。
 - **构建前必须杀掉正在运行的应用实例**，否则 electron-builder 因 `build/win-unpacked` 文件占用失败。杀进程用 PowerShell `Stop-Process`（进程名含空格时 Git Bash 的 taskkill 不可靠）。
 - 应用已加单实例锁；测试多开行为时第二实例会自动退出属预期。
+- **build.ps1 含中文注释，必须保持 UTF-8 with BOM**：`powershell.exe`（5.1）对无 BOM 文件按 GBK 误读中文注释导致语法损坏（`Unexpected token '}'`）；pwsh 7 无此问题，验证脚本须用 `powershell -File build.ps1` 实测。
+- electron-builder 下载 Electron zip 偶发 TLS 断连（CN 网络）：命令级设 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 与 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/` 重试即可，勿写入项目配置。
+- build.ps1 已自动化发行：构建前清理 build/release 全部旧产物，构建后自动在 `release/` 生成三形态（`{name}-{ver}-win32-x64\` 解包目录 + `.zip` + `-portable.exe`），命名跟随 electron-builder 产物规则。
 
 ## 常用命令
 
@@ -78,4 +81,5 @@ powershell -File build.ps1 -Run   # 构建并启动
 ## 计划任务
 
 - [x] v0.1.0：标签化窗口重构（无边框+TabStrip+会话持久化+Mini 修复+源切换下拉+默认订阅星形切换）
+  - **已发布**（2026-08-20，GitHub Release，用户手动同步）：tag `v0.1.0`，commit `5d0e90e`；产物 `release/`（portable.exe 90.74MB / win32-x64.zip 151.97MB / win32-x64 解包目录）
 - [ ] 下迭代待定（在此维护）

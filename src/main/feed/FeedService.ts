@@ -34,6 +34,15 @@ export class FeedService {
     this.store.setSources(this.getSources().filter((s) => s.id !== id))
   }
 
+  /** 设置/取消默认订阅（默认订阅数 ≤ 1）：id 非 null 且存在 → 目标置 true 其余清 false；null → 全部清除 */
+  setDefaultSource(id: string | null): FeedSource[] {
+    const sources = this.getSources()
+    if (id !== null && !sources.some((s) => s.id === id)) return sources
+    const next = sources.map((s) => ({ ...s, isDefault: id === null ? false : s.id === id }))
+    this.store.setSources(next)
+    return next
+  }
+
   toggleSource(id: string, enabled: boolean): void {
     this.store.setSources(this.getSources().map((s) => (s.id === id ? { ...s, enabled } : s)))
   }

@@ -21,6 +21,9 @@ Thumbs.db
 # WorkBuddy agent workspace data
 .workbuddy/
 
+# Trae agent workspace data (plans etc.)
+.trae/
+
 # Local-only reference screenshots (UI design samples, not source)
 testfiles/
 

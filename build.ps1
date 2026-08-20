@@ -9,6 +9,19 @@ $env:PATH = "$NodeDir;$env:PATH"
 # 本机环境存在 ELECTRON_RUN_AS_NODE=1，会使 Electron 以纯 Node 模式运行，必须清除
 Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 
+# WorkBuddy 工具环境会向 NODE_OPTIONS 注入 safe-delete shim（genie-safe-delete.cjs），
+# 它拦截 node 的 fs.rm 并 fail-closed，导致 electron-builder 无法清理 build\win-unpacked
+# （报 "Some operations were aborted"，首次重建必失败、重试才成功）。
+# 仅当检测到该 shim 时移除（用户自有终端通常无此变量，此时为空操作）。
+if ($env:NODE_OPTIONS -match 'genie-safe-delete') {
+    $env:NODE_OPTIONS = ($env:NODE_OPTIONS `
+        -replace '--require="[^"]*genie-safe-delete\.cjs"', '' `
+        -replace '--require=\S*genie-safe-delete\.cjs', '').Trim()
+    if ([string]::IsNullOrWhiteSpace($env:NODE_OPTIONS)) {
+        Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+    }
+}
+
 Set-Location $PSScriptRoot
 
 # Stop any running instance before build; otherwise electron-builder fails with

@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu } from 'electron'
 import { createMainWindow, getMainWindow } from './window'
 import { StoreService } from './store/StoreService'
 import { FeedService } from './feed/FeedService'
@@ -37,6 +37,18 @@ app.whenReady().then(() => {
 
   registerIpc({ store, feed, theme })
   createMainWindow()
+
+  // 置空应用菜单：默认菜单的 Close Window 加速键（Ctrl+W）会抢渲染层标签快捷键
+  Menu.setApplicationMenu(null)
+
+  // 菜单置空后 dev 下用 F12 兜底开发者工具入口
+  if (!app.isPackaged) {
+    getMainWindow()?.webContents.on('before-input-event', (_e, input) => {
+      if (input.type === 'keyDown' && input.key === 'F12') {
+        getMainWindow()?.webContents.toggleDevTools()
+      }
+    })
+  }
 
   // 启动拉取 + 定时刷新
   void feed.refresh().then((r) => console.log(`[main] initial refresh, added=${r.added}`))

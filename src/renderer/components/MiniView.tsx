@@ -2,7 +2,7 @@ import { Maximize2, RefreshCw } from 'lucide-react'
 import { useAppStore } from '../stores/useAppStore'
 
 export function MiniView(): JSX.Element {
-  const { articles, sources, activeSourceId, history, openArticle, toggleMini, refresh, refreshing } =
+  const { articles, sources, activeSourceId, history, openFromMini, toggleMini, refresh, refreshing } =
     useAppStore()
   const list = activeSourceId ? articles[activeSourceId] ?? [] : []
   const sourceName = sources.find((s) => s.id === activeSourceId)?.name ?? '全部'
@@ -37,7 +37,7 @@ export function MiniView(): JSX.Element {
           return (
             <li key={a.guid}>
               <button
-                onClick={() => void openArticle(a)}
+                onClick={() => void openFromMini(a)}
                 className={`w-full truncate rounded px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-chip ${
                   read ? 'text-read' : 'text-text'
                 }`}

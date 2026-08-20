@@ -1,10 +1,10 @@
 import { ipcMain, shell } from 'electron'
 import { IPC } from '../shared/ipc-contract'
-import type { FeedSource, Settings, ThemeTokens } from '../shared/types'
+import type { FeedSource, SavedSession, Settings, ThemeTokens } from '../shared/types'
 import type { StoreService } from './store/StoreService'
 import type { FeedService } from './feed/FeedService'
 import type { ThemeService } from './theme/ThemeService'
-import { toggleMiniMode } from './window'
+import { closeMainWindow, minimizeWindow, toggleMaximize, toggleMiniMode } from './window'
 
 export interface IpcDeps {
   store: StoreService
@@ -21,6 +21,7 @@ export function registerIpc({ store, feed, theme }: IpcDeps): void {
   ipcMain.handle(IPC.FeedSourceToggle, (_e, id: string, enabled: boolean) =>
     feed.toggleSource(id, enabled)
   )
+  ipcMain.handle(IPC.FeedSourceSetDefault, (_e, id: string | null) => feed.setDefaultSource(id))
 
   ipcMain.handle(IPC.HistoryGet, () => store.getHistory())
   ipcMain.handle(IPC.HistoryMarkRead, (_e, guid: string) => store.markRead(guid))
@@ -40,7 +41,15 @@ export function registerIpc({ store, feed, theme }: IpcDeps): void {
   ipcMain.handle(IPC.ThemeSave, (_e, t: ThemeTokens) => theme.save(t))
   ipcMain.handle(IPC.ThemeDelete, (_e, id: string) => theme.delete(id))
 
+  ipcMain.handle(IPC.SessionGet, () => store.getSession())
+  ipcMain.handle(IPC.SessionSave, (_e, session: SavedSession) => {
+    store.setSession(session)
+  })
+
   ipcMain.handle(IPC.WindowToggleMini, () => toggleMiniMode())
+  ipcMain.handle(IPC.WindowMinimize, () => minimizeWindow())
+  ipcMain.handle(IPC.WindowToggleMaximize, () => toggleMaximize())
+  ipcMain.handle(IPC.WindowClose, () => closeMainWindow())
 
   ipcMain.handle(IPC.AppOpenExternal, (_e, url: string) => {
     if (/^https?:\/\//i.test(url)) return shell.openExternal(url)

@@ -5,6 +5,7 @@ import {
   type Article,
   type FeedSource,
   type HistoryEntry,
+  type SavedSession,
   type Settings
 } from '../../shared/types'
 
@@ -14,6 +15,8 @@ interface StoreShape {
   history: Record<string, HistoryEntry>
   /** 文章元数据快照缓存，key 为 guid */
   articleCache: Record<string, Article & { cachedAt: string }>
+  /** 上次标签会话（启动时打开=lastSession 时恢复） */
+  session: SavedSession | null
 }
 
 export class StoreService {
@@ -26,13 +29,28 @@ export class StoreService {
         settings: DEFAULT_SETTINGS,
         sources: [DEFAULT_SOURCE],
         history: {},
-        articleCache: {}
+        articleCache: {},
+        session: null
       }
     })
   }
 
   getSettings(): Settings {
-    return this.store.get('settings')
+    // 与默认值合并：保证旧数据缺少新增字段（如 externalLinkBehavior）时回退到默认值
+    const saved = this.store.get('settings')
+    return {
+      ...DEFAULT_SETTINGS,
+      ...saved,
+      layout: {
+        ...DEFAULT_SETTINGS.layout,
+        ...saved?.layout,
+        fields: { ...DEFAULT_SETTINGS.layout.fields, ...saved?.layout?.fields }
+      },
+      shortcuts: {
+        ...DEFAULT_SETTINGS.shortcuts,
+        ...saved?.shortcuts
+      }
+    }
   }
 
   setSettings(patch: Partial<Settings>): Settings {
@@ -47,6 +65,14 @@ export class StoreService {
 
   setSources(sources: FeedSource[]): void {
     this.store.set('sources', sources)
+  }
+
+  getSession(): SavedSession | null {
+    return this.store.get('session') ?? null
+  }
+
+  setSession(session: SavedSession | null): void {
+    this.store.set('session', session)
   }
 
   getHistory(): Record<string, HistoryEntry> {

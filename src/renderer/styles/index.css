@@ -290,12 +290,33 @@ div.reader-body {
 /* ---- 标签交互反馈与拖动让位 ---- */
 .tab-item {
   position: relative;
+  transform-origin: left center;
+  --tab-motion-ease: var(--ease-in-out);
   transition:
     background-color 160ms ease,
     border-color 160ms var(--ease-out),
     color 160ms ease,
     opacity 140ms var(--ease-out),
-    transform 180ms var(--ease-in-out);
+    transform 180ms var(--tab-motion-ease);
+}
+
+/* Chrome 式标签生命周期：新建从左侧展开，关闭向左侧收束。 */
+.tab-item[data-tab-entering='true'],
+.tab-item[data-tab-closing='true'] {
+  --tab-motion-ease: var(--ease-out);
+}
+
+@starting-style {
+  .tab-item[data-tab-entering='true'] {
+    opacity: 0;
+    transform: translateX(-8px) scaleX(0.96);
+  }
+}
+
+.tab-item[data-tab-closing='true'] {
+  opacity: 0;
+  transform: translateX(-8px) scaleX(0.96);
+  pointer-events: none;
 }
 
 /* 不占标签宽度的低对比分隔线；左右两侧都定义，邻接时定位到同一像素自然重叠。 */
@@ -323,6 +344,18 @@ div.reader-body {
 
 .tab-plus {
   position: relative;
+}
+
+.tab-plus[data-tab-plus-closing='true'] {
+  transition:
+    transform 180ms var(--ease-out),
+    background-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms var(--ease-out);
+}
+
+.tab-plus[data-tab-plus-rebase='true'] {
+  transition: none;
 }
 
 .tab-item[data-active='true'] {
@@ -380,10 +413,19 @@ div.reader-body {
 */
 
 @media (prefers-reduced-motion: reduce) {
+  .tab-item[data-tab-entering='true'],
+  .tab-item[data-tab-closing='true'] {
+    transform: none;
+  }
+
   .tab-item,
   .tab-main,
   .tab-action,
   .tab-plus {
+    transition: none;
+  }
+  .tab-plus[data-tab-plus-closing='true'],
+  .tab-plus[data-tab-plus-rebase='true'] {
     transition: none;
   }
   .tab-main:active,

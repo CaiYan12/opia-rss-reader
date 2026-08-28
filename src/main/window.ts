@@ -1,6 +1,7 @@
 import { BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
 import { IPC } from '../shared/ipc-contract'
+import { APP_TITLE, formatWindowTitle } from '../shared/window-title'
 
 function rendererTarget(): { url?: string; file?: string } {
   const devUrl = process.env['ELECTRON_RENDERER_URL']
@@ -44,10 +45,16 @@ export function closeMainWindow(): void {
   mainWindow?.close()
 }
 
+/** 更新任务栏与原生窗口标题，页面标题由渲染进程经 IPC 提供。 */
+export function setWindowPageTitle(pageTitle: string): void {
+  mainWindow?.setTitle(formatWindowTitle(pageTitle))
+}
+
 export function createMainWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 720,
+    title: APP_TITLE,
     minWidth: 720,
     minHeight: 480,
     show: false,

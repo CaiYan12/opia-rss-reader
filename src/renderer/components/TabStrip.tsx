@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   Check,
   ChevronDown,
@@ -17,25 +17,19 @@ import {
   isPointerInsideWindow,
   releasePointerCapture
 } from './tabDrag'
-
-function hostnameOf(url: string): string {
-  try {
-    return new URL(url).hostname
-  } catch {
-    return url
-  }
-}
+import { getSourceMenuPosition } from './sourceMenuPosition'
+import { getTabTitle } from '../tabTitle'
 
 function tabMeta(tab: Tab): { icon: JSX.Element; title: string } {
   switch (tab.kind) {
     case 'home':
-      return { icon: <Newspaper size={14} />, title: '主页' }
+      return { icon: <Newspaper size={14} />, title: getTabTitle(tab) }
     case 'reader':
-      return { icon: <FileText size={14} />, title: tab.article.title }
+      return { icon: <FileText size={14} />, title: getTabTitle(tab) }
     case 'browser':
-      return { icon: <Globe size={14} />, title: tab.title || hostnameOf(tab.url) }
+      return { icon: <Globe size={14} />, title: getTabTitle(tab) }
     case 'settings':
-      return { icon: <SettingsIcon size={14} />, title: '设置' }
+      return { icon: <SettingsIcon size={14} />, title: getTabTitle(tab) }
   }
 }
 
@@ -55,6 +49,17 @@ interface InsertionPoint {
   x: number
 }
 
+interface TabStripProps {
+  closingTabId: string | null
+  onRequestClose: (id: string) => void
+}
+
+interface PlusMotion {
+  closingTabId: string
+  phase: 'closing' | 'rebase'
+  shift: number
+}
+
 // ---- 拖动手势参数（建议初值，真机验收时标定）----
 /** 指针移动超过该像素数才进入拖动态（避免普通单击误触） */
 const DRAG_THRESHOLD = 5
@@ -68,14 +73,13 @@ const EDGE_MAX_SPEED = 24
  * 拖动语义（经 grilling 确认）：全部标签自由排序；实时让位（被拖标签浮起跟随指针，其余标签保持铺满）；
  * 拖动期间顺序只存本地 state，释放时经 moveTab 一次提交（不改 activeTabId）；取消/Escape/失焦恢复原序。
  */
-export function TabStrip(): JSX.Element {
+export function TabStrip({ closingTabId, onRequestClose }: TabStripProps): JSX.Element {
   const {
     tabs,
     activeTabId,
     sources,
     activeSourceId,
     activateTab,
-    closeTab,
     openHomeTab,
     setActiveSource,
     setHomeTabSource,
@@ -106,6 +110,11 @@ export function TabStrip(): JSX.Element {
   } | null>(null)
   const edgeRaf = useRef<number | null>(null)
   const revealTabRef = useRef<string | null>(null)
+  const initialTabIdsRef = useRef(new Set(tabs.map((tab) => tab.id)))
+  const plusRef = useRef<HTMLButtonElement>(null)
+  const plusMotionRef = useRef<PlusMotion | null>(null)
+  const plusResetRafRef = useRef<number | null>(null)
+  const [plusMotion, setPlusMotion] = useState<PlusMotion | null>(null)
 
   const enabledSources = sources.filter((s) => s.enabled)
 
@@ -136,7 +145,73 @@ export function TabStrip(): JSX.Element {
     releasePointerCapture(d?.pointerTarget ?? null, d?.pointerId ?? -1)
     dragRef.current = null
     if (edgeRaf.current != null) cancelAnimationFrame(edgeRaf.current)
+    if (plusResetRafRef.current != null) cancelAnimationFrame(plusResetRafRef.current)
   }, [])
+
+  // 关闭最后一个标签时，标签仍需保留 180ms 退场；用合成位移让「＋」同步移到移除后的布局位置。
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current
+    const plus = plusRef.current
+    if (!scroller || !plus) return
+
+    const currentMotion = plusMotionRef.current
+    if (
+      currentMotion?.phase === 'closing' &&
+      !tabs.some((tab) => tab.id === currentMotion.closingTabId)
+    ) {
+      const rebasedMotion: PlusMotion = {
+        ...currentMotion,
+        phase: 'rebase',
+        shift: 0
+      }
+      plusMotionRef.current = rebasedMotion
+      setPlusMotion(rebasedMotion)
+      plusResetRafRef.current = requestAnimationFrame(() => {
+        plusResetRafRef.current = null
+        if (plusMotionRef.current?.phase !== 'rebase') return
+        plusMotionRef.current = null
+        setPlusMotion(null)
+      })
+      return
+    }
+
+    if (closingTabId) {
+      const closingIndex = tabs.findIndex((tab) => tab.id === closingTabId)
+      if (
+        tabs.length < 2 ||
+        closingIndex !== tabs.length - 1 ||
+        currentMotion?.closingTabId === closingTabId
+      ) {
+        return
+      }
+
+      const closingElement = [...scroller.querySelectorAll<HTMLElement>('[data-tab-id]')].find(
+        (element) => element.dataset.tabId === closingTabId
+      )
+      if (!closingElement) return
+
+      const originalDisplay = closingElement.style.display
+      const originalScrollLeft = scroller.scrollLeft
+      const currentLeft = plus.getBoundingClientRect().left
+      closingElement.style.display = 'none'
+      const targetLeft = plus.getBoundingClientRect().left
+      closingElement.style.display = originalDisplay
+      scroller.scrollLeft = originalScrollLeft
+
+      const nextMotion: PlusMotion = {
+        closingTabId,
+        phase: 'closing',
+        shift: targetLeft - currentLeft
+      }
+      if (plusResetRafRef.current != null) {
+        cancelAnimationFrame(plusResetRafRef.current)
+        plusResetRafRef.current = null
+      }
+      plusMotionRef.current = nextMotion
+      setPlusMotion(nextMotion)
+      return
+    }
+  }, [closingTabId, tabs])
 
   // 菜单关闭：外部 mousedown / Escape / 标签容器滚动
   useEffect(() => {
@@ -155,12 +230,15 @@ export function TabStrip(): JSX.Element {
       if (e.key === 'Escape') closeMenu()
     }
     const onScroll = (): void => closeMenu()
+    const onResize = (): void => closeMenu()
     window.addEventListener('mousedown', onMouseDown)
     window.addEventListener('keydown', onKey)
+    window.addEventListener('resize', onResize)
     scrollRef.current?.addEventListener('scroll', onScroll)
     return () => {
       window.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', onResize)
       scrollRef.current?.removeEventListener('scroll', onScroll)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,10 +477,12 @@ export function TabStrip(): JSX.Element {
               onMouseDown={(e) => {
                 if (e.button === 1) {
                   e.preventDefault()
-                  closeTab(tab.id)
+                  onRequestClose(tab.id)
                 }
               }}
               data-active={active}
+              data-tab-entering={!initialTabIdsRef.current.has(tab.id) ? 'true' : undefined}
+              data-tab-closing={closingTabId === tab.id ? 'true' : undefined}
               data-drag-active-target={drag && active && tab.id !== drag.dragId ? 'true' : undefined}
               onClick={() => activateTab(tab.id)}
               onPointerDown={(e) => {
@@ -445,8 +525,13 @@ export function TabStrip(): JSX.Element {
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation()
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    toggleMenu(tab.id, rect.left, rect.bottom + 2)
+                    const tabElement = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-tab-id]')
+                    if (!tabElement) return
+                    const position = getSourceMenuPosition(
+                      tabElement.getBoundingClientRect(),
+                      window.innerWidth
+                    )
+                    toggleMenu(tab.id, position.left, position.top)
                   }}
                   className={`tab-action flex shrink-0 items-center rounded p-0.5 text-text-secondary ${
                     active ? 'opacity-70 hover:opacity-100' : 'opacity-0 group-hover:opacity-70'
@@ -462,7 +547,7 @@ export function TabStrip(): JSX.Element {
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation()
-                  closeTab(tab.id)
+                  onRequestClose(tab.id)
                 }}
                 className={`tab-action ml-0.5 flex shrink-0 items-center rounded p-0.5 text-text-secondary ${
                   active ? 'opacity-70 hover:opacity-100' : 'opacity-0 group-hover:opacity-70'
@@ -504,8 +589,12 @@ export function TabStrip(): JSX.Element {
         })()}
         {/* Chrome 式：「＋」紧跟最后一个标签，随标签滚动 */}
         <button
+          ref={plusRef}
           title="新开主页标签"
           onClick={openHomeTab}
+          data-tab-plus-closing={plusMotion?.phase === 'closing' ? 'true' : undefined}
+          data-tab-plus-rebase={plusMotion?.phase === 'rebase' ? 'true' : undefined}
+          style={plusMotion ? { transform: `translate3d(${plusMotion.shift}px, 0, 0)` } : undefined}
           className="tab-plus flex shrink-0 items-center px-2 text-text-secondary"
         >
           <Plus size={16} />
@@ -518,7 +607,7 @@ export function TabStrip(): JSX.Element {
           data-source-menu
           data-closing={closing}
           style={{ position: 'fixed', left: menu.left, top: menu.top }}
-          className="menu-pop z-50 min-w-[180px] rounded-card border border-border bg-card p-1 shadow-lg"
+          className="menu-pop z-50 w-[260px] max-w-[calc(100vw_-_16px)] rounded-card border border-border bg-card p-1 shadow-lg"
         >
           {enabledSources.length === 0 ? (
             <div className="px-3 py-1.5 text-sm text-text-secondary">当前暂无订阅</div>

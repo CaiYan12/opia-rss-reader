@@ -26,6 +26,7 @@ const api: OpiaApi = {
   windowMinimize: () => ipcRenderer.invoke(IPC.WindowMinimize),
   windowToggleMaximize: () => ipcRenderer.invoke(IPC.WindowToggleMaximize),
   windowClose: () => ipcRenderer.invoke(IPC.WindowClose),
+  windowSetTitle: (pageTitle) => ipcRenderer.invoke(IPC.WindowSetTitle, pageTitle),
   openExternal: (url) => ipcRenderer.invoke(IPC.AppOpenExternal, url),
   onFeedUpdated: (cb) => {
     const listener = (_e: Electron.IpcRendererEvent, payload: { sourceId: string }): void =>

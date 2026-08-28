@@ -33,7 +33,7 @@ export function TitleBar({ showFavorites, onToggleFavorites }: Props): JSX.Eleme
     >
       <div className="flex items-center gap-2">
         <Newspaper size={18} className="text-accent" />
-        <h1 className="font-heading text-base font-bold tracking-wide">Opia RSS</h1>
+        <h1 className="font-heading text-base font-bold tracking-wide">Opia RSS Reader</h1>
       </div>
       <div
         className="flex items-center gap-1"

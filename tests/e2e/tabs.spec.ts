@@ -24,6 +24,15 @@ async function lastSessionKinds(page: Page): Promise<string[]> {
   })
 }
 
+async function lastWindowPageTitle(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const calls = (window as unknown as { __stubCalls: Array<[string, unknown]> }).__stubCalls
+    const titleCalls = calls.filter((call) => call[0] === 'windowSetTitle')
+    const last = titleCalls[titleCalls.length - 1]
+    return typeof last?.[1] === 'string' ? last[1] : null
+  })
+}
+
 /** 按住主键把第 fromIndex 个标签拖到视口 x=toClientX 处释放 */
 async function dragTabTo(page: Page, fromIndex: number, toClientX: number): Promise<void> {
   const from = tabs(page).nth(fromIndex)
@@ -406,10 +415,94 @@ describe('标签栏回归', () => {
     await expect(page.locator('[data-source-menu]')).toBeVisible()
   })
 
+  test('活动标签标题同步到窗口标题 IPC', async ({ page }) => {
+    await loadApp(page, 'default')
+    await expect.poll(() => lastWindowPageTitle(page)).toBe('主页')
+
+    await page.getByRole('banner').getByTitle('设置').click()
+    await expect.poll(() => lastWindowPageTitle(page)).toBe('设置')
+  })
+
   test('未达上限时「＋」正常新增主页标签', async ({ page }) => {
     await loadApp(page, 'tabs5')
     await page.getByTitle('新开主页标签').click()
     await expect(tabs(page)).toHaveCount(6)
+  })
+
+  test('新建标签从左侧开始入场', async ({ page }) => {
+    await loadApp(page, 'default')
+    await page.getByTitle('新开主页标签').click()
+    const newest = tabs(page).last()
+    await expect(newest).toHaveAttribute('data-tab-entering', 'true')
+    const motion = await newest.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { transformOrigin: style.transformOrigin, transitionProperty: style.transitionProperty }
+    })
+    expect(motion.transformOrigin).toMatch(/^0px /)
+    expect(motion.transitionProperty).toContain('transform')
+  })
+
+  test('关闭标签先保留左侧退场状态再移除', async ({ page }) => {
+    await loadApp(page, 'tabs5')
+    const target = tabs(page).nth(1)
+    await target.getByTitle('关闭标签').click()
+    await expect(target).toHaveAttribute('data-tab-closing', 'true')
+    await expect(tabs(page)).toHaveCount(5)
+    await expect(tabs(page)).toHaveCount(4)
+  })
+
+  test('关闭加号左侧最后标签时加号同步向左移动', async ({ page }) => {
+    await loadApp(page, 'tabs5')
+    const plus = page.getByTitle('新开主页标签')
+    const target = tabs(page).last()
+    const startX = (await plus.boundingBox())!.x
+
+    await target.getByTitle('关闭标签').click()
+    await expect(target).toHaveAttribute('data-tab-closing', 'true')
+    await expect.poll(async () => {
+      const plusBox = await plus.boundingBox()
+      return (
+        (await page.locator('[data-tab-closing]').count()) > 0 &&
+        (plusBox?.x ?? Number.POSITIVE_INFINITY) < startX - 2
+      )
+    }, { timeout: 140, intervals: [20] }).toBe(true)
+    await expect(tabs(page)).toHaveCount(4)
+    const lastTabBox = (await tabs(page).last().boundingBox())!
+    const finalPlusBox = (await plus.boundingBox())!
+    expect(finalPlusBox.x).toBeGreaterThanOrEqual(lastTabBox.x + lastTabBox.width - 1)
+  })
+
+  test('reduced-motion 关闭最后标签不驱动加号位移', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await loadApp(page, 'tabs5')
+    const plus = page.getByTitle('新开主页标签')
+    const target = tabs(page).last()
+
+    await target.getByTitle('关闭标签').click()
+    await expect(tabs(page)).toHaveCount(4)
+    await expect(plus).not.toHaveAttribute('data-tab-plus-closing', 'true')
+    const transform = await plus.evaluate((element) => getComputedStyle(element).transform)
+    expect(transform === 'none' || transform.endsWith(', 0)')).toBe(true)
+  })
+
+  test('关闭最后一个标签先退场再请求窗口退出', async ({ page }) => {
+    await loadApp(page, 'default')
+    const close = tabs(page).first().getByTitle('关闭标签')
+    await close.click()
+    const closeCallsBeforeAnimation = await page.evaluate(() =>
+      window.__stubCalls.filter((call: unknown[]) => call[0] === 'windowClose').length
+    )
+    expect(closeCallsBeforeAnimation).toBe(0)
+    await expect(tabs(page).first()).toHaveAttribute('data-tab-closing', 'true')
+    await expect.poll(() =>
+      page.evaluate(() => window.__stubCalls.filter((call: unknown[]) => call[0] === 'windowClose').length)
+    ).toBe(1)
+  })
+
+  test('关闭快捷键也先进入退场状态', async ({ page }) => {
+    await loadApp(page, 'tabs5')
+    await page.keyboard.press('Control+W')
+    await expect(tabs(page).first()).toHaveAttribute('data-tab-closing', 'true')
   })
 
   test('设置标签可正常新建（无 settings 时）', async ({ page }) => {

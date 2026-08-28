@@ -4,7 +4,13 @@ import type { FeedSource, SavedSession, Settings, ThemeTokens } from '../shared/
 import type { StoreService } from './store/StoreService'
 import type { FeedService } from './feed/FeedService'
 import type { ThemeService } from './theme/ThemeService'
-import { closeMainWindow, minimizeWindow, toggleMaximize, toggleMiniMode } from './window'
+import {
+  closeMainWindow,
+  minimizeWindow,
+  setWindowPageTitle,
+  toggleMaximize,
+  toggleMiniMode
+} from './window'
 
 export interface IpcDeps {
   store: StoreService
@@ -51,6 +57,7 @@ export function registerIpc({ store, feed, theme }: IpcDeps): void {
   ipcMain.handle(IPC.WindowMinimize, () => minimizeWindow())
   ipcMain.handle(IPC.WindowToggleMaximize, () => toggleMaximize())
   ipcMain.handle(IPC.WindowClose, () => closeMainWindow())
+  ipcMain.handle(IPC.WindowSetTitle, (_e, pageTitle: string) => setWindowPageTitle(pageTitle))
 
   ipcMain.handle(IPC.AppOpenExternal, (_e, url: string) => {
     if (/^https?:\/\//i.test(url)) return shell.openExternal(url)

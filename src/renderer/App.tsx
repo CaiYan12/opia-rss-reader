@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore, type Tab } from './stores/useAppStore'
 import { TitleBar } from './components/TitleBar'
 import { TabStrip } from './components/TabStrip'
@@ -10,6 +10,8 @@ import { BrowserPage } from './components/BrowserPage'
 import { ZoomWidget } from './components/ZoomWidget'
 import { Toast } from './components/Toast'
 import { getStableTabOrder } from './components/tabContentOrder'
+import { TAB_LIFECYCLE_DURATION_MS } from './components/tabMotion'
+import { getTabTitle } from './tabTitle'
 
 /** 解析组合串（如 "Ctrl+Shift+Tab"）为修饰键 + 主键 */
 function parseCombo(combo: string): { ctrl: boolean; shift: boolean; alt: boolean; key: string } {
@@ -44,12 +46,43 @@ export default function App(): JSX.Element {
   const { ready, init, mini, tabs, activeTabId, settings, closeTab, activateTab, setZoom } =
     useAppStore()
   const [showFavorites, setShowFavorites] = useState(false)
+  const [closingTabId, setClosingTabId] = useState<string | null>(null)
   const contentOrderRef = useRef<string[]>([])
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const closingTabRef = useRef<string | null>(null)
+  const activeTab = tabs.find((tab) => tab.id === activeTabId)
+  const activePageTitle = activeTab ? getTabTitle(activeTab) : ''
+
+  const requestCloseTab = useCallback((id: string): void => {
+    if (closingTabRef.current || !tabs.some((tab) => tab.id === id)) return
+    closingTabRef.current = id
+    setClosingTabId(id)
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null
+      if (closingTabRef.current !== id) return
+      closingTabRef.current = null
+      setClosingTabId(null)
+      closeTab(id)
+    }, reduceMotion ? 0 : TAB_LIFECYCLE_DURATION_MS)
+  }, [closeTab, tabs])
+
+  useEffect(() => () => {
+    if (closeTimerRef.current != null) clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = null
+    closingTabRef.current = null
+  }, [])
 
   useEffect(() => {
     void init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 将活动标签的页面标题同步到主进程，由主进程更新任务栏/原生窗口标题。
+  useEffect(() => {
+    if (!ready) return
+    void window.opia.windowSetTitle(activePageTitle)
+  }, [activePageTitle, ready])
 
   // 标签快捷键（可在设置中自定义）
   useEffect(() => {
@@ -74,7 +107,7 @@ export default function App(): JSX.Element {
       }
       if (match(s.closeTab)) {
         e.preventDefault()
-        closeTab(activeTabId)
+        requestCloseTab(activeTabId)
       } else if (match(s.nextTab)) {
         e.preventDefault()
         cycle(1)
@@ -85,7 +118,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [settings, tabs, activeTabId, closeTab, activateTab])
+  }, [settings, tabs, activeTabId, requestCloseTab, activateTab])
 
   // 内容区缩放：按住配置的修饰键组合（默认 Ctrl）滚动滚轮调节
   useEffect(() => {
@@ -140,7 +173,7 @@ export default function App(): JSX.Element {
   return (
     <div className="flex h-screen flex-col">
       <TitleBar showFavorites={showFavorites} onToggleFavorites={() => setShowFavorites((v) => !v)} />
-      <TabStrip />
+      <TabStrip closingTabId={closingTabId} onRequestClose={requestCloseTab} />
       {/* 内容区缩放（类似浏览器页面缩放）已下沉到各视图的内容区：标题栏/标签栏/各视图内 nav/缩放控件不受影响。 */}
       <div className="relative min-h-0 flex-1">
         {/* keep-alive：inactive 标签隐藏但保留 DOM/webview/滚动状态 */}

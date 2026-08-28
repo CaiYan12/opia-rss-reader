@@ -25,6 +25,7 @@ export const IPC = {
   WindowMinimize: 'window:minimize',
   WindowToggleMaximize: 'window:toggle-maximize',
   WindowClose: 'window:close',
+  WindowSetTitle: 'window:set-title',
   WindowMaximizeChanged: 'window:maximize-changed',
   AppOpenExternal: 'app:open-external',
   FeedUpdated: 'feed:updated'
@@ -54,6 +55,7 @@ export interface OpiaApi {
   windowMinimize(): Promise<void>
   windowToggleMaximize(): Promise<void>
   windowClose(): Promise<void>
+  windowSetTitle(pageTitle: string): Promise<void>
   openExternal(url: string): Promise<void>
   onFeedUpdated(cb: (payload: { sourceId: string }) => void): () => void
   onWindowMaximizeChanged(cb: (maximized: boolean) => void): () => void

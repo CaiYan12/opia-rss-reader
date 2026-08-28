@@ -10,6 +10,8 @@ import type {
 } from '../../shared/types'
 import { applyTheme } from '../theme/applyTheme'
 import { resolveThemeScheme, type ThemeScheme } from '../../shared/theme'
+import { useToastStore } from './useToastStore'
+import { canOpenTab, MAX_TABS, reorderTab, TAB_LIMIT_MSG, truncateSavedSession } from './tabOps'
 
 export type Tab =
   | { id: string; kind: 'home'; homePage: 'feed' | 'blank' }
@@ -67,6 +69,8 @@ interface AppState {
   /** 关闭标签；关的是激活标签则激活右侧邻标签（无右取左）；关掉最后一个标签退出程序 */
   closeTab(id: string): void
   activateTab(id: string): void
+  /** 拖动排序：把 dragId 标签移到 targetId 标签之前/之后；不改变 activeTabId（拖动态局部顺序由 TabStrip 维护，释放时一次提交） */
+  moveTab(dragId: string, targetId: string, placement: 'before' | 'after'): void
   /** 更新浏览器标签标题（webview page-title-updated 同步用） */
   setTabTitle(id: string, title: string): void
   /** 空页面引导页提交：该主页标签切换到订阅视图并选中指定源 */
@@ -174,7 +178,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (settings.startupOpen === 'lastSession') {
       const saved = await window.opia.sessionGet()
       const allArticles = await window.opia.feedList()
-      const restored = saved ? restoreSession(saved, allArticles) : null
+      // 恢复前先按上限截断（旧会话超过 MAX_TABS 时静默丢弃超出部分，保证 tabs ≤ 上限不变量）
+      const restored = saved ? restoreSession(truncateSavedSession(saved, MAX_TABS), allArticles) : null
       if (restored) {
         tabs = restored.tabs
         activeTabId = restored.activeTabId
@@ -332,6 +337,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   async openExternalSmart(url) {
     const behavior = get().settings?.externalLinkBehavior ?? 'system'
     if (behavior === 'builtin') {
+      if (!canOpenTab(get().tabs)) {
+        useToastStore.getState().show(TAB_LIMIT_MSG)
+        return
+      }
       if (get().mini) {
         const mini = await window.opia.toggleMini()
         set({ mini })
@@ -359,6 +368,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   openHomeTab() {
+    // 统一上限守卫：所有创建入口共享，超限拒绝创建并提示（保持当前标签与会话不变）
+    if (!canOpenTab(get().tabs)) {
+      useToastStore.getState().show(TAB_LIMIT_MSG)
+      return
+    }
     // 主页内容：设置 blank 或当前无默认订阅 → 空页面；否则默认订阅视图
     const hasDefault = get().sources.some((s) => s.isDefault)
     const homePage =
@@ -374,16 +388,37 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   openReaderTab(article) {
+    // 统一上限守卫（所有创建入口共享）
+    if (!canOpenTab(get().tabs)) {
+      useToastStore.getState().show(TAB_LIMIT_MSG)
+      return
+    }
     const tab: Tab = { id: nextTabId(), kind: 'reader', article }
     set((st) => ({ tabs: [...st.tabs, tab], activeTabId: tab.id }))
   },
 
   openBrowserTab(url) {
+    // 统一上限守卫（所有创建入口共享）
+    if (!canOpenTab(get().tabs)) {
+      useToastStore.getState().show(TAB_LIMIT_MSG)
+      return
+    }
     const tab: Tab = { id: nextTabId(), kind: 'browser', url }
     set((st) => ({ tabs: [...st.tabs, tab], activeTabId: tab.id }))
   },
 
   openSettingsTab() {
+    // 设置页单例复用：已存在设置标签则激活已有、不新开、不占上限额度
+    const existing = get().tabs.find((t) => t.kind === 'settings')
+    if (existing) {
+      get().activateTab(existing.id)
+      return
+    }
+    // 统一上限守卫（所有创建入口共享）
+    if (!canOpenTab(get().tabs)) {
+      useToastStore.getState().show(TAB_LIMIT_MSG)
+      return
+    }
     const tab: Tab = { id: nextTabId(), kind: 'settings' }
     set((st) => ({ tabs: [...st.tabs, tab], activeTabId: tab.id }))
   },
@@ -407,6 +442,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   activateTab(id) {
     if (get().tabs.some((t) => t.id === id)) set({ activeTabId: id })
+  },
+
+  moveTab(dragId, targetId, placement) {
+    // 位置不变/无效 ID 时 reorderTab 返回原引用 → 不 set（避免触发会话写盘）
+    const next = reorderTab(get().tabs, dragId, targetId, placement)
+    if (next === get().tabs) return
+    set({ tabs: next })
   },
 
   setTabTitle(id, title) {

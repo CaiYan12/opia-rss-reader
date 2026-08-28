@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Article, FeedSource, Settings } from '../../src/shared/types'
+import type { Article, FeedSource, SavedSession, Settings } from '../../src/shared/types'
 import { DEFAULT_SETTINGS, DEFAULT_SOURCE } from '../../src/shared/types'
 import { BUILTIN_THEMES } from '../../src/main/theme/builtinThemes'
 
@@ -54,6 +54,11 @@ export type Scenario =
   | 'zoom2'
   | 'zoomBuiltin'
   | 'zoomBuiltin2'
+  | 'tabs5'
+  | 'tabs20'
+  | 'tabs20Builtin'
+  | 'tabs25'
+  | 'tabsMany'
 
 export function makeStubScript(scenario: Scenario): string {
   const settings: Settings = { ...DEFAULT_SETTINGS }
@@ -105,9 +110,48 @@ export function makeStubScript(scenario: Scenario): string {
   } else if (scenario === 'zoomBuiltin2') {
     settings.externalLinkBehavior = 'builtin'
     settings.uiZoom = 2
+  } else if (scenario === 'tabs20Builtin') {
+    settings.externalLinkBehavior = 'builtin'
   }
 
-  const data = { settings, sources, articles, themes: BUILTIN_THEMES }
+  // ---- 标签栏场景：startupOpen=lastSession，经 sessionGet 恢复初始会话 ----
+  const issueUrl = (date: string): string => `https://daily.juya.uk/issues/${date}/`
+  const readerGuids = (n: number): Array<{ kind: 'reader'; guid: string }> =>
+    Array.from({ length: n }, (_, i) => ({
+      kind: 'reader' as const,
+      guid: issueUrl(`2026-08-${String(28 - i).padStart(2, '0')}`)
+    }))
+  let session: SavedSession | null = null
+  if (scenario === 'tabs5') {
+    settings.startupOpen = 'lastSession'
+    articles = manyJuya(4)
+    session = {
+      tabs: [
+        { kind: 'home', homePage: 'feed' },
+        readerGuids(2)[0],
+        readerGuids(2)[1],
+        { kind: 'browser', url: 'https://example.com/page', title: '示例页' },
+        { kind: 'settings' }
+      ],
+      activeTabIndex: 0
+    }
+  } else if (scenario === 'tabs20' || scenario === 'tabs20Builtin' || scenario === 'tabsMany') {
+    settings.startupOpen = 'lastSession'
+    articles = manyJuya(20)
+    session = {
+      tabs: [{ kind: 'home', homePage: 'feed' }, ...readerGuids(19)],
+      activeTabIndex: 0
+    }
+  } else if (scenario === 'tabs25') {
+    settings.startupOpen = 'lastSession'
+    articles = manyJuya(25)
+    session = {
+      tabs: [{ kind: 'home', homePage: 'feed' }, ...readerGuids(24)],
+      activeTabIndex: 5
+    }
+  }
+
+  const data = { settings, sources, articles, themes: BUILTIN_THEMES, session }
 
   return `
     window.__stubData = ${JSON.stringify(data)};
@@ -136,8 +180,8 @@ export function makeStubScript(scenario: Scenario): string {
         window.__stubData.history = h;
         return h[guid].favorite;
       },
-      sessionGet: async () => null,
-      sessionSave: async () => {},
+      sessionGet: async () => window.__stubData.session ?? null,
+      sessionSave: async (session) => { window.__stubCalls.push(['sessionSave', session]); },
       themeList: async () => window.__stubData.themes,
       themeGet: async (id) => window.__stubData.themes.find((t) => t.id === id) ?? null,
       themeSystemGet: async () => false,

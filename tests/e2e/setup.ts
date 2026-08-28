@@ -18,12 +18,12 @@ export async function loadApp(page: Page, scenario: Scenario): Promise<void> {
   })
   await page.addInitScript(makeStubScript(scenario))
   await page.goto('/')
-  // App ready：标题栏「设置」按钮出现即初始化完成
-  await page.getByTitle('设置').waitFor({ state: 'visible' })
+  // App ready：标题栏「设置」按钮出现即初始化完成（限定 banner，避免与 settings 标签按钮的 title 冲突）
+  await page.getByRole('banner').getByTitle('设置').waitFor({ state: 'visible' })
 }
 
 export async function openSettings(page: Page): Promise<void> {
-  await page.getByTitle('设置').click()
+  await page.getByRole('banner').getByTitle('设置').click()
   await page.getByText('橘鸦定制阅读风格').waitFor({ state: 'visible' })
 }
 

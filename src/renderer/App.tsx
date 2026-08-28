@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppStore, type Tab } from './stores/useAppStore'
 import { TitleBar } from './components/TitleBar'
 import { TabStrip } from './components/TabStrip'
@@ -8,6 +8,8 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { MiniView } from './components/MiniView'
 import { BrowserPage } from './components/BrowserPage'
 import { ZoomWidget } from './components/ZoomWidget'
+import { Toast } from './components/Toast'
+import { getStableTabOrder } from './components/tabContentOrder'
 
 /** 解析组合串（如 "Ctrl+Shift+Tab"）为修饰键 + 主键 */
 function parseCombo(combo: string): { ctrl: boolean; shift: boolean; alt: boolean; key: string } {
@@ -42,6 +44,7 @@ export default function App(): JSX.Element {
   const { ready, init, mini, tabs, activeTabId, settings, closeTab, activateTab, setZoom } =
     useAppStore()
   const [showFavorites, setShowFavorites] = useState(false)
+  const contentOrderRef = useRef<string[]>([])
 
   useEffect(() => {
     void init()
@@ -108,7 +111,14 @@ export default function App(): JSX.Element {
     )
   }
 
-  if (mini) return <MiniView />
+  if (mini) {
+    return (
+      <>
+        <MiniView />
+        <Toast />
+      </>
+    )
+  }
 
   const renderTab = (tab: Tab): JSX.Element => {
     switch (tab.kind) {
@@ -123,6 +133,10 @@ export default function App(): JSX.Element {
     }
   }
 
+  // 标签栏允许重排，但 keep-alive 内容节点保持原有 DOM 顺序，避免移动活动页面导致一次异常刷新。
+  const contentTabs = getStableTabOrder(tabs, contentOrderRef.current)
+  contentOrderRef.current = contentTabs.map((tab) => tab.id)
+
   return (
     <div className="flex h-screen flex-col">
       <TitleBar showFavorites={showFavorites} onToggleFavorites={() => setShowFavorites((v) => !v)} />
@@ -131,7 +145,7 @@ export default function App(): JSX.Element {
       <div className="relative min-h-0 flex-1">
         {/* keep-alive：inactive 标签隐藏但保留 DOM/webview/滚动状态 */}
         <div className="flex h-full">
-          {tabs.map((tab) => (
+          {contentTabs.map((tab) => (
             <div
               key={tab.id}
               className={tab.id === activeTabId ? 'min-h-0 w-full' : 'hidden'}
@@ -142,6 +156,8 @@ export default function App(): JSX.Element {
         </div>
         <ZoomWidget />
       </div>
+      {/* 全局单例轻量提示（fixed 定位，挂根容器内即可，不影响布局流） */}
+      <Toast />
     </div>
   )
 }

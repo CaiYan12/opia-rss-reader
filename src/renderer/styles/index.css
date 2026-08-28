@@ -28,6 +28,7 @@
   accent-color: var(--t-accent);
   /* 动效曲线 token（animate skill 配方） */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 /* ---- 滑条（range）自绘：track/thumb 原生渲染取 accent 暗色变体（不读主题 token，
@@ -286,6 +287,112 @@ div.reader-body {
   }
 }
 
+/* ---- 标签交互反馈与拖动让位 ---- */
+.tab-item {
+  position: relative;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms var(--ease-out),
+    color 160ms ease,
+    opacity 140ms var(--ease-out),
+    transform 180ms var(--ease-in-out);
+}
+
+/* 不占标签宽度的低对比分隔线；左右两侧都定义，邻接时定位到同一像素自然重叠。 */
+.tab-item::before,
+.tab-item::after,
+.tab-item ~ .tab-plus::before {
+  content: '';
+  position: absolute;
+  inset-block: 8px;
+  width: 1px;
+  background-color: var(--t-border);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tab-item::before,
+.tab-item ~ .tab-plus::before {
+  inset-inline-start: 0;
+}
+
+.tab-item::after {
+  inset-inline-end: -1px;
+}
+
+.tab-plus {
+  position: relative;
+}
+
+.tab-item[data-active='true'] {
+  background-color: var(--t-chip);
+}
+
+.tab-item[data-drag-active-target='true'] {
+  opacity: 0.42;
+}
+
+.tab-main,
+.tab-action,
+.tab-plus {
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tab-item:hover,
+  .tab-action:hover,
+  .tab-plus:hover {
+    background-color: var(--t-chip);
+  }
+}
+
+.tab-main:active,
+.tab-action:active,
+.tab-plus:active {
+  transform: scale(0.97);
+}
+
+/*
+ * 让位动画已经提供预测插入位置，暂不额外显示竖线。
+ * 保留样式以便后续重新评估视觉提示时恢复。
+ */
+/*
+.tab-drop-indicator {
+  width: 2px;
+  border-radius: 9999px;
+  background-color: var(--t-accent);
+  box-shadow: 0 0 0 1px var(--t-card), 0 0 8px var(--t-accent);
+  opacity: 1;
+  transition: opacity 140ms var(--ease-out);
+  will-change: transform;
+}
+
+@starting-style {
+  .tab-drop-indicator {
+    opacity: 0;
+  }
+}
+*/
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-item,
+  .tab-main,
+  .tab-action,
+  .tab-plus {
+    transition: none;
+  }
+  .tab-main:active,
+  .tab-action:active,
+  .tab-plus:active {
+    transform: none;
+  }
+}
+
 /* ---- 阅读视图排版（参照 juya-detail 样例） ---- */
 .article-content h1,
 .article-content h2,
@@ -356,4 +463,28 @@ div.reader-body {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ---- Toast 全局单例提示：顶部居中（transform 由本规则独占，避免与动效 transform 冲突），
+   入场淡入 + 轻微下滑（@starting-style），时长与 .menu-pop 一致 ---- */
+.toast {
+  /* 水平居中：动效 transform 与之组合，故不叠加 Tailwind -translate-x-1/2 */
+  transform: translateX(-50%);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+@starting-style {
+  .toast {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    /* 保留居中 transform，仅淡入（transform 即时切换，不产生位移动画） */
+    transition: opacity 120ms ease;
+  }
 }

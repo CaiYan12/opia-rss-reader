@@ -33,3 +33,9 @@ screenshots/
 # Temp scripts (agent-generated, not source)
 /_*.py
 /_*.js
+
+# Local-only test fixtures (desensitized RSS snapshots, never committed)
+tests/fixtures/
+
+# Playwright run artifacts
+test-results/

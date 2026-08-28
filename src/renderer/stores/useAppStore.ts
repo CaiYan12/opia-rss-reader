@@ -3,6 +3,7 @@ import type {
   Article,
   FeedSource,
   HistoryEntry,
+  JuyaStyleId,
   SavedSession,
   Settings,
   ThemeTokens
@@ -44,6 +45,8 @@ interface AppState {
   updateSettings(patch: Partial<Settings>): Promise<void>
   setThemeMode(mode: Settings['themeMode']): Promise<void>
   setThemeForScheme(scheme: ThemeScheme, id: string): Promise<void>
+  /** 橘鸦定制阅读风格选择（亮/暗各一，'off' = 关闭回退通用阅读页）；即时生效（纯渲染层样式，无全局主题注入） */
+  setJuyaStyle(scheme: ThemeScheme, id: JuyaStyleId): Promise<void>
   /** 内容区缩放（0.5–2，步进 0.05），持久化到 settings.uiZoom */
   setZoom(z: number): void
   toggleMini(): Promise<void>
@@ -291,6 +294,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const next = await window.opia.settingsSet(patch)
     set({ settings: next })
     if (effectiveScheme(next, get().systemDark) === scheme) applyTheme(theme)
+  },
+
+  async setJuyaStyle(scheme, id) {
+    const patch =
+      scheme === 'light' ? { juyaLightStyleId: id } : { juyaDarkStyleId: id }
+    const next = await window.opia.settingsSet(patch)
+    set({ settings: next })
   },
 
   setZoom(z) {

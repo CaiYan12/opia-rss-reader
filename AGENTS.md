@@ -30,6 +30,7 @@ Windows 桌面 RSS 阅读器（Electron + React + TypeScript），默认订阅�
 - **`NODE_TLS_REJECT_UNAUTHORIZED=0` 同样在环境中**：npm/electron-builder 会有安全警告，属用户既有配置，不要在项目中复现该设置。
 - Electron 二进制偶发未下载（报 "Electron uninstall"）：`node node_modules/electron/install.js` 修复。
 - **构建前必须杀掉正在运行的应用实例**，否则 electron-builder 因 `build/win-unpacked` 文件占用失败。杀进程用 PowerShell `Stop-Process`（进程名含空格时 Git Bash 的 taskkill 不可靠）。
+- **`npm run build` / `build.ps1` 不在 IDE 内执行（用户决策，2026-08-28）**：IDE 的 AI 扩展会扫描锁定 `build/*.asar`，electron-builder 在 packaging 阶段报 `EBUSY: unlink build\win-unpacked\resources\app.asar`（Electron 社区已知问题，杀应用进程/重试均无效）。构建一律由用户在 IDE 外终端执行（`build.bat` 或 `powershell -File build.ps1 -Run`）；代理只交付构建指令与验收清单，不代跑。
 - 应用已加单实例锁；测试多开行为时第二实例会自动退出属预期。
 - **build.ps1 含中文注释，必须保持 UTF-8 with BOM**：`powershell.exe`（5.1）对无 BOM 文件按 GBK 误读中文注释导致语法损坏（`Unexpected token '}'`）；pwsh 7 无此问题，验证脚本须用 `powershell -File build.ps1` 实测。
 - electron-builder 下载 Electron zip 偶发 TLS 断连（CN 网络）：命令级设 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 与 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/` 重试即可，勿写入项目配置。
@@ -73,7 +74,18 @@ powershell -File build.ps1 -Run   # 构建并启动
 - **自绘 Select 替代原生 select**：原生 `<select>` 弹出菜单无法随主题着色（Chromium 限制）、箭头位置不可控、number 输入带原生 spinner。`Select.tsx`（主题 token，与 TabStrip 源切换下拉同款）替换 SettingsPanel/BlankPage/ThemeEditor 全部原生 select；number spinner 经 CSS 隐藏。菜单最大高度 280px 超出内部滚动（继承全局 webkit-scrollbar 主题样式）；展开方向自适应（下方视口空间不足且上方更宽裕时向上展开，`data-dropup` 时 transform-origin 改 bottom center，打开期间 scroll/resize 重算）。下拉出入场动画 `.menu-pop`（180ms `--ease-out`，scale 0.95+opacity，origin top center，`@starting-style` 入场 / `data-closing` 退场，可中断回开，`prefers-reduced-motion` 降级）；Select 与 TabStrip 源菜单共用。Select 支持 `getOptionStyle`（选项/触发器标签内联样式，字体下拉按字体本身预览渲染）与 `editable` combobox 模式（触发器为输入框：输入即过滤选项，Enter/失焦提交输入文本为自定义值，经 `formatInput` 格式化，`getDisplay` 定制关闭态显示；选项 mousedown preventDefault 防止 input 先失焦提交半成品）。**教训：字体下拉曾用系统全量字体（~500 项 + 每项字体预览）——即使虚拟滚动（只渲染可视区 ±6 行），滚动时每次窗口更新仍要解析新字体族，奇卡；且全量渲染时打开即假死数秒。方案已整体弃用。**
 - **字体下拉（固定列表 + 可输入）**：ThemeEditor 标题/正文字体 = 固定常用字体列表（`FONT_OPTIONS` 常量，value 为完整 font-family 栈，含中英文常用字体与通用族，约 22 项）+ editable 输入自定义字体名（裸名经 `toCssFont` 加引号）。关闭态显示：命中选项 label / 自定义值栈首族名（`firstFamily`）。系统字体枚举 IPC（font:list）已删除。
 - **原生控件随主题**：浏览器原生表单控件（focus 外圈/checkbox/range/选区/下拉选项）默认取系统色、不读页面 CSS 变量。index.css 用 `:root { accent-color: var(--t-accent) }` + `:focus-visible { outline: 2px solid var(--t-accent) }`（Chromium UA 的 auto focus 圈**忽略**作者 outline-color，必须显式 solid 才挂上变量）+ `::selection` 全部挂主题变量。UI 禁止内嵌硬编码颜色（含关闭按钮 hover 红等）。**主题亮/暗分类（`colorScheme`）**：`ThemeTokens.colorScheme?: 'light' | 'dark'`（可选，向后兼容旧自定义 JSON）。内置主题显式声明：windows-light/claude-design/juya-daily=light，windows-dark=dark。`applyTheme` 落到 `root.style.colorScheme`（显式字段优先；旧主题无字段时按 bg 相对亮度 WCAG 式推导，<0.5 视为暗）。ThemeService.validate 校验值域；ThemeEditor 有「亮/暗分类」下拉（切错亮暗会即时改变 color-scheme，原生 UA 渲染部分如滚动条随之一致）。**range 滑条已 CSS 自绘**（原生 track 渲染为 accent 暗色变体、随 accent 染色漂移且不读主题 token）：track 用 `--t-chip`、填充/手柄用 `--t-accent`，填充分割点由组件注入 `--range-progress`（=(value-min)/(max-min)，`as React.CSSProperties` cast）；手柄 hover/active 微放大（reduced-motion 降级）。
-- **内容区缩放（类浏览器页面缩放）**：`settings.uiZoom`（0.5–2，步进 0.05，持久化）。App.tsx 中标签内容包在 `style={{ zoom: uiZoom }}` 容器内（Chromium CSS zoom：放大内部 px 但不放大百分比/flex 分配尺寸，容器恰好填满）；标题栏/标签栏/ZoomWidget 浮动控件在 zoom 容器**外**不缩放；Mini 模式不缩放。调节方式：Ctrl+滚轮（修饰键组合经 `settings.shortcuts.zoomWheel` 可自定义，ShortcutCapture `modifierOnly` 模式录入）+ ZoomWidget 右下角浮动控件（百分比/加减/重置）。webview（内置浏览器标签）内部滚轮事件不经过宿主，Ctrl+滚轮在 webview 上无效属预期。
+- **内容区缩放（类浏览器页面缩放）**：`settings.uiZoom`（0.5–2，步进 0.05，持久化）。zoom **下沉到各视图内容区**：每个视图在 scroller（`flex-1 overflow-y-auto`）内部包一层 `style={{ zoom: uiZoom }}`（Chromium CSS zoom：放大内部 px 但不放大百分比/flex 分配尺寸，scroller 仍恰好填满）；全局标题栏/标签栏/ZoomWidget 与**各视图内 nav**（详情工具栏/设置标题栏/浏览器地址栏，统一挂 `view-nav` 类）都在 zoom 容器外，保持固定尺寸；Mini 模式不缩放。调节方式：Ctrl+滚轮（修饰键组合经 `settings.shortcuts.zoomWheel` 可自定义，ShortcutCapture `modifierOnly` 模式录入）+ ZoomWidget 右下角浮动控件（百分比/加减/重置）。webview（内置浏览器标签）内部滚轮事件不经过宿主，Ctrl+滚轮在 webview 上无效属预期。
+
+## 橘鸦定制阅读系统（2026-08-28 新增）
+
+- **身份判据**：唯一合法来源是内置默认订阅 `JUYA_SOURCE_ID = 'juya-daily'`（`src/shared/types.ts`）。判据为 `article.sourceId === JUYA_SOURCE_ID`；用户添加相同 URL 的源（`src-*` id）不获得身份。不做启动补回迁移（旧数据删过该源即无定制能力）。
+- **源锁定**：`juya-daily` 不可删除、不可停用（`FeedService.removeSource` / `toggleSource` 拦截）；项目无改名功能故无需第三把锁；设置页该源行停用开关禁用、不渲染删除按钮，仅保留默认星标。
+- **风格模型**：`JuyaStyleId = 'off' | 'card' | 'y2k' | 'pop' | 'newsprint90s' | 'dreamcore'`；`Settings.juyaLightStyleId` / `juyaDarkStyleId`（亮暗各一，默认 `'card'`，`'off'`=回退通用样式）。挂进通用三态：`themeMode=system` 按系统亮暗取对应侧。风格**不进** `ThemeTokens` / `ThemeService` / ThemeEditor，只读、不可编辑；注册表在 `src/renderer/juya/juyaStyles.ts`（10 变体，含焦点色与背景材质字段，`backgroundImageAsset` 为未来图片资源扩展位）。
+- **结构化解析**：`src/renderer/juya/parseJuyaIssue.ts`（渲染进程 DOMParser 实时解析，不碰抓取/缓存链路）→ `JuyaIssue`（期头/概览/栏目/条目：标题/链接/编号/导语/段落/图片/相关链接）。整篇降级判据：无任何全文栏目 → 返回 `null` → 静默回退通用渲染；部分失配 → 字段缺省不整篇降级。安全边界不变：模板全部文本经 React 转义渲染，链接经 `openExternalSmart` 拦截，模板自绘 `<img loading="lazy">`。
+- **模板架构**：`src/renderer/juya/templates/base.tsx`（共享语义渲染基座）+ 五风格独立模板文件 + `templates.ts` 注册表；样式全部集中在 `src/renderer/juya/juya.css`——10 个 `[data-juya-variant]` 调色板作用域 + 结构类（`.juya-*` 共享 / `.jy<abbr>-*` 风格专属）+ 纯 CSS/内联 SVG 自绘背景；组件不内联颜色。每风格作用域提供 `--jy-focus` 供 `:focus-visible`；动效统一 `prefers-reduced-motion` 降级。
+- **分流接线**：`ReaderView` 三重判据（源身份 + 风格开启 + 解析成功）→ 定制 `IssueView`；工具栏（收藏/原文）保持通用样式。`HomeView`：橘鸦源 + 风格开启 → 风格化期号列表（**遵循通用 `layout` 设置：预设/列数/显示字段**，见 `base.tsx` FeedList），否则原 `ArticleList` 路径。
+- **设置入口**：主题设置卡片内底部、`border-t` 分割线之下，「橘鸦定制阅读风格」亮/暗两个自绘 Select **常态显示**、`grid-cols-2` 左右分半占位（同「偏好」区样式；选项=关闭+五风格，即时生效）。
+- **测试基建**：`vitest`（纯逻辑，`tests/unit/`，配置 `vitest.config.ts`，happy-dom）+ `@playwright/test`（渲染层，`tests/e2e/`，驱动 `out/renderer` 构建产物 + `window.opia` 内存桩；webServer 健康检查必须用 `localhost`；keep-alive 下断言必须限定活动标签容器 `div.min-h-0.w-full`）。`tests/fixtures/` 为脱敏真实样本夹具，已加入 `.gitignore`（禁止提交）。命令：`npm test` / `npm run test:e2e`（后者先 `build:dir`）。
 
 ## 窗口行为事实（Windows 实测）
 
@@ -90,4 +102,8 @@ powershell -File build.ps1 -Run   # 构建并启动
 
 - [x] v0.1.0：标签化窗口重构（无边框+TabStrip+会话持久化+Mini 修复+源切换下拉+默认订阅星形切换）
   - **已发布**（2026-08-20，GitHub Release，用户手动同步）：tag `v0.1.0`，commit `5d0e90e`；产物 `release/`（portable.exe 90.74MB / win32-x64.zip 151.97MB / win32-x64 解包目录）
+- [x] 橘鸦定制阅读系统（五风格×亮暗双变体）：**完成**（2026-08-28）
+  - 自动化：tsc 零错误 / vitest 16/16 / Playwright 35/35；`npm run build` 由 Codex IDE 外构建成功。
+  - 真机验收：Codex computer-use + 用户人工必做项 4/4 全部通过，无代码缺陷（清单见 `docs/PLAN-20260828.md` 阶段 9）。
+  - 用户反馈三连跟进：订阅页遵循布局、视图内 nav 不缩放（zoom 下沉）、设置亮/暗风格常态分半（见 PLAN 交付报告「跟进修订」）。
 - [ ] 下迭代待定（在此维护）

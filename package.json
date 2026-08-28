@@ -8,7 +8,9 @@
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
     "build": "electron-vite build && electron-builder",
-    "build:dir": "electron-vite build"
+    "build:dir": "electron-vite build",
+    "test": "vitest run",
+    "test:e2e": "npm run build:dir && playwright test"
   },
   "build": {
     "appId": "com.opia.rssreader",
@@ -41,6 +43,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
@@ -49,9 +52,11 @@
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "happy-dom": "^20.11.12",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.19",
     "typescript": "^7.0.2",
-    "vite": "^7.3.6"
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
   }
 }

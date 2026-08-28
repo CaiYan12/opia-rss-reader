@@ -1,4 +1,5 @@
-import type { Article, FeedSource } from '../../shared/types'
+import type { FeedSource, Article } from '../../shared/types'
+import { JUYA_SOURCE_ID } from '../../shared/types'
 import type { FeedProvider } from '../../shared/plugin-api'
 import { RssProvider } from './RssProvider'
 import type { StoreService } from '../store/StoreService'
@@ -31,6 +32,8 @@ export class FeedService {
   }
 
   removeSource(id: string): void {
+    // 内置橘鸦源不可删除（锁定，见 AGENTS.md 橘鸦定制阅读系统）
+    if (id === JUYA_SOURCE_ID) return
     this.store.setSources(this.getSources().filter((s) => s.id !== id))
   }
 
@@ -44,6 +47,8 @@ export class FeedService {
   }
 
   toggleSource(id: string, enabled: boolean): void {
+    // 内置橘鸦源不可停用（锁定，见 AGENTS.md 橘鸦定制阅读系统）
+    if (id === JUYA_SOURCE_ID) return
     this.store.setSources(this.getSources().map((s) => (s.id === id ? { ...s, enabled } : s)))
   }
 

@@ -3,8 +3,16 @@ import { Monitor, Moon, Plus, Star, Sun, Trash2 } from 'lucide-react'
 import { useAppStore } from '../stores/useAppStore'
 import { ThemeEditor } from './ThemeEditor'
 import { Select } from './Select'
-import type { LayoutConfig, Settings, ShortcutConfig, ThemeTokens } from '../../shared/types'
+import type {
+  JuyaStyleId,
+  LayoutConfig,
+  Settings,
+  ShortcutConfig,
+  ThemeTokens
+} from '../../shared/types'
+import { JUYA_SOURCE_ID } from '../../shared/types'
 import { resolveThemeScheme, type ThemeScheme } from '../../shared/theme'
+import { juyaStylesForScheme } from '../juya/juyaStyles'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): JSX.Element {
   return (
@@ -139,6 +147,7 @@ export function SettingsPanel(): JSX.Element {
     updateSettings,
     setThemeMode,
     setThemeForScheme,
+    setJuyaStyle,
     reloadSources,
     refresh
   } =
@@ -194,49 +203,58 @@ export function SettingsPanel(): JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
+      <div className="view-nav flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5">
         <h1 className="font-heading text-lg font-bold">设置</h1>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto">
+        {/* 内容区随 uiZoom 缩放；标题栏在 zoom 容器外，保持固定尺寸 */}
+        <div className="space-y-4 p-4" style={{ zoom: settings.uiZoom }}>
         <Section title="订阅源">
           <p className="mb-2 text-xs text-text-secondary">
             默认订阅决定新开主页标签的内容；默认订阅最多一个，可无（无默认订阅时主页为空页面）。
           </p>
           <ul className="mb-3 space-y-2">
-            {sources.map((s) => (
-              <li key={s.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={s.enabled}
-                  onChange={async (e) => {
-                    await window.opia.feedSourceToggle(s.id, e.target.checked)
-                    await reloadSources()
-                  }}
-                />
-                <span className="font-medium">{s.name}</span>
-                <span className="flex-1 truncate text-text-secondary">{s.url}</span>
-                <button
-                  title={s.isDefault ? '取消默认订阅' : '设为默认订阅'}
-                  onClick={() => void toggleDefault(s.id, s.isDefault === true)}
-                  className={`rounded p-1 transition-colors hover:bg-chip ${
-                    s.isDefault ? 'text-accent' : 'text-text-secondary hover:text-accent'
-                  }`}
-                >
-                  <Star size={15} fill={s.isDefault ? 'currentColor' : 'none'} />
-                </button>
-                <button
-                  title="删除"
-                  onClick={async () => {
-                    await window.opia.feedSourceRemove(s.id)
-                    await reloadSources()
-                  }}
-                  className="rounded p-1 text-text-secondary hover:bg-chip hover:text-accent"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </li>
-            ))}
+            {sources.map((s) => {
+              const locked = s.id === JUYA_SOURCE_ID
+              return (
+                <li key={s.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={s.enabled}
+                    disabled={locked}
+                    title={locked ? '内置订阅，不可停用' : undefined}
+                    onChange={async (e) => {
+                      await window.opia.feedSourceToggle(s.id, e.target.checked)
+                      await reloadSources()
+                    }}
+                  />
+                  <span className="font-medium">{s.name}</span>
+                  <span className="flex-1 truncate text-text-secondary">{s.url}</span>
+                  <button
+                    title={s.isDefault ? '取消默认订阅' : '设为默认订阅'}
+                    onClick={() => void toggleDefault(s.id, s.isDefault === true)}
+                    className={`rounded p-1 transition-colors hover:bg-chip ${
+                      s.isDefault ? 'text-accent' : 'text-text-secondary hover:text-accent'
+                    }`}
+                  >
+                    <Star size={15} fill={s.isDefault ? 'currentColor' : 'none'} />
+                  </button>
+                  {!locked && (
+                    <button
+                      title="删除"
+                      onClick={async () => {
+                        await window.opia.feedSourceRemove(s.id)
+                        await reloadSources()
+                      }}
+                      className="rounded p-1 text-text-secondary hover:bg-chip hover:text-accent"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </li>
+              )
+            })}
           </ul>
           <div className="flex gap-2">
             <input
@@ -392,6 +410,7 @@ export function SettingsPanel(): JSX.Element {
                   { value: 'grid', label: '卡片网格' },
                   { value: 'magazine', label: '杂志风' }
                 ]}
+                className="min-w-0 flex-1"
               />
             </label>
             <label className="flex min-h-9 items-center gap-3">
@@ -466,7 +485,47 @@ export function SettingsPanel(): JSX.Element {
               />
             )}
           </div>
+
+          {/* 橘鸦定制阅读风格：主题的子项，位于卡片底部分割线之下（只读预设，仅提供选择） */}
+          <div className="mt-5 border-t border-border pt-4">
+            <p className="mb-1 text-sm font-medium">橘鸦定制阅读风格</p>
+            <p className="mb-3 text-xs text-text-secondary">
+              仅作用于橘鸦AI早报的订阅页与阅读页；关闭则回退通用阅读样式。
+            </p>
+            {/* 亮/暗两侧常态显示、左右分半占位（同「偏好」样式）；选择即时生效 */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <label className="flex flex-col gap-1">
+                <span className="text-text-secondary">亮色风格</span>
+                <Select
+                  value={settings.juyaLightStyleId}
+                  onChange={(v) => void setJuyaStyle('light', v as JuyaStyleId)}
+                  options={[
+                    { value: 'off', label: '关闭（使用通用样式）' },
+                    ...juyaStylesForScheme('light').map((s) => ({
+                      value: s.styleId,
+                      label: s.name
+                    }))
+                  ]}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-text-secondary">暗色风格</span>
+                <Select
+                  value={settings.juyaDarkStyleId}
+                  onChange={(v) => void setJuyaStyle('dark', v as JuyaStyleId)}
+                  options={[
+                    { value: 'off', label: '关闭（使用通用样式）' },
+                    ...juyaStylesForScheme('dark').map((s) => ({
+                      value: s.styleId,
+                      label: s.name
+                    }))
+                  ]}
+                />
+              </label>
+            </div>
+          </div>
         </Section>
+        </div>
       </div>
     </div>
   )

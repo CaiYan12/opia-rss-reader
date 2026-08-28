@@ -123,17 +123,14 @@ export default function App(): JSX.Element {
     }
   }
 
-  const uiZoom = settings?.uiZoom ?? 1
-
   return (
     <div className="flex h-screen flex-col">
       <TitleBar showFavorites={showFavorites} onToggleFavorites={() => setShowFavorites((v) => !v)} />
       <TabStrip />
-      {/* 内容区缩放（类似浏览器页面缩放）：zoom 只作用于标签内容，标题栏/标签栏/缩放控件不受影响。
-          CSS zoom 会放大内部 px 尺寸但不放大百分比/flex 分配尺寸，故容器仍恰好填满可用空间。 */}
+      {/* 内容区缩放（类似浏览器页面缩放）已下沉到各视图的内容区：标题栏/标签栏/各视图内 nav/缩放控件不受影响。 */}
       <div className="relative min-h-0 flex-1">
         {/* keep-alive：inactive 标签隐藏但保留 DOM/webview/滚动状态 */}
-        <div className="flex h-full" style={{ zoom: uiZoom }}>
+        <div className="flex h-full">
           {tabs.map((tab) => (
             <div
               key={tab.id}

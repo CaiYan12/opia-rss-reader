@@ -1,23 +1,37 @@
-# Opia RSS Reader
+# 📰 Opia RSS Reader
 
 Windows 桌面 AI 新闻 RSS 阅读器。默认订阅 [橘鸦AI早报](https://daily.juya.uk/rss.xml)，支持多订阅源、可自定义主题与布局、Mini 挂件模式与插件扩展。
 
-## 功能
+## ✨ 功能
 
 - **多订阅源**：浏览器式标签页，一源一页；支持添加 / 删除 / 启停
 - **三种布局预设**：紧凑列表、卡片网格（1–4 列可调）、杂志风；卡片字段（封面 / 摘要 / 时间 / 来源）可独立开关
 - **应用内阅读**：渲染 RSS `content:encoded` 全文（DOMPurify 消毒），图片懒加载；点击行为可在设置中切换为浏览器打开
+- **橘鸦定制阅读系统**：内置橘鸦AI早报源提供五套独立视觉风格（卡片主题式 / 千禧网页式 / 波普艺术式 / 90 年代报刊式 / 蒸汽梦核式）× 亮暗双变体；订阅页遵循「布局」的预设 / 列数 / 显示字段；可整体关闭回退通用样式；内置源不可删除、不可停用
 - **主题系统**：内置 Windows-Light、Windows-Dark、Claude-Design、Juya-Daily 四套主题；主题编辑器支持取色、字体、字号、圆角实时预览并另存为自定义主题
 - **Mini 模式**：无边框置顶小窗，整体可拖动，紧凑列表，一键切回
 - **历史记录**：已读 / 收藏 / 阅读时间持久化，保留天数可配
 - **自动刷新**：启动拉取 + 定时刷新（间隔可配）+ 手动刷新
 - **插件机制**：`plugins/` 目录加载，支持 FeedProvider / Theme / CardRenderer 三类注册点（示例见 `plugins/example-hello/`）
 
-## 技术栈
+## 🧰 技术栈
 
-Electron 43 · electron-vite 5 · React 19 · TypeScript 6 · Tailwind CSS 3 · zustand · electron-store 8 · rss-parser
+<p align="center">
+  <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-43-47848F?logo=electron&logoColor=white" alt="Electron 43"></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19"></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white" alt="TypeScript 7"></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 3"></a>
+</p>
 
-## 开发 / 构建
+| 领域 | 技术 |
+| --- | --- |
+| 桌面运行时 | [Electron](https://www.electronjs.org/) `43` · [electron-vite](https://electron-vite.org/) `5` |
+| 前端界面 | [React](https://react.dev/) `19` · [Tailwind CSS](https://tailwindcss.com/) `3` |
+| 语言与构建 | [TypeScript](https://www.typescriptlang.org/) `7` · [Vite](https://vite.dev/) `7` |
+| 状态与持久化 | [Zustand](https://zustand.docs.pmnd.rs/) `5` · [electron-store](https://github.com/sindresorhus/electron-store) `8` |
+| RSS 与内容安全 | [rss-parser](https://github.com/rbren/rss-parser) `3` · [DOMPurify](https://github.com/cure53/DOMPurify) `3` |
+
+## 🛠️ 开发 / 构建
 
 安装依赖：`npm install`
 
@@ -70,7 +84,15 @@ powershell -File build.ps1 -Run   # 构建并启动，tail 启动日志
 >
 > 脚本中的 Node 路径 `C:\Users\Einn Tzai\.workbuddy\binaries\node\versions\22.22.2` 为本机托管运行时，其它机器请改为自己的 Node 路径或移除该行改用系统 Node。
 
-## 目录结构
+### 测试
+
+```powershell
+npm test            # vitest 单元测试（解析器等纯逻辑，tests/unit）
+npm run test:e2e    # Playwright 渲染层端到端（先自动 build:dir，驱动 out/renderer + window.opia 内存桩）
+npx tsc --noEmit    # 类型检查（提交前必过）
+```
+
+## 🗂️ 目录结构
 
 ```
 src/
@@ -84,20 +106,22 @@ src/
 │   └── ipc.ts            # IPC handler 集中注册
 ├── preload/index.ts      # contextBridge 类型安全 API（window.opia）
 ├── renderer/             # React 渲染层
-│   ├── components/       # NavBar / SourceTabs / ArticleCard / ReaderView / MiniView / SettingsPanel / ThemeEditor
+│   ├── components/       # TitleBar / TabStrip / HomeView / ReaderView / BrowserPage / SettingsPanel / ThemeEditor / MiniView 等
+│   ├── juya/             # 橘鸦定制阅读系统：结构化解析 / 风格注册表 / 五风格模板 / juya.css
 │   ├── layouts/          # 紧凑列表 / 卡片网格 / 杂志风
 │   ├── stores/           # zustand 全局状态
 │   └── theme/            # CSS 变量注入
 └── shared/               # 主/渲染共用：types.ts、ipc-contract.ts、plugin-api.ts
+tests/                    # vitest 单测（tests/unit）+ Playwright 端到端（tests/e2e）+ 脱敏夹具（tests/fixtures，不提交）
 plugins/                  # 插件目录（含示例 example-hello）
 ```
 
-## 数据位置
+## 💾 数据位置
 
 - 设置 / 订阅源 / 历史 / 文章缓存：`%APPDATA%/Opia RSS Reader/opia-data.json`
 - 自定义主题：`%APPDATA%/Opia RSS Reader/themes/*.json`
 
-## 插件开发
+## 🧩 插件开发
 
 在 `plugins/<your-plugin>/` 放置：
 
@@ -107,3 +131,43 @@ index.cjs       # CommonJS，导出实现 OpiaPlugin 接口的对象（见 src/s
 ```
 
 重启应用后自动加载，主进程日志可见注册结果。
+
+---
+
+## 🗺️ TODO
+
+这里的 TODO 是公开路线图，欢迎通过 [Issue](https://github.com/CaiYan12/opia-rss-reader/issues) 讨论优先级，或直接提交 PR 认领已经明确的任务。
+
+- [ ] 补充 IPC、FeedService、标签会话与主题系统的自动化测试
+- [ ] 完善 `FeedProvider`、`Theme`、`CardRenderer` 插件 API 文档与示例
+- [ ] 持续优化不同 Windows 环境下的兼容性、打包与升级体验
+- [ ] 根据社区反馈完善订阅管理、阅读体验与无障碍支持
+
+## 🐛 Issue 与反馈
+
+发现 Bug、希望新增功能或有使用建议，欢迎前往 [GitHub Issues](https://github.com/CaiYan12/opia-rss-reader/issues)。
+
+- 提交前请先搜索已有 Issue，避免重复反馈。
+- 新建 Issue 时请尽量提供应用版本、Windows 版本、复现步骤、预期行为和实际行为。
+- UI 或交互问题请附上截图；启动、刷新或构建问题请附上相关日志，并移除订阅地址、本地路径等敏感信息。
+- 如果问题涉及安全或隐私，请只公开必要信息，并在提交前确认日志中没有个人数据。
+
+也可以直接使用 [新建 Issue](https://github.com/CaiYan12/opia-rss-reader/issues/new) 入口提交反馈。
+
+## 🤝 贡献
+
+我们欢迎任何可行的贡献代码、插件、文档、测试和 UI 改进。建议按以下流程参与：
+
+1. 先在 [Issues](https://github.com/CaiYan12/opia-rss-reader/issues) 中搜索或讨论变更意图。
+2. Fork 仓库，创建独立分支，并保持每个 PR 聚焦于一个主题。
+3. 完成修改后运行 `npx tsc --noEmit` 和 `npm run build`。
+4. 提交 Pull Request，说明变更内容、关联的 Issue、验证方式；涉及 UI 的改动请附截图或录屏。
+
+提交代码时请遵循项目的架构边界：
+
+- 渲染进程不直接访问网络或文件系统，跨进程数据统一经 IPC 传递。
+- 新增 IPC 通道时，同步更新共享契约、preload 暴露和主进程 handler。
+- 新增订阅源解析能力时，优先实现 `FeedProvider`，不要直接硬编码进 `FeedService`。
+- UI 样式使用主题 token；无关重构请与功能性改动分开提交。
+
+感谢每一位提交反馈、修复问题、编写插件或完善文档的贡献者。

@@ -17,6 +17,7 @@ type WebviewElement = HTMLElement & {
 /** 内置浏览器标签：工具栏（返回/地址栏/使用浏览器打开）+ webview；页面标题同步到标签 */
 export function BrowserPage({ tabId, url }: Props): JSX.Element {
   const setTabTitle = useAppStore((s) => s.setTabTitle)
+  const uiZoom = useAppStore((s) => s.settings?.uiZoom ?? 1)
   const webviewRef = useRef<WebviewElement | null>(null)
   const [currentUrl, setCurrentUrl] = useState(url)
   const [addressInput, setAddressInput] = useState(url)
@@ -72,7 +73,7 @@ export function BrowserPage({ tabId, url }: Props): JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-2">
+      <div className="view-nav flex items-center gap-2 border-b border-border bg-surface px-3 py-2">
         <button
           title="返回"
           onClick={goBack}
@@ -99,13 +100,16 @@ export function BrowserPage({ tabId, url }: Props): JSX.Element {
           <span className="hidden sm:inline">使用浏览器打开</span>
         </button>
       </div>
-      <webview
-        ref={(el) => {
-          webviewRef.current = el as WebviewElement | null
-        }}
-        src={url}
-        className="flex-1"
-      />
+      {/* webview 内容区随 uiZoom 缩放；地址栏在 zoom 容器外，保持固定尺寸 */}
+      <div className="flex-1" style={{ zoom: uiZoom }}>
+        <webview
+          ref={(el) => {
+            webviewRef.current = el as WebviewElement | null
+          }}
+          src={url}
+          className="h-full w-full"
+        />
+      </div>
     </div>
   )
 }

@@ -45,6 +45,12 @@ export interface ShortcutConfig {
   zoomWheel: string
 }
 
+/** 橘鸦定制阅读风格标识。'off' = 关闭（回退通用阅读页）。 */
+export type JuyaStyleId = 'off' | 'card' | 'y2k' | 'pop' | 'newsprint90s' | 'dreamcore'
+
+/** 橘鸦 AI 早报内置源的唯一身份判据（用户新增源只会生成 'src-*' id，不会冲突）。 */
+export const JUYA_SOURCE_ID = 'juya-daily'
+
 export interface Settings {
   clickBehavior: 'reader' | 'browser'
   /** 外链打开方式：system=系统默认浏览器；builtin=应用内浏览器标签页 */
@@ -68,6 +74,10 @@ export interface Settings {
   miniSize: { w: number; h: number }
   /** 内容区缩放系数（1 = 100%），持久化 */
   uiZoom: number
+  /** 橘鸦定制阅读风格（亮色侧）。'off' = 关闭，回退通用阅读页。 */
+  juyaLightStyleId: JuyaStyleId
+  /** 橘鸦定制阅读风格（暗色侧）。'off' = 关闭，回退通用阅读页。 */
+  juyaDarkStyleId: JuyaStyleId
 }
 
 /** 持久化的标签会话（reader 存 guid，重启后从文章缓存解析） */
@@ -135,11 +145,13 @@ export const DEFAULT_SETTINGS: Settings = {
     fields: { cover: true, summary: true, pubDate: true, source: true }
   },
   miniSize: { w: 360, h: 480 },
-  uiZoom: 1
+  uiZoom: 1,
+  juyaLightStyleId: 'card',
+  juyaDarkStyleId: 'card'
 }
 
 export const DEFAULT_SOURCE: FeedSource = {
-  id: 'juya-daily',
+  id: JUYA_SOURCE_ID,
   name: '橘鸦AI早报',
   url: 'https://daily.juya.uk/rss.xml',
   enabled: true,

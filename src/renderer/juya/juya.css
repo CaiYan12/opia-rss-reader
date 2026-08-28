@@ -1,0 +1,759 @@
+/* ==========================================================================
+   橘鸦定制阅读风格样式（五风格 × 亮暗双变体）。
+   规则：全部样式集中本文件；组件侧只挂类名，不内联颜色。
+   变体作用域：[data-juya-variant="<styleId>-<scheme>"] 定义调色板 token，
+   结构类 .juya-* 消费 token；风格专属结构类 .jy<abbr>-* 叠加版式差异。
+   可访问性：焦点色用变体自有 --jy-focus；动效统一受 prefers-reduced-motion 降级。
+   ========================================================================== */
+
+.juya-root {
+  min-height: 100%;
+  background-color: var(--jy-bg);
+  color: var(--jy-text);
+  font-family: var(--jy-font-body, 'Segoe UI', 'Noto Sans SC', sans-serif);
+}
+
+.juya-root :is(a, button):focus-visible {
+  outline: 2px solid var(--jy-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.juya-root img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.juya-issue {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.juya-masthead {
+  margin-bottom: 24px;
+}
+
+.juya-masthead h1 {
+  font-family: var(--jy-font-heading, inherit);
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--jy-heading);
+  overflow-wrap: anywhere;
+}
+
+.juya-overview {
+  margin: 0 0 28px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.juya-overview li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.juya-overview a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.juya-section {
+  margin-bottom: 32px;
+}
+
+.juya-section > h2 {
+  font-family: var(--jy-font-heading, inherit);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--jy-heading);
+  margin: 0 0 16px;
+}
+
+.juya-entry {
+  margin-bottom: 28px;
+}
+
+.juya-entry > h3 {
+  font-family: var(--jy-font-heading, inherit);
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--jy-heading);
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.juya-entry > h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.juya-entry > h3 a:hover {
+  text-decoration: underline;
+}
+
+.juya-index {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--jy-on-accent);
+  background: var(--jy-accent);
+  border-radius: 999px;
+  padding: 1px 8px;
+  vertical-align: 2px;
+  margin-left: 6px;
+}
+
+.juya-lead {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--jy-accent);
+  background: var(--jy-lead-bg);
+  color: var(--jy-muted);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.juya-entry p {
+  margin: 0 0 10px;
+  font-size: 14.5px;
+  line-height: 1.8;
+}
+
+.juya-media {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.juya-media img {
+  border-radius: var(--jy-radius, 8px);
+  border: 1px solid var(--jy-border);
+}
+
+.juya-links {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.juya-links-label {
+  font-size: 12px;
+  color: var(--jy-muted);
+  margin: 10px 0 4px;
+}
+
+.juya-links a {
+  color: var(--jy-link);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.juya-links a::after {
+  content: ' ↗';
+}
+
+/* 订阅页（期号列表）通用结构 */
+.juya-feed {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 遵循通用「布局」设置：grid 预设按 --jy-cols 分列（magazine 内嵌子网格复用本类） */
+.juya-feed.juya-feed-grid {
+  max-width: 1120px;
+}
+.juya-feed-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--jy-cols, 1), minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* compact 预设：单列行式（标题 + 元信息，封面缩为小方块） */
+.juya-feed-compact .juya-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+}
+.juya-feed-compact .juya-feed-cover {
+  width: 72px;
+  height: 40px;
+  aspect-ratio: auto;
+  border-bottom: none;
+  border-radius: var(--jy-radius, 8px);
+  flex: none;
+}
+.juya-feed-compact .juya-feed-body {
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+.juya-feed-compact .juya-feed-title {
+  font-size: 14px;
+}
+
+/* magazine 预设：首条大幅卡片 */
+.juya-feed-featured .juya-feed-body {
+  padding: 18px 20px;
+}
+.juya-feed-featured .juya-feed-title {
+  font-size: 20px;
+}
+
+/* 摘要与来源 chip（受「布局」显示字段开关控制） */
+.juya-feed-summary {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--jy-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.juya-feed-source {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--jy-card);
+  border: 1px solid var(--jy-border);
+  color: var(--jy-muted);
+  flex: none;
+}
+
+.juya-feed-empty {
+  padding: 64px 0;
+  text-align: center;
+  color: var(--jy-muted);
+  font-size: 14px;
+}
+
+.juya-feed-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--jy-border);
+  background: var(--jy-card);
+  color: inherit;
+  border-radius: var(--jy-radius, 8px);
+  overflow: hidden;
+  transition: transform 160ms var(--ease-out, ease-out), box-shadow 160ms var(--ease-out, ease-out);
+}
+
+.juya-feed-item:hover {
+  transform: translateY(-2px);
+}
+
+.juya-feed-cover {
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  object-fit: cover;
+  border-bottom: 1px solid var(--jy-border);
+}
+
+.juya-feed-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.juya-feed-title {
+  font-family: var(--jy-font-heading, inherit);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--jy-heading);
+  overflow-wrap: anywhere;
+}
+
+.juya-feed-meta {
+  font-size: 12px;
+  color: var(--jy-muted);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.juya-feed-read-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jy-accent);
+  flex: none;
+}
+
+/* 入场动效（列表项）；reduced-motion 下退化为纯透明度 */
+@keyframes jy-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.juya-feed-item {
+  animation: jy-enter 220ms var(--ease-out, ease-out) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juya-feed-item {
+    animation: none;
+    transition: none;
+  }
+  .juya-feed-item:hover {
+    transform: none;
+  }
+  .juya-root * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==========================================================================
+   变体调色板（10 个）。自绘背景：纯 CSS 渐变/重复图案 + 内联 SVG data URI。
+   ========================================================================== */
+
+/* ---- 卡片主题式 ---- */
+[data-juya-variant='card-light'] {
+  --jy-bg: #f6f1e7;
+  background-image: radial-gradient(rgba(193, 80, 46, 0.07) 1px, transparent 1.5px);
+  background-size: 18px 18px;
+  --jy-card: #fffdf8;
+  --jy-border: #e7ddc9;
+  --jy-heading: #33302a;
+  --jy-text: #43403a;
+  --jy-muted: #8a8172;
+  --jy-accent: #c1502e;
+  --jy-on-accent: #ffffff;
+  --jy-link: #a8431f;
+  --jy-lead-bg: #f3ecdd;
+  --jy-focus: #c1502e;
+  --jy-radius: 12px;
+}
+
+[data-juya-variant='card-dark'] {
+  --jy-bg: #1d1b17;
+  background-image: radial-gradient(rgba(240, 160, 128, 0.06) 1px, transparent 1.5px);
+  background-size: 18px 18px;
+  --jy-card: #2a2721;
+  --jy-border: #3d382f;
+  --jy-heading: #f2ede3;
+  --jy-text: #cfc8ba;
+  --jy-muted: #8f8676;
+  --jy-accent: #e0764f;
+  --jy-on-accent: #201511;
+  --jy-link: #f0a080;
+  --jy-lead-bg: #242119;
+  --jy-focus: #f0a080;
+  --jy-radius: 12px;
+}
+
+.jycard .juya-entry {
+  background: var(--jy-card);
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius);
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.jycard .juya-masthead {
+  background: var(--jy-accent);
+  color: var(--jy-on-accent);
+  border-radius: var(--jy-radius);
+  padding: 22px 24px;
+}
+
+.jycard .juya-masthead h1 {
+  color: inherit;
+}
+
+.jycard .juya-overview li::before {
+  content: '▪';
+  color: var(--jy-accent);
+}
+
+/* ---- 千禧网页式（Y2K） ---- */
+[data-juya-variant='y2k-light'] {
+  --jy-bg: #dce6f5;
+  background-image: linear-gradient(180deg, #eef4fd 0%, #d4e2f6 40%, #c6d8f0 100%);
+  --jy-card: #f4f8ff;
+  --jy-border: #8fa8c8;
+  --jy-heading: #12233f;
+  --jy-text: #26364f;
+  --jy-muted: #5c6e8a;
+  --jy-accent: #2456d6;
+  --jy-on-accent: #ffffff;
+  --jy-link: #1a3fa8;
+  --jy-lead-bg: #e8effc;
+  --jy-focus: #0050c8;
+  --jy-radius: 2px;
+  --jy-font-body: Tahoma, Verdana, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: Verdana, Tahoma, 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+[data-juya-variant='y2k-dark'] {
+  --jy-bg: #0c1226;
+  background-image: linear-gradient(180deg, #101a38 0%, #0a0f22 55%, #141b3d 100%);
+  --jy-card: #182344;
+  --jy-border: #3c5488;
+  --jy-heading: #d7e6ff;
+  --jy-text: #a8bad8;
+  --jy-muted: #64779c;
+  --jy-accent: #4d8dff;
+  --jy-on-accent: #061024;
+  --jy-link: #7db8ff;
+  --jy-lead-bg: #121c38;
+  --jy-focus: #7db8ff;
+  --jy-radius: 2px;
+  --jy-font-body: Tahoma, Verdana, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: Verdana, Tahoma, 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+/* 像素感边框：双层 inset 高光/阴影模拟斜面，链接复古 ↗ */
+.jyy2k .juya-entry,
+.jyy2k .juya-masthead,
+.jyy2k .juya-feed-item {
+  border: 2px solid var(--jy-border);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.65),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.18),
+    2px 2px 0 rgba(0, 0, 0, 0.18);
+}
+
+.jyy2k .juya-entry {
+  background: var(--jy-card);
+  padding: 16px 18px;
+}
+
+.jyy2k .juya-masthead {
+  padding: 18px 20px;
+  background: linear-gradient(180deg, var(--jy-card), var(--jy-lead-bg));
+}
+
+.jyy2k .juya-section > h2,
+.jyy2k .juya-feed-title {
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.jyy2k .juya-index {
+  border-radius: 0;
+  border: 1px solid var(--jy-border);
+}
+
+.jyy2k .juya-links a::after {
+  content: ' ↗';
+  font-weight: 700;
+}
+
+/* ---- 波普艺术式 ---- */
+[data-juya-variant='pop-light'] {
+  --jy-bg: #ffe957;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='3' cy='3' r='2' fill='%23e8c83a'/%3E%3C/svg%3E");
+  --jy-card: #fffdf0;
+  --jy-border: #141414;
+  --jy-heading: #141414;
+  --jy-text: #242424;
+  --jy-muted: #5a5a5a;
+  --jy-accent: #e0245e;
+  --jy-on-accent: #ffffff;
+  --jy-link: #1f4fd8;
+  --jy-lead-bg: #d7f2ff;
+  --jy-focus: #d81b60;
+  --jy-radius: 0px;
+  --jy-font-heading: Impact, 'Arial Black', 'Noto Sans SC', sans-serif;
+}
+
+[data-juya-variant='pop-dark'] {
+  --jy-bg: #14141a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='3' cy='3' r='2' fill='%2326262e'/%3E%3C/svg%3E");
+  --jy-card: #1f1f28;
+  --jy-border: #ffe957;
+  --jy-heading: #ffe957;
+  --jy-text: #e8e8e0;
+  --jy-muted: #9a9aa4;
+  --jy-accent: #ff2e74;
+  --jy-on-accent: #ffffff;
+  --jy-link: #5b8cff;
+  --jy-lead-bg: #262636;
+  --jy-focus: #ff80ab;
+  --jy-radius: 0px;
+  --jy-font-heading: Impact, 'Arial Black', 'Noto Sans SC', sans-serif;
+}
+
+/* 粗轮廓 + 硬位移阴影（平涂感），编号徽章方块化 */
+.jypop .juya-entry,
+.jypop .juya-masthead,
+.jypop .juya-feed-item {
+  border: 3px solid var(--jy-border);
+  box-shadow: 6px 6px 0 var(--jy-border);
+}
+
+.jypop .juya-entry {
+  background: var(--jy-card);
+  padding: 18px 20px;
+}
+
+.jypop .juya-masthead {
+  background: var(--jy-accent);
+  color: var(--jy-on-accent);
+  padding: 24px;
+}
+
+.jypop .juya-masthead h1 {
+  color: inherit;
+  font-size: 34px;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+.jypop .juya-index {
+  border-radius: 0;
+  border: 2px solid var(--jy-heading);
+  color: var(--jy-heading);
+  background: var(--jy-bg);
+}
+
+.jypop .juya-lead {
+  border-left: 6px solid var(--jy-accent);
+}
+
+.jypop .juya-section > h2 {
+  display: inline-block;
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+  padding: 2px 10px;
+}
+
+/* ---- 90 年代报刊式 ---- */
+[data-juya-variant='newsprint90s-light'] {
+  --jy-bg: #f2ecd9;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(120, 100, 60, 0.035) 0px,
+    rgba(120, 100, 60, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  --jy-card: #f7f2e2;
+  --jy-border: #2f2a20;
+  --jy-heading: #211d14;
+  --jy-text: #33301f;
+  --jy-muted: #6d6350;
+  --jy-accent: #8b1a1a;
+  --jy-on-accent: #f7f2e2;
+  --jy-link: #1a3c8b;
+  --jy-lead-bg: rgba(139, 26, 26, 0.07);
+  --jy-focus: #8b1a1a;
+  --jy-radius: 0px;
+  --jy-font-heading: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+  --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+}
+
+[data-juya-variant='newsprint90s-dark'] {
+  --jy-bg: #221f19;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.028) 0px,
+    rgba(255, 255, 255, 0.028) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  --jy-card: #2a261e;
+  --jy-border: #c9bfa4;
+  --jy-heading: #ece4cd;
+  --jy-text: #cfc7ae;
+  --jy-muted: #8f8668;
+  --jy-accent: #d05555;
+  --jy-on-accent: #221f19;
+  --jy-link: #8fa8e8;
+  --jy-lead-bg: rgba(208, 85, 85, 0.12);
+  --jy-focus: #e8b4b4;
+  --jy-radius: 0px;
+  --jy-font-heading: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+  --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+}
+
+/* 报头（刊头+日期线+双细线）、栏目栏、正文两栏（宽窗口） */
+.jynews .juya-masthead {
+  text-align: center;
+  border-bottom: 3px double var(--jy-border);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+
+.jynews .juya-masthead h1 {
+  font-size: 34px;
+  letter-spacing: 4px;
+}
+
+.jynews .juya-date-line {
+  font-size: 12px;
+  color: var(--jy-muted);
+  letter-spacing: 2px;
+  margin-top: 6px;
+}
+
+.jynews .juya-section > h2 {
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+  display: inline-block;
+  padding: 2px 12px;
+  font-size: 16px;
+  letter-spacing: 3px;
+}
+
+.jynews .juya-entry {
+  border-bottom: 1px solid var(--jy-border);
+  padding-bottom: 18px;
+}
+
+.jynews .juya-entry > h3 {
+  font-size: 18px;
+}
+
+.jynews .juya-lead {
+  border-left: none;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  background: var(--jy-lead-bg);
+  font-style: normal;
+}
+
+.jynews .juya-entry p {
+  text-align: justify;
+}
+
+@media (min-width: 900px) {
+  .jynews .juya-entry-columns {
+    column-count: 2;
+    column-gap: 28px;
+    column-rule: 1px solid var(--jy-border);
+  }
+}
+
+/* ---- 蒸汽梦核式 ---- */
+[data-juya-variant='dreamcore-light'] {
+  --jy-bg: #efe6fb;
+  background-image: linear-gradient(160deg, #f6e9ff 0%, #e6ecff 45%, #ffe9f4 100%);
+  --jy-card: rgba(255, 255, 255, 0.72);
+  --jy-border: rgba(124, 77, 255, 0.35);
+  --jy-heading: #3a2b63;
+  --jy-text: #4a4066;
+  --jy-muted: #8578a8;
+  --jy-accent: #7c4dff;
+  --jy-on-accent: #ffffff;
+  --jy-link: #5e35d1;
+  --jy-lead-bg: rgba(124, 77, 255, 0.08);
+  --jy-focus: #7c4dff;
+  --jy-radius: 16px;
+}
+
+[data-juya-variant='dreamcore-dark'] {
+  --jy-bg: #0d0a1a;
+  background-image:
+    radial-gradient(600px 300px at 15% 0%, rgba(124, 77, 255, 0.28), transparent 65%),
+    radial-gradient(500px 280px at 90% 30%, rgba(255, 64, 160, 0.16), transparent 60%),
+    linear-gradient(180deg, #120d26 0%, #0d0a1a 100%);
+  --jy-card: rgba(26, 20, 48, 0.82);
+  --jy-border: rgba(179, 136, 255, 0.35);
+  --jy-heading: #e8ddff;
+  --jy-text: #bcb2d8;
+  --jy-muted: #7d71a0;
+  --jy-accent: #9c6bff;
+  --jy-on-accent: #120d26;
+  --jy-link: #c9a8ff;
+  --jy-lead-bg: rgba(156, 107, 255, 0.12);
+  --jy-focus: #b388ff;
+  --jy-radius: 16px;
+}
+
+/* 发光边框 + 毛玻璃卡片；背景氛围漂移（每屏唯一动效，可关闭：reduced-motion 下静态） */
+.jydream .juya-entry,
+.jydream .juya-masthead {
+  background: var(--jy-card);
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 18px rgba(124, 77, 255, 0.18);
+}
+
+.jydream .juya-entry {
+  padding: 18px 20px;
+}
+
+.jydream .juya-masthead {
+  padding: 24px;
+}
+
+.jydream .juya-masthead h1 {
+  background: linear-gradient(90deg, var(--jy-heading), var(--jy-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.jydream .juya-lead {
+  border-left: 3px solid var(--jy-accent);
+  border-radius: 8px;
+}
+
+.jydream .juya-feed-item {
+  background: var(--jy-card);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 14px rgba(124, 77, 255, 0.16);
+}
+
+@keyframes jy-dream-drift {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: 120% 60%;
+  }
+}
+
+[data-juya-variant='dreamcore-dark'].juya-root {
+  animation: jy-dream-drift 40s linear infinite alternate;
+  background-size: 160% 160%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-juya-variant='dreamcore-dark'].juya-root {
+    animation: none;
+  }
+}
+
+/* 窄窗口（≤480px 内容区）：收紧边距，取消分栏 */
+@media (max-width: 520px) {
+  .juya-issue {
+    padding: 20px 14px 48px;
+  }
+  .jynews .juya-entry-columns {
+    column-count: 1;
+  }
+  .jycard .juya-masthead,
+  .jydream .juya-masthead,
+  .jypop .juya-masthead {
+    padding: 16px;
+  }
+}

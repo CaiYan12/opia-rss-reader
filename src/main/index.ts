@@ -7,6 +7,12 @@ import { PluginManager } from './plugin/PluginManager'
 import { registerIpc } from './ipc'
 import { IPC } from '../shared/ipc-contract'
 
+// Chromium 的旧版 Windows NLA 查询在部分系统网络命名空间上会返回 10108。
+// 启用现代连通性提示 API，避免启动时触发该旧路径；必须在 app ready 前设置。
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('enable-features', 'EnableGetNetworkConnectivityHintAPI')
+}
+
 // 单实例锁：防止双开导致 Chromium 磁盘缓存目录冲突
 if (!app.requestSingleInstanceLock()) {
   app.quit()

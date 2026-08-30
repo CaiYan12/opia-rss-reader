@@ -172,3 +172,4 @@ index.cjs       # CommonJS，导出实现 OpiaPlugin 接口的对象（见 src/s
 - UI 样式使用主题 token；无关重构请与功能性改动分开提交。
 
 感谢每一位提交反馈、修复问题、编写插件或完善文档的贡献者。
+其中，Codex（OpenAI）作为共同作者与贡献者参与本项目。

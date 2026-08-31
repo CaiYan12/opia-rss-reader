@@ -6,6 +6,8 @@ const api: OpiaApi = {
   feedList: (sourceId) => ipcRenderer.invoke(IPC.FeedList, sourceId),
   feedRefresh: (sourceId) => ipcRenderer.invoke(IPC.FeedRefresh, sourceId),
   feedSources: () => ipcRenderer.invoke(IPC.FeedSources),
+  feedSourceValidate: (source: Omit<FeedSource, 'id'>) =>
+    ipcRenderer.invoke(IPC.FeedSourceValidate, source),
   feedSourceAdd: (source: Omit<FeedSource, 'id'>) => ipcRenderer.invoke(IPC.FeedSourceAdd, source),
   feedSourceRemove: (id) => ipcRenderer.invoke(IPC.FeedSourceRemove, id),
   feedSourceToggle: (id, enabled) => ipcRenderer.invoke(IPC.FeedSourceToggle, id, enabled),

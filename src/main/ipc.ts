@@ -22,6 +22,9 @@ export function registerIpc({ store, feed, theme }: IpcDeps): void {
   ipcMain.handle(IPC.FeedList, (_e, sourceId?: string) => feed.list(sourceId))
   ipcMain.handle(IPC.FeedRefresh, (_e, sourceId?: string) => feed.refresh(sourceId))
   ipcMain.handle(IPC.FeedSources, () => feed.getSources())
+  ipcMain.handle(IPC.FeedSourceValidate, (_e, source: Omit<FeedSource, 'id'>) =>
+    feed.validateSource(source)
+  )
   ipcMain.handle(IPC.FeedSourceAdd, (_e, source: Omit<FeedSource, 'id'>) => feed.addSource(source))
   ipcMain.handle(IPC.FeedSourceRemove, (_e, id: string) => feed.removeSource(id))
   ipcMain.handle(IPC.FeedSourceToggle, (_e, id: string, enabled: boolean) =>

@@ -11,6 +11,7 @@ const OPIA_METHODS = [
   'feedList',
   'feedRefresh',
   'feedSources',
+  'feedSourceValidate',
   'feedSourceAdd',
   'feedSourceRemove',
   'feedSourceToggle',

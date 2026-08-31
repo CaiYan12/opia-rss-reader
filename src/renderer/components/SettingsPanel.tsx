@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Monitor, Moon, Plus, Star, Sun, Trash2 } from 'lucide-react'
+import { LoaderCircle, Monitor, Moon, Plus, Star, Sun, Trash2 } from 'lucide-react'
 import { useAppStore } from '../stores/useAppStore'
 import { ThemeEditor } from './ThemeEditor'
 import { Select } from './Select'
@@ -156,6 +156,7 @@ export function SettingsPanel(): JSX.Element {
   const [newName, setNewName] = useState('')
   const [newUrl, setNewUrl] = useState('')
   const [addError, setAddError] = useState('')
+  const [addingSource, setAddingSource] = useState(false)
 
   if (!settings) return <div />
 
@@ -185,21 +186,34 @@ export function SettingsPanel(): JSX.Element {
   }
 
   const addSource = async (): Promise<void> => {
+    if (addingSource) return
     setAddError('')
-    if (!newName.trim() || !/^https?:\/\/.+/i.test(newUrl.trim())) {
+    const name = newName.trim()
+    const url = newUrl.trim()
+    if (!name || !/^https?:\/\/.+/i.test(url)) {
       setAddError('请填写名称和合法的 http(s) 链接')
       return
     }
-    await window.opia.feedSourceAdd({
-      name: newName.trim(),
-      url: newUrl.trim(),
+
+    const source = {
+      name,
+      url,
       enabled: true,
-      providerId: 'builtin-rss'
-    })
-    setNewName('')
-    setNewUrl('')
-    await reloadSources()
-    await refresh()
+      providerId: 'builtin-rss' as const
+    }
+    setAddingSource(true)
+    try {
+      await window.opia.feedSourceValidate(source)
+      await window.opia.feedSourceAdd(source)
+      setNewName('')
+      setNewUrl('')
+      await reloadSources()
+      await refresh()
+    } catch {
+      setAddError('订阅链接验证失败，请检查链接是否可访问且为有效 RSS/Atom 源')
+    } finally {
+      setAddingSource(false)
+    }
   }
 
   return (
@@ -269,23 +283,29 @@ export function SettingsPanel(): JSX.Element {
             <input
               placeholder="名称"
               value={newName}
+              disabled={addingSource}
               onChange={(e) => setNewName(e.target.value)}
               className="w-36 rounded-card border border-border bg-surface px-2 py-1.5 text-sm"
             />
             <input
               placeholder="https://example.com/rss.xml"
               value={newUrl}
+              disabled={addingSource}
               onChange={(e) => setNewUrl(e.target.value)}
               className="flex-1 rounded-card border border-border bg-surface px-2 py-1.5 text-sm"
             />
             <button
+              type="button"
+              disabled={addingSource}
+              aria-busy={addingSource}
               onClick={() => void addSource()}
-              className="flex items-center gap-1 rounded-card bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover"
+              className="flex items-center gap-1 rounded-card bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:cursor-wait disabled:opacity-70"
             >
-              <Plus size={15} /> 添加
+              {addingSource ? <LoaderCircle size={15} className="animate-spin" aria-hidden="true" /> : <Plus size={15} aria-hidden="true" />}
+              {addingSource ? '验证中…' : '添加'}
             </button>
           </div>
-          {addError && <p className="mt-1 text-xs text-accent">{addError}</p>}
+          {addError && <p role="alert" className="mt-1 text-xs text-accent">{addError}</p>}
         </Section>
 
         <Section title="偏好">

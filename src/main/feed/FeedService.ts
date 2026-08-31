@@ -31,6 +31,15 @@ export class FeedService {
     return source
   }
 
+  /** 验证订阅源可被 provider 解析；只抓取，不写入订阅源列表或文章缓存。 */
+  async validateSource(input: Omit<FeedSource, 'id'>): Promise<void> {
+    const provider = this.providers.get(input.providerId) ?? this.providers.get('builtin-rss')
+    if (!provider || !provider.canHandle(input.url)) {
+      throw new Error(`no provider for ${input.url}`)
+    }
+    await provider.fetch({ ...input, id: 'source-validation' })
+  }
+
   removeSource(id: string): void {
     // 内置橘鸦源不可删除（锁定，见 AGENTS.md 橘鸦定制阅读系统）
     if (id === JUYA_SOURCE_ID) return

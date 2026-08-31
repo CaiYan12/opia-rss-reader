@@ -82,6 +82,7 @@ describe('preload 桥', () => {
       'feedList',
       'feedRefresh',
       'feedSources',
+      'feedSourceValidate',
       'feedSourceAdd',
       'feedSourceRemove',
       'feedSourceToggle',

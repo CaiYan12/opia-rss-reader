@@ -23,6 +23,64 @@ test('订阅源 URL 为链接式：hover 下划线，点击按外链设置打开
   expect(calls).toEqual([['openExternal', 'https://daily.juya.uk/rss.xml']])
 })
 
+test('添加订阅源先验证链接：验证期间显示 SVG 加载状态，成功后才添加', async ({ page }) => {
+  await loadApp(page, 'default')
+  await openSettings(page)
+
+  await page.evaluate(() => {
+    window.opia.feedSourceValidate = async (source) => {
+      window.__stubCalls.push(['feedSourceValidate', source])
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  })
+
+  await page.getByPlaceholder('名称').fill('测试订阅源')
+  await page.getByPlaceholder('https://example.com/rss.xml').fill('https://example.com/valid.xml')
+  const addButton = page.getByRole('button', { name: '添加' })
+  await addButton.click()
+
+  await expect(page.getByRole('button', { name: '验证中…' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '验证中…' })).toHaveAttribute('aria-busy', 'true')
+  await expect(page.getByRole('button', { name: '验证中…' }).locator('svg')).toHaveClass(/animate-spin/)
+  await expect(page.getByRole('button', { name: '添加' })).toBeVisible()
+
+  const calls = await page.evaluate(() => window.__stubCalls)
+  const sourceCalls = calls.filter(
+    ([kind]) => kind === 'feedSourceValidate' || kind === 'feedSourceAdd'
+  )
+  expect(sourceCalls[0]).toEqual([
+    'feedSourceValidate',
+    {
+      name: '测试订阅源',
+      url: 'https://example.com/valid.xml',
+      enabled: true,
+      providerId: 'builtin-rss'
+    }
+  ])
+  expect(sourceCalls[1][0]).toBe('feedSourceAdd')
+})
+
+test('订阅链接验证失败时不添加源并显示错误', async ({ page }) => {
+  await loadApp(page, 'default')
+  await openSettings(page)
+
+  await page.evaluate(() => {
+    window.opia.feedSourceValidate = async () => {
+      throw new Error('invalid feed')
+    }
+  })
+
+  await page.getByPlaceholder('名称').fill('坏订阅源')
+  await page.getByPlaceholder('https://example.com/rss.xml').fill('https://example.com/invalid.xml')
+  await page.getByRole('button', { name: '添加' }).click()
+
+  await expect(page.getByRole('alert')).toHaveText(
+    '订阅链接验证失败，请检查链接是否可访问且为有效 RSS/Atom 源'
+  )
+  const calls = await page.evaluate(() => window.__stubCalls)
+  expect(calls.some(([kind]) => kind === 'feedSourceAdd')).toBe(false)
+})
+
 test('橘鸦风格亮/暗两侧常态显示（固定亮色模式亦同时可见）', async ({ page }) => {
   await loadApp(page, 'default') // themeMode='light'
   await openSettings(page)

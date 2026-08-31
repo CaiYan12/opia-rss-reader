@@ -4,6 +4,7 @@ export const IPC = {
   FeedList: 'feed:list',
   FeedRefresh: 'feed:refresh',
   FeedSources: 'feed:sources',
+  FeedSourceValidate: 'feed:source:validate',
   FeedSourceAdd: 'feed:source:add',
   FeedSourceRemove: 'feed:source:remove',
   FeedSourceToggle: 'feed:source:toggle',
@@ -35,6 +36,7 @@ export interface OpiaApi {
   feedList(sourceId?: string): Promise<Article[]>
   feedRefresh(sourceId?: string): Promise<{ added: number }>
   feedSources(): Promise<FeedSource[]>
+  feedSourceValidate(source: Omit<FeedSource, 'id'>): Promise<void>
   feedSourceAdd(source: Omit<FeedSource, 'id'>): Promise<FeedSource>
   feedSourceRemove(id: string): Promise<void>
   feedSourceToggle(id: string, enabled: boolean): Promise<void>

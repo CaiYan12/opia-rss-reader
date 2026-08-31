@@ -50,6 +50,7 @@ function createDeps() {
     list: vi.fn(() => ['articles']),
     refresh: vi.fn(async () => ({ added: 3 })),
     getSources: vi.fn(() => ['sources']),
+    validateSource: vi.fn(async () => undefined),
     addSource: vi.fn(() => 'addedSource'),
     removeSource: vi.fn(),
     toggleSource: vi.fn(),
@@ -126,6 +127,8 @@ describe('IPC 委托到服务层', () => {
     })
     expect(feed.refresh).toHaveBeenCalledWith('s1')
     expect(call(IPC.FeedSources)).toEqual(['sources'])
+    await expect(call<Promise<void>>(IPC.FeedSourceValidate, { url: 'https://example.com/rss.xml' })).resolves.toBeUndefined()
+    expect(feed.validateSource).toHaveBeenCalledWith({ url: 'https://example.com/rss.xml' })
     expect(call(IPC.FeedSourceSetDefault, 'a')).toEqual(['defaulted'])
     call(IPC.FeedSourceRemove, 'a')
     expect(feed.removeSource).toHaveBeenCalledWith('a')

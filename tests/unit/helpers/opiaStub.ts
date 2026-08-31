@@ -82,6 +82,7 @@ export function createOpiaStub(over: Partial<OpiaApi> = {}): OpiaStub {
     feedList: vi.fn(async (_sourceId?: string): Promise<Article[]> => []),
     feedRefresh: vi.fn(async (_sourceId?: string) => ({ added: 0 })),
     feedSources: vi.fn(async (): Promise<FeedSource[]> => [makeSource()]),
+    feedSourceValidate: vi.fn(async (_source: Omit<FeedSource, 'id'>) => undefined),
     feedSourceAdd: vi.fn(async (source: Omit<FeedSource, 'id'>) => ({ ...source, id: 'src-new' })),
     feedSourceRemove: vi.fn(async (_id: string) => undefined),
     feedSourceToggle: vi.fn(async (_id: string, _enabled: boolean) => undefined),

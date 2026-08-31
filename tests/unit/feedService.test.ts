@@ -130,6 +130,65 @@ describe('FeedService 订阅源增删', () => {
   })
 })
 
+describe('FeedService.validateSource', () => {
+  it('使用匹配 provider 抓取验证但不写入源列表或文章缓存', async () => {
+    const { store, state } = createFakeStore([])
+    const feed = new FeedService(store)
+    const { provider, fetch } = createFakeProvider('example-provider')
+    feed.registerProvider(provider)
+
+    await feed.validateSource({
+      name: '验证源',
+      url: 'https://example.com/feed.json',
+      enabled: true,
+      providerId: 'example-provider'
+    })
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'source-validation',
+        name: '验证源',
+        url: 'https://example.com/feed.json',
+        providerId: 'example-provider'
+      })
+    )
+    expect(state.sources).toEqual([])
+    expect(Object.keys(state.cache)).toHaveLength(0)
+    expect(state.setSourcesCalls).toBe(0)
+  })
+
+  it('没有可处理 provider 时拒绝验证', async () => {
+    const { store } = createFakeStore([])
+    const feed = new FeedService(store)
+
+    await expect(
+      feed.validateSource({
+        name: '无效源',
+        url: 'ftp://example.com/feed',
+        enabled: true,
+        providerId: 'missing-provider'
+      })
+    ).rejects.toThrowError(/no provider for ftp:\/\/example\.com\/feed/)
+  })
+
+  it('provider 抓取失败时向调用方传递验证失败', async () => {
+    const { store } = createFakeStore([])
+    const feed = new FeedService(store)
+    const error = new Error('invalid feed')
+    const { provider } = createFakeProvider('failing-provider', { error })
+    feed.registerProvider(provider)
+
+    await expect(
+      feed.validateSource({
+        name: '坏源',
+        url: 'https://example.com/bad.xml',
+        enabled: true,
+        providerId: 'failing-provider'
+      })
+    ).rejects.toBe(error)
+  })
+})
+
 describe('FeedService.setDefaultSource（默认订阅 ≤ 1 不变量）', () => {
   it('设为指定源：目标 true 其余 false', () => {
     const { store } = createFakeStore([

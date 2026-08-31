@@ -195,6 +195,7 @@ export function makeStubScript(scenario: Scenario): string {
       feedList: async (sourceId) =>
         window.__stubData.articles.filter((a) => !sourceId || a.sourceId === sourceId),
       feedRefresh: async () => ({ added: 0 }),
+      feedSourceValidate: async (source) => { window.__stubCalls.push(['feedSourceValidate', source]); },
       historyGet: async () => window.__stubData.history ?? {},
       historyMarkRead: async (guid) => {
         const h = window.__stubData.history ?? {};

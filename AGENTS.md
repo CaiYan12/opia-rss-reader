@@ -66,7 +66,7 @@ powershell -File build.ps1 -Run   # 构建并启动
 - **标签弹性宽度（2026-08-28）**：标签 `flex-1 min-w-[140px] max-w-[260px]` 等宽弹性分配（少标签铺满可用空间但不超过 260px，多标签收缩到 140px 后容器 `overflow-x-auto` 横向滚动）；「＋」`shrink-0` 紧跟最后标签。像素值为建议初值，真机验收标定。新建/激活标签自动滚动到可见（`scrollIntoView`）、关闭后 clamp `scrollLeft`。
 - **标签数量上限（2026-08-28）**：单一总上限 `MAX_TABS = 20`，覆盖所有标签类型与所有创建入口（守卫集中在 `useAppStore` 的 `openHomeTab`/`openReaderTab`/`openBrowserTab`/`openSettingsTab`，非只限「＋」）；`openSettingsTab` 单例复用（已存在 settings 标签则激活，不占额度）；恢复会话时 `truncateSavedSession(saved, MAX_TABS)` 截断（旧会话超限静默丢弃超出部分，`SavedSession` 契约不变）。超限拒绝创建并弹全局 toast「标签已达上限（20）」（`useToastStore` + `Toast.tsx`，`role="status" aria-live="polite"`，2.4s，连续触发不堆叠）。
 - **HomeView**：主页标签内容（订阅文章列表或 BlankPage 空页面引导页）；源切换入口在主页标签的下拉按钮，**没有**单独的订阅源标签行（SourceTabs 已删）。
-- **ReaderView / BrowserPage / SettingsPanel**：均为标签内容（阅读/内置浏览器 webview/设置），设置页无返回按钮（经标签栏关闭）。
+- **ReaderView / BrowserPage / SettingsPanel**：均为标签内容（阅读/内置浏览器 webview/设置），设置页无返回按钮（经标签栏关闭）。订阅源列表的 URL 为链接式按钮（2026-08-31）：hover 下划线，点击走 `openExternalSmart` 按外链设置打开（系统浏览器/内置标签展示 XML）。
 - **MiniView**：Mini 模式 = 同一窗口切换形态（360x480、置顶、保留任务栏入口），非独立窗口。**日期行可展开摘要（2026-08-31）**：手风琴单开（同时只展开一条，再点当前行收起）；橘鸦源展开简报（`parseJuyaIssue` 的概览条目纯文本，不含外链不响应点击），其他源展开限长文本摘要（优先 summary，缺省 DOMParser 剥离 contentHtml，`MINI_TEXT_LIMIT = 120` 字符截断加省略号，无内容则行不可展开）；「查看更多 →」= `openFromMini`：标记已读 + 新开阅读标签（走统一上限守卫，满员提示并留在 Mini）+ 成功后退出 Mini 回正常模式，全程不开外链（旧的 openExternalSmart 链路已移除）。纯逻辑在 `src/renderer/components/miniDigest.ts`（单测 miniDigest.test.ts，E2E mini.spec.ts；夹具文章简报内容相同，手风琴断言用摘要区域数量而非文本）。
 - **默认订阅**：数量 ≤ 1，允许为 0（此时主页 = 空页面）；设置页用星形按钮切换（实心=默认，点击取消）。
 - **会话持久化**：`SavedSession` 存于 electron-store，标签变化即落盘；reader 存 guid，重启从文章缓存解析。

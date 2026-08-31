@@ -149,7 +149,8 @@ export function SettingsPanel(): JSX.Element {
     setThemeForScheme,
     setJuyaStyle,
     reloadSources,
-    refresh
+    refresh,
+    openExternalSmart
   } =
     useAppStore()
   const [newName, setNewName] = useState('')
@@ -230,7 +231,15 @@ export function SettingsPanel(): JSX.Element {
                     }}
                   />
                   <span className="font-medium">{s.name}</span>
-                  <span className="flex-1 truncate text-text-secondary">{s.url}</span>
+                  {/* 订阅链接可点击：hover 下划线，点击按现有外链设置打开（系统浏览器/内置标签） */}
+                  <button
+                    type="button"
+                    title={`打开订阅链接：${s.url}`}
+                    onClick={() => void openExternalSmart(s.url)}
+                    className="flex-1 truncate text-left text-text-secondary underline-offset-2 hover:underline"
+                  >
+                    {s.url}
+                  </button>
                   <button
                     title={s.isDefault ? '取消默认订阅' : '设为默认订阅'}
                     onClick={() => void toggleDefault(s.id, s.isDefault === true)}

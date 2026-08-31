@@ -9,6 +9,20 @@ function styleSelectTrigger(page: Page, label: string) {
   return row.locator('button').first()
 }
 
+test('订阅源 URL 为链接式：hover 下划线，点击按外链设置打开', async ({ page }) => {
+  await loadApp(page, 'default')
+  await openSettings(page)
+
+  const urlLink = page.getByRole('button', { name: 'https://daily.juya.uk/rss.xml' })
+  await expect(urlLink).toBeVisible()
+  // 默认 externalLinkBehavior='system'：点击记录到 openExternal，且不开内置标签
+  await urlLink.click()
+  const calls = await page.evaluate(
+    () => window.__stubCalls.filter(([kind]) => kind === 'openExternal')
+  )
+  expect(calls).toEqual([['openExternal', 'https://daily.juya.uk/rss.xml']])
+})
+
 test('橘鸦风格亮/暗两侧常态显示（固定亮色模式亦同时可见）', async ({ page }) => {
   await loadApp(page, 'default') // themeMode='light'
   await openSettings(page)

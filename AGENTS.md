@@ -90,6 +90,7 @@ powershell -File build.ps1 -Run   # 构建并启动
 - **分流接线**：`ReaderView` 三重判据（源身份 + 风格开启 + 解析成功）→ 定制 `IssueView`；工具栏（收藏/原文）保持通用样式。`HomeView`：橘鸦源 + 风格开启 → 风格化期号列表（**遵循通用 `layout` 设置：预设/列数/显示字段**，见 `base.tsx` FeedList），否则原 `ArticleList` 路径。
 - **设置入口**：主题设置卡片内底部、`border-t` 分割线之下，「橘鸦定制阅读风格」亮/暗两个自绘 Select **常态显示**、`grid-cols-2` 左右分半占位（同「偏好」区样式；选项=关闭+五风格，即时生效）。
 - **测试基建**：`vitest`（纯逻辑，`tests/unit/`，配置 `vitest.config.ts`，happy-dom）+ `@playwright/test`（渲染层，`tests/e2e/`，驱动 `out/renderer` 构建产物 + `window.opia` 内存桩；webServer 健康检查必须用 `localhost`；keep-alive 下断言必须限定活动标签容器 `div.min-h-0.w-full`）。`tests/fixtures/` 为脱敏真实样本夹具，已加入 `.gitignore`（禁止提交）。命令：`npm test` / `npm run test:e2e`（后者先 `build:dir`）。
+- **单测扩展（2026-08-31）**：单测 268 项 / E2E 75 项。主进程代码（ipc/preload/FeedService/StoreService/ThemeService/PluginManager）用 `vi.mock('electron')` / `vi.mock('electron-store')` 捕获 `ipcMain.handle` 与 `exposeInMainWorld` 后以假依赖直调；FakeStore 等鸭型对象直接字面量 `as unknown as X` 注入，不必 mock。共享桩助手 `tests/unit/helpers/opiaStub.ts`（全部方法默认 `vi.fn`），E2E 注入式桩已补全全部 `OpiaApi` 方法。`ipcContract` + `opiaStubContract` 测试静态守卫 ipc-contract ↔ preload ↔ ipc.ts 三处同步与裸字符串通道（`window:mini-changed` 已删除）。插件契约行为由 `pluginManager.test.ts` 守护（含 `plugins/` 三示例真实可加载、`provides` 门控、错误隔离）。
 
 ## 窗口行为事实（Windows 实测）
 
@@ -110,4 +111,6 @@ powershell -File build.ps1 -Run   # 构建并启动
   - 自动化：tsc 零错误 / vitest 16/16 / Playwright 35/35；`npm run build` 由 Codex IDE 外构建成功。
   - 真机验收：Codex computer-use + 用户人工必做项 4/4 全部通过，无代码缺陷（清单见 `docs/PLAN-20260828.md` 阶段 9）。
   - 用户反馈三连跟进：订阅页遵循布局、视图内 nav 不缩放（zoom 下沉）、设置亮/暗风格常态分半（见 PLAN 交付报告「跟进修订」）。
-- [ ] 下迭代待定（在此维护）
+- [x] 测试基建补齐 + 插件 API 文档/示例（2026-08-31）：**完成**。README 计划两项落地——① IPC/FeedService/标签会话/主题系统自动化测试（vitest 268/268、Playwright 75/75、tsc 零错误、`npm run build` 成功）；② `docs/PLUGIN_API.md` + 三示例插件（example-json-feed / example-theme / example-hello）。顺带加固：插件主题注册逐个 try/catch（坏主题不再拖垮启动）、`readdirSync` 失败按根隔离、`collectThemes` 按 `provides` 门控、删除 `window:mini-changed` 裸通道、`plugin-api.ts` TSDoc 对齐实际行为。
+- [ ] Mini模式不完全：在橘鸦订阅下，mini模式只会显示一堆日期，点击日期则直接跳转到了正常模式新窗口，并以外链的形式打开了橘鸦订阅网站。预期：mini模式的日期左侧有三角形可做成可展开的样式，展开后展示简化内容（橘鸦订阅为简报部分），其他订阅展示文字内容并限定文字展示上线，超出阶段，可点击“查看更多 →”的链接跳转至正常模式，但依旧不要打开外链。
+- [ ] 其他待测试内容

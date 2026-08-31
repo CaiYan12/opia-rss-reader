@@ -13,7 +13,7 @@ Windows 桌面 AI 新闻 RSS 阅读器。默认订阅 [橘鸦AI早报](https://d
 - **Mini 模式**：无边框置顶小窗，整体可拖动，紧凑列表，一键切回
 - **历史记录**：已读 / 收藏 / 阅读时间持久化，保留天数可配
 - **自动刷新**：启动拉取 + 定时刷新（间隔可配）+ 手动刷新
-- **插件机制**：`plugins/` 目录加载，支持 FeedProvider / Theme / CardRenderer 三类注册点（示例见 `plugins/example-hello/`）
+- **插件机制**：`plugins/` 目录加载三类注册点 —— FeedProvider（订阅源抓取）与 Theme（主题）完整可用，CardRenderer 在 v1 仅登记元数据；契约、限制与排障见 [docs/PLUGIN_API.md](docs/PLUGIN_API.md)
 
 ## 🧰 技术栈
 
@@ -124,14 +124,30 @@ plugins/                  # 插件目录（含示例 example-hello）
 
 ## 🧩 插件开发
 
-在 `plugins/<your-plugin>/` 放置：
+插件是 `plugins/` 下的一个目录，含清单与 CommonJS 入口：
 
 ```
-manifest.json   # { id, name, version, main, provides: ["feed-provider"|"theme"|"card-renderer"] }
-index.cjs       # CommonJS，导出实现 OpiaPlugin 接口的对象（见 src/shared/plugin-api.ts）
+plugins/<your-plugin>/
+├── manifest.json   # { id, name, version, main, provides: ["feed-provider"|"theme"|"card-renderer"] }
+└── index.cjs       # 导出实现 OpiaPlugin 的对象（类型见 src/shared/plugin-api.ts）
 ```
 
-重启应用后自动加载，主进程日志可见注册结果。
+- `provides` 是**能力开关**：没声明的注册点，即使入口里带了对应字段也不会生效。
+- 加载发生在启动时（一次、同步、无热重载），改完插件需重启应用；没有 `init` / `dispose` 钩子。
+- 发行版是便携 exe，`app.asar` 内的 `plugins/` 只读 —— **用户插件请放 `%APPDATA%\Opia RSS Reader\plugins\`**。
+- 插件以 main 进程完整权限运行且未沙箱化；主题颜色会直接注入 CSS，核心不做净化。
+- 三类注册点可用度不同：**FeedProvider 与 Theme 完整可用，CardRenderer 在 v1 仅登记元数据、界面无变化。**
+
+完整契约、provider 选中规则、主题校验规则、排障日志与坑位清单见 **[docs/PLUGIN_API.md](docs/PLUGIN_API.md)**。
+可直接照抄的骨架见仓库内三个示例（`npm test` 会校验它们真实可加载）：
+
+| 示例 | 注册点 |
+| --- | --- |
+| `plugins/example-json-feed/` | `feed-provider` —— JSON Feed 1.1 解析器 |
+| `plugins/example-theme/` | `theme` —— 亮/暗各一的完整主题 |
+| `plugins/example-hello/` | `card-renderer` —— 仅元数据（演示 v1 未接通） |
+
+重启应用后自动加载，主进程日志 `[main] plugin registry: {...}` 可见注册结果。
 
 ---
 
@@ -139,8 +155,8 @@ index.cjs       # CommonJS，导出实现 OpiaPlugin 接口的对象（见 src/s
 
 这里的 TODO 是公开路线图，欢迎通过 [Issue](https://github.com/CaiYan12/opia-rss-reader/issues) 讨论优先级，或直接提交 PR 认领已经明确的任务。
 
-- [ ] 补充 IPC、FeedService、标签会话与主题系统的自动化测试
-- [ ] 完善 `FeedProvider`、`Theme`、`CardRenderer` 插件 API 文档与示例
+- [x] 补充 IPC、FeedService、标签会话与主题系统的自动化测试（`npm test`：契约三处同步守卫、provider 选中与源锁定、会话序列化与恢复截断、主题亮暗分类与校验）
+- [x] 完善 `FeedProvider`、`Theme`、`CardRenderer` 插件 API 文档与示例（[docs/PLUGIN_API.md](docs/PLUGIN_API.md) + `plugins/` 三个示例；CardRenderer 明确标注 v1 未接通）
 - [ ] 持续优化不同 Windows 环境下的兼容性、打包与升级体验
 - [ ] 根据社区反馈完善订阅管理、阅读体验与无障碍支持
 

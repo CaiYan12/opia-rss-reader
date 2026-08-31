@@ -34,7 +34,14 @@ app.whenReady().then(() => {
   // 插件管线：加载第三方 provider/theme/card-renderer
   const plugins = new PluginManager(feed)
   plugins.loadAll()
-  for (const t of plugins.collectThemes()) theme.registerPluginTheme(t)
+  // 非法插件主题逐个跳过：不能让一个坏主题拖垮整个启动流程（其余插件错误同样被逐个兜住）
+  for (const t of plugins.collectThemes()) {
+    try {
+      theme.registerPluginTheme(t)
+    } catch (err) {
+      console.error(`[main] plugin theme rejected: ${t?.id}`, err)
+    }
+  }
   store.migrateThemeSettings(theme.list())
   console.log('[main] plugin registry:', JSON.stringify(plugins.snapshot()))
 

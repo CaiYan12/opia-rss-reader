@@ -32,7 +32,14 @@ export class PluginManager {
 
   loadAll(): void {
     for (const root of this.scanRoots()) {
-      for (const entry of readdirSync(root, { withFileTypes: true })) {
+      let entries
+      try {
+        entries = readdirSync(root, { withFileTypes: true })
+      } catch (err) {
+        console.error(`[PluginManager] failed to scan ${root}:`, err)
+        continue
+      }
+      for (const entry of entries) {
         if (!entry.isDirectory()) continue
         const dir = join(root, entry.name)
         try {
@@ -64,9 +71,11 @@ export class PluginManager {
     console.log(`[PluginManager] loaded ${manifest.id}@${manifest.version}`)
   }
 
-  /** 插件声明的主题（由调用方合并进 ThemeService 列表） */
+  /** 插件声明的主题（由调用方合并进 ThemeService 列表）；未在 provides 声明 "theme" 的插件其 themes 不生效 */
   collectThemes(): ThemeTokens[] {
-    return this.plugins.flatMap((p) => p.instance.themes ?? [])
+    return this.plugins
+      .filter((p) => p.manifest.provides.includes('theme'))
+      .flatMap((p) => p.instance.themes ?? [])
   }
 
   snapshot(): PluginRegistrySnapshot {

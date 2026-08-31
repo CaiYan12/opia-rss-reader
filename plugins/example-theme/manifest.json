@@ -1,0 +1,7 @@
+{
+  "id": "example-theme",
+  "name": "示例主题插件",
+  "version": "0.1.0",
+  "main": "index.cjs",
+  "provides": ["theme"]
+}

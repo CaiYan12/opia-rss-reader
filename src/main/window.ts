@@ -131,6 +131,6 @@ export function toggleMiniMode(): boolean {
     if (wasMaximized) mainWindow.maximize()
   }
 
-  mainWindow.webContents.send('window:mini-changed', miniMode)
+  // Mini 状态经返回值由 IPC 回传渲染层，无需额外推送通道
   return miniMode
 }

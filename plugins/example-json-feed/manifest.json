@@ -1,0 +1,7 @@
+{
+  "id": "example-json-feed",
+  "name": "示例 JSON Feed 订阅源",
+  "version": "0.1.0",
+  "main": "index.cjs",
+  "provides": ["feed-provider"]
+}

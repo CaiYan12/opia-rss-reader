@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Article, FeedSource, SavedSession, Settings } from '../../src/shared/types'
 import { DEFAULT_SETTINGS, DEFAULT_SOURCE } from '../../src/shared/types'
@@ -7,7 +7,10 @@ import { BUILTIN_THEMES } from '../../src/main/theme/builtinThemes'
 /** Playwright 渲染层验证辅助：注入 window.opia 桩（数据在内存，不落盘）。
  *  场景由 URL 参数决定初始数据；settingsSet 等调用会修改内存状态并记录到 __stubCalls。 */
 
-const fixtureHtml = readFileSync(join(__dirname, '../fixtures/juya-content.html'), 'utf-8')
+// 夹具目录按项目约定不入库（见 .gitignore）；缺失时降级为空内容，
+// 使本模块仍可被单测导入以校验桩与契约同形。
+const FIXTURE_PATH = join(process.cwd(), 'tests/fixtures/juya-content.html')
+const fixtureHtml = existsSync(FIXTURE_PATH) ? readFileSync(FIXTURE_PATH, 'utf-8') : ''
 
 const SVG_COVER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='180'%3E%3Crect width='100%25' height='100%25' fill='%23c1502e'/%3E%3C/svg%3E"
@@ -184,7 +187,38 @@ export function makeStubScript(scenario: Scenario): string {
       sessionSave: async (session) => { window.__stubCalls.push(['sessionSave', session]); },
       themeList: async () => window.__stubData.themes,
       themeGet: async (id) => window.__stubData.themes.find((t) => t.id === id) ?? null,
+      themeSave: async (theme) => {
+        window.__stubCalls.push(['themeSave', theme]);
+        const rest = window.__stubData.themes.filter((t) => t.id !== theme.id);
+        window.__stubData.themes = [...rest, { ...theme, builtin: false }];
+      },
+      themeDelete: async (id) => {
+        window.__stubCalls.push(['themeDelete', id]);
+        window.__stubData.themes = window.__stubData.themes.filter((t) => t.id !== id);
+      },
       themeSystemGet: async () => false,
+      feedSourceAdd: async (source) => {
+        window.__stubCalls.push(['feedSourceAdd', source]);
+        const created = { ...source, id: 'src-' + window.__stubData.sources.length + '-' + Date.now().toString(36) };
+        window.__stubData.sources = [...window.__stubData.sources, created];
+        return created;
+      },
+      feedSourceRemove: async (id) => {
+        window.__stubCalls.push(['feedSourceRemove', id]);
+        window.__stubData.sources = window.__stubData.sources.filter((s) => s.id !== id);
+      },
+      feedSourceToggle: async (id, enabled) => {
+        window.__stubCalls.push(['feedSourceToggle', id, enabled]);
+        window.__stubData.sources = window.__stubData.sources.map((s) => (s.id === id ? { ...s, enabled } : s));
+      },
+      feedSourceSetDefault: async (id) => {
+        window.__stubCalls.push(['feedSourceSetDefault', id]);
+        window.__stubData.sources = window.__stubData.sources.map((s) => ({
+          ...s,
+          isDefault: id === null ? false : s.id === id
+        }));
+        return window.__stubData.sources;
+      },
       toggleMini: async () => false,
       windowMinimize: async () => {},
       windowToggleMaximize: async () => {},

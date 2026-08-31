@@ -67,7 +67,7 @@ powershell -File build.ps1 -Run   # 构建并启动
 - **标签数量上限（2026-08-28）**：单一总上限 `MAX_TABS = 20`，覆盖所有标签类型与所有创建入口（守卫集中在 `useAppStore` 的 `openHomeTab`/`openReaderTab`/`openBrowserTab`/`openSettingsTab`，非只限「＋」）；`openSettingsTab` 单例复用（已存在 settings 标签则激活，不占额度）；恢复会话时 `truncateSavedSession(saved, MAX_TABS)` 截断（旧会话超限静默丢弃超出部分，`SavedSession` 契约不变）。超限拒绝创建并弹全局 toast「标签已达上限（20）」（`useToastStore` + `Toast.tsx`，`role="status" aria-live="polite"`，2.4s，连续触发不堆叠）。
 - **HomeView**：主页标签内容（订阅文章列表或 BlankPage 空页面引导页）；源切换入口在主页标签的下拉按钮，**没有**单独的订阅源标签行（SourceTabs 已删）。
 - **ReaderView / BrowserPage / SettingsPanel**：均为标签内容（阅读/内置浏览器 webview/设置），设置页无返回按钮（经标签栏关闭）。
-- **MiniView**：Mini 模式 = 同一窗口切换形态（360x480、置顶、保留任务栏入口），非独立窗口。
+- **MiniView**：Mini 模式 = 同一窗口切换形态（360x480、置顶、保留任务栏入口），非独立窗口。**日期行可展开摘要（2026-08-31）**：手风琴单开（同时只展开一条，再点当前行收起）；橘鸦源展开简报（`parseJuyaIssue` 的概览条目纯文本，不含外链不响应点击），其他源展开限长文本摘要（优先 summary，缺省 DOMParser 剥离 contentHtml，`MINI_TEXT_LIMIT = 120` 字符截断加省略号，无内容则行不可展开）；「查看更多 →」= `openFromMini`：标记已读 + 新开阅读标签（走统一上限守卫，满员提示并留在 Mini）+ 成功后退出 Mini 回正常模式，全程不开外链（旧的 openExternalSmart 链路已移除）。纯逻辑在 `src/renderer/components/miniDigest.ts`（单测 miniDigest.test.ts，E2E mini.spec.ts；夹具文章简报内容相同，手风琴断言用摘要区域数量而非文本）。
 - **默认订阅**：数量 ≤ 1，允许为 0（此时主页 = 空页面）；设置页用星形按钮切换（实心=默认，点击取消）。
 - **会话持久化**：`SavedSession` 存于 electron-store，标签变化即落盘；reader 存 guid，重启从文章缓存解析。
 - **快捷键**：关闭/切换标签组合键可在设置中自定义（ShortcutCapture 组件捕获录入）。
@@ -112,5 +112,5 @@ powershell -File build.ps1 -Run   # 构建并启动
   - 真机验收：Codex computer-use + 用户人工必做项 4/4 全部通过，无代码缺陷（清单见 `docs/PLAN-20260828.md` 阶段 9）。
   - 用户反馈三连跟进：订阅页遵循布局、视图内 nav 不缩放（zoom 下沉）、设置亮/暗风格常态分半（见 PLAN 交付报告「跟进修订」）。
 - [x] 测试基建补齐 + 插件 API 文档/示例（2026-08-31）：**完成**。README 计划两项落地——① IPC/FeedService/标签会话/主题系统自动化测试（vitest 268/268、Playwright 75/75、tsc 零错误、`npm run build` 成功）；② `docs/PLUGIN_API.md` + 三示例插件（example-json-feed / example-theme / example-hello）。顺带加固：插件主题注册逐个 try/catch（坏主题不再拖垮启动）、`readdirSync` 失败按根隔离、`collectThemes` 按 `provides` 门控、删除 `window:mini-changed` 裸通道、`plugin-api.ts` TSDoc 对齐实际行为。
-- [ ] Mini模式不完全：在橘鸦订阅下，mini模式只会显示一堆日期，点击日期则直接跳转到了正常模式新窗口，并以外链的形式打开了橘鸦订阅网站。预期：mini模式的日期左侧有三角形可做成可展开的样式，展开后展示简化内容（橘鸦订阅为简报部分），其他订阅展示文字内容并限定文字展示上线，超出阶段，可点击“查看更多 →”的链接跳转至正常模式，但依旧不要打开外链。
+- [x] Mini模式不完全（2026-08-31）：**完成**。日期行左侧三角可展开（手风琴单开）：橘鸦订阅展开简报（概览）纯文本，其他订阅展示限长（120 字符）文本摘要；「查看更多 →」跳正常模式阅读页并退出 Mini，不开外链；标签满上限时提示并留在 Mini。验证：tsc 零错误 / vitest 279/279 / Playwright 78/78。
 - [ ] 其他待测试内容

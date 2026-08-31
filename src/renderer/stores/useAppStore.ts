@@ -56,7 +56,8 @@ interface AppState {
   reloadThemes(): Promise<ThemeTokens[]>
   /** 按 externalLinkBehavior 设置打开外链：system=系统浏览器，builtin=新开内置浏览器标签 */
   openExternalSmart(url: string): Promise<void>
-  /** Mini 模式点击文章：标记已读并打开原文（不进入阅读视图） */
+  /** Mini 模式「查看更多」：标记已读、退出 Mini 并在正常模式新开阅读标签（不开外链）；
+   *  标签满上限时提示并留在 Mini */
   openFromMini(article: Article): Promise<void>
   /** 新开主页标签（内容按 homeContent 设置；feed 时选中默认订阅）并激活 */
   openHomeTab(): void
@@ -364,7 +365,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
     }))
-    await get().openExternalSmart(article.link)
+    // 查看更多 = 回正常模式读全文（阅读标签），不开外链；
+    // 上限守卫在 openReaderTab 内：满员弹提示且不切标签，此时不退出 Mini
+    get().openReaderTab(article)
+    const active = get().tabs.find((t) => t.id === get().activeTabId)
+    if (active?.kind === 'reader' && get().mini) {
+      const mini = await window.opia.toggleMini()
+      set({ mini })
+    }
   },
 
   openHomeTab() {

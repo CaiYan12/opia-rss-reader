@@ -332,17 +332,20 @@ describe('标签数量上限', () => {
     await expect(toast).toHaveText('标签已达上限（20）')
   })
 
-  test('Mini 模式满标签时点击文章仍显示上限提示', async ({ page }) => {
+  test('Mini 模式满标签时点「查看更多」仍显示上限提示并留在 Mini', async ({ page }) => {
     await loadApp(page, 'tabs20Builtin')
     await page.evaluate(() => {
       window.opia.toggleMini = async () => true
     })
     await page.getByRole('banner').getByTitle('Mini').click()
-    const miniArticle = page.locator('ul button').first()
-    await expect(miniArticle).toBeVisible()
-    await miniArticle.click()
+    const miniRow = page.locator('ul button').first()
+    await expect(miniRow).toBeVisible()
+    await miniRow.click() // 展开摘要
+    await page.getByRole('button', { name: /查看更多/ }).click()
     await expect(page.locator('.toast')).toBeVisible()
     await expect(page.locator('.toast')).toHaveText('标签已达上限（20）')
+    // 未退出 Mini（标签未切走）
+    await expect(miniRow).toBeVisible()
   })
 
   test('连续触发上限提示不堆叠（单一 toast）', async ({ page }) => {

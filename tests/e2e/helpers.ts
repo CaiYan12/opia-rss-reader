@@ -62,6 +62,7 @@ export type Scenario =
   | 'tabs20Builtin'
   | 'tabs25'
   | 'tabsMany'
+  | 'miniText'
 
 export function makeStubScript(scenario: Scenario): string {
   const settings: Settings = { ...DEFAULT_SETTINGS }
@@ -115,6 +116,30 @@ export function makeStubScript(scenario: Scenario): string {
     settings.uiZoom = 2
   } else if (scenario === 'tabs20Builtin') {
     settings.externalLinkBehavior = 'builtin'
+  } else if (scenario === 'miniText') {
+    // Mini 展开摘要：非橘鸦文本源（默认源唯一，Mini 列表直接展示）
+    sources = [
+      {
+        id: 'src-text',
+        name: '文本源',
+        url: 'https://example.com/rss.xml',
+        enabled: true,
+        providerId: 'builtin-rss',
+        isDefault: true
+      }
+    ]
+    articles = [
+      {
+        guid: 'text-1',
+        sourceId: 'src-text',
+        title: '普通文章标题',
+        link: 'https://example.com/a1',
+        pubDate: '2026-08-30T00:00:00.000Z',
+        summary: '',
+        contentHtml: '<p>' + '这是用于验证文本摘要截断的段落内容。'.repeat(20) + '</p>',
+        coverUrl: null
+      }
+    ]
   }
 
   // ---- 标签栏场景：startupOpen=lastSession，经 sessionGet 恢复初始会话 ----

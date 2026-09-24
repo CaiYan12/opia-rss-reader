@@ -34,7 +34,7 @@ Windows 桌面 RSS 阅读器（Electron + React + TypeScript），默认订阅�
 - 应用已加单实例锁；测试多开行为时第二实例会自动退出属预期。
 - **build.ps1 含中文注释，必须保持 UTF-8 with BOM**：`powershell.exe`（5.1）对无 BOM 文件按 GBK 误读中文注释导致语法损坏（`Unexpected token '}'`）；pwsh 7 无此问题，验证脚本须用 `powershell -File build.ps1` 实测。
 - electron-builder 下载 Electron zip 偶发 TLS 断连（CN 网络）：命令级设 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 与 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/` 重试即可，勿写入项目配置。
-- build.ps1 已自动化发行：构建前清理 build/release 全部旧产物，构建后自动在 `release/` 生成三形态（`{name}-{ver}-win32-x64\` 解包目录 + `.zip` + `-portable.exe`），命名跟随 electron-builder 产物规则。
+- build.ps1 已自动化发行：构建前清理 build/release 全部旧产物，构建后自动在 `release/` 生成三形态（`{name}-v{ver}-win32-x64\` 解包目录 + `.zip` + `-portable.exe`），命名跟随 electron-builder 产物规则。**三形态统一带 `v` 前缀（2026-09-24 起）**，四处同步：`package.json` 的 `portable.artifactName`、`build.ps1` 的 `$releaseBase`、`build.bat` 的 `DST` 与 portable 复制判断、README 产物表。
 
 ## 常用命令
 
@@ -115,4 +115,5 @@ powershell -File build.ps1 -Run   # 构建并启动
 - [x] 橘鸦全风格定制排版 + 场景化背景（2026-09-24 第二轮）：7 风格手写模板摆脱工厂统一骨架（shared.tsx 原子层 + parts.tsx FeedShell/EntrySplit/Scene）；图文排版 per-style（y2k/nocturne 图文并排、pop/dreamcore 首图通栏、folio/editorial plate 题注、wabi 奇偶错位）；场景背景 dreamcore=synthwave（条纹太阳 mask + 透视霓虹网格滚动）、y2k 暗=星空+地平网格、folio=信纸格线+印章水印、editorial=颗粒+裁切角标；动效放开（reduced-motion 降级底线保留），root 永不挂 animation。
 - [x] 测试基建补齐 + 插件 API 文档/示例（2026-08-31）：**完成**。README 计划两项落地——① IPC/FeedService/标签会话/主题系统自动化测试（vitest 268/268、Playwright 75/75、tsc 零错误、`npm run build` 成功）；② `docs/PLUGIN_API.md` + 三示例插件（example-json-feed / example-theme / example-hello）。顺带加固：插件主题注册逐个 try/catch（坏主题不再拖垮启动）、`readdirSync` 失败按根隔离、`collectThemes` 按 `provides` 门控、删除 `window:mini-changed` 裸通道、`plugin-api.ts` TSDoc 对齐实际行为。
 - [x] Mini模式不完全（2026-08-31）：**完成**。日期行左侧三角可展开（手风琴单开）：橘鸦订阅展开简报（概览）纯文本，其他订阅展示限长（120 字符）文本摘要；「查看更多 →」跳正常模式阅读页并退出 Mini，不开外链；标签满上限时提示并留在 Mini。验证：tsc 零错误 / vitest 279/279 / Playwright 78/78。
+- [ ] v0.2.0 发版（2026-09-24）：八风格重设计 + 全风格定制排版 + 场景化背景 + 发行产物命名统一为 `v` 前缀。构建由用户在 IDE 外执行 `build.bat`；发布方式：附注 tag `v0.2.0` + GitHub Release（latest，附件 zip 与 portable.exe，notes 含大小与 SHA-256 校验表）。
 - [ ] 其他待测试内容

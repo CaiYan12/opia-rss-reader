@@ -10,7 +10,7 @@ rem
 rem  Outputs:
 rem    release\OpiaRSSReader-v<VERSION>-win32-x64\          full app dir
 rem    release\OpiaRSSReader-v<VERSION>-win32-x64.zip       zip archive
-rem    release\OpiaRSSReader-<VERSION>-portable.exe         portable exe
+rem    release\OpiaRSSReader-v<VERSION>-portable.exe         portable exe
 rem  NOTE: keep this file ASCII-only. cmd on a GBK console
 rem  mis-parses UTF-8 Chinese and < > in comments break it.
 rem ============================================================
@@ -86,8 +86,8 @@ if errorlevel 1 (
 )
 
 rem Copy portable single-file exe as well
-if exist "%~dp0build\OpiaRSSReader-%APP_VERSION%-portable.exe" (
-    copy /y "%~dp0build\OpiaRSSReader-%APP_VERSION%-portable.exe" "%~dp0release\" >nul
+if exist "%~dp0build\OpiaRSSReader-v%APP_VERSION%-portable.exe" (
+    copy /y "%~dp0build\OpiaRSSReader-v%APP_VERSION%-portable.exe" "%~dp0release\" >nul
     echo [release] portable exe copied
 )
 

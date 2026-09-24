@@ -8,7 +8,7 @@ Windows 桌面 AI 新闻 RSS 阅读器。默认订阅 [橘鸦AI早报](https://d
 - **标签栏**：Chrome 式标签页——可拖动排序（全部标签自由重排）、等宽弹性宽度（少量标签铺满、溢出横向滚动）、数量上限（20）与超限提示；标签会话重启自动恢复
 - **三种布局预设**：紧凑列表、卡片网格（1–4 列可调）、杂志风；卡片字段（封面 / 摘要 / 时间 / 来源）可独立开关
 - **应用内阅读**：渲染 RSS `content:encoded` 全文（DOMPurify 消毒），图片懒加载；点击行为可在设置中切换为浏览器打开
-- **橘鸦定制阅读系统**：内置橘鸦AI早报源提供五套独立视觉风格（卡片主题式 / 千禧网页式 / 波普艺术式 / 90 年代报刊式 / 蒸汽梦核式）× 亮暗双变体；订阅页遵循「布局」的预设 / 列数 / 显示字段；可整体关闭回退通用样式；内置源不可删除、不可停用
+- **橘鸦定制阅读系统**：内置橘鸦AI早报源提供八套独立视觉风格（纸感精读式 / 千禧网页式 / 波普艺术式 / 90 年代报刊式 / 蒸汽梦核式 / 暗夜精修式 / 杂志编辑式 / 侘寂日杂式）× 亮暗双变体；每风格独立设计排版（图文并排、首图通栏、题注装裱、奇偶错位等）与场景化背景（synthwave 条纹太阳与透视网格、星空、信纸格线与印章水印等）；订阅页遵循「布局」的预设 / 列数 / 显示字段；可整体关闭回退通用样式；内置源不可删除、不可停用
 - **主题系统**：内置 Windows-Light、Windows-Dark、Claude-Design、Juya-Daily 四套主题；主题编辑器支持取色、字体、字号、圆角实时预览并另存为自定义主题
 - **Mini 模式**：无边框置顶小窗，整体可拖动，日期行可展开——橘鸦源展示简报、其他源展示限长摘要，「查看更多」回正常模式阅读（不开外链），一键切回
 - **历史记录**：已读 / 收藏 / 阅读时间持久化，保留天数可配
@@ -58,7 +58,7 @@ npm run dev
 
 流程：
 
-1. 调用 `build.ps1` 完成 electron-vite + electron-builder 生产构建 → `build/OpiaRSSReader-<version>-portable.exe`
+1. 调用 `build.ps1` 完成 electron-vite + electron-builder 生产构建 → `build/OpiaRSSReader-v<version>-portable.exe`
 2. 精简 locales（仅保留 en-US / zh-CN）、删除残留 `default_app.asar` 与 `.pdb` 调试符号
 3. 组装完整可运行 app 到 `release/`，并生成 zip 与 portable exe
 
@@ -68,7 +68,7 @@ npm run dev
 |---|---|
 | `OpiaRSSReader-v<version>-win32-x64\` | 完整 app 目录（exe + dll + 资源） |
 | `OpiaRSSReader-v<version>-win32-x64.zip` | 同名压缩包，供 GitHub Releases 上传 |
-| `OpiaRSSReader-<version>-portable.exe` | 单文件便携版 |
+| `OpiaRSSReader-v<version>-portable.exe` | 单文件便携版 |
 
 > 构建前若检测到 VSCode 正在运行，`build.bat` 会提示先关闭——VSCode 的 AI 扩展会扫描并锁定 `build/` 下的 asar 文件，导致 electron-builder 报 EBUSY。
 

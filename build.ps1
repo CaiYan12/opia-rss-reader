@@ -73,11 +73,12 @@ if (Test-Path "$PSScriptRoot\release") {
         ForEach-Object { Remove-Item -Recurse -Force $_.FullName -ErrorAction SilentlyContinue }
 }
 
-# Release naming follows electron-builder's default artifact style:
-# productName (spaces stripped) + version + os-arch.
+# Release naming follows the unified convention (2026-09-24):
+# productName (spaces stripped) + "v" + version + os-arch, for all three artifacts
+# (unpacked dir / zip / portable exe — the latter via package.json portable.artifactName).
 $pkg = Get-Content "$PSScriptRoot\package.json" -Encoding UTF8 | ConvertFrom-Json
 $productName = ($pkg.build.productName -replace '\s', '')
-$releaseBase = "$productName-$($pkg.version)-win32-x64"
+$releaseBase = "$productName-v$($pkg.version)-win32-x64"
 
 Write-Host "[build] electron-vite build + electron-builder ..." -ForegroundColor Cyan
 npm run build

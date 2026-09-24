@@ -1,6 +1,6 @@
 {
   "name": "opia-rss-reader",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Windows desktop AI news RSS reader",
   "main": "out/main/index.js",
@@ -30,7 +30,7 @@
       "icon": "resources/icon.ico"
     },
     "portable": {
-      "artifactName": "OpiaRSSReader-${version}-portable.${ext}"
+      "artifactName": "OpiaRSSReader-v${version}-portable.${ext}"
     }
   },
   "dependencies": {

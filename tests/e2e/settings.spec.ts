@@ -95,7 +95,7 @@ test('橘鸦风格亮/暗两侧常态显示（固定亮色模式亦同时可见�
   ).toBeVisible()
 })
 
-test('亮色风格下拉包含 关闭 + 五种风格选项', async ({ page }) => {
+test('亮色风格下拉包含 关闭 + 八种风格选项', async ({ page }) => {
   await loadApp(page, 'default')
   await openSettings(page)
 
@@ -104,11 +104,14 @@ test('亮色风格下拉包含 关闭 + 五种风格选项', async ({ page }) =>
   await expect(menu).toBeVisible()
   for (const label of [
     '关闭（使用通用样式）',
-    '卡片主题式',
+    '纸感精读式',
     '千禧网页式',
     '波普艺术式',
     '90 年代报刊式',
-    '蒸汽梦核式'
+    '蒸汽梦核式',
+    '暗夜精修式',
+    '杂志编辑式',
+    '侘寂日杂式'
   ]) {
     await expect(menu.getByText(label, { exact: true })).toBeVisible()
   }

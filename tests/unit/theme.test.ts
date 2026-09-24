@@ -181,8 +181,8 @@ describe('resolveJuyaVariant（橘鸦风格三态解析）', () => {
   })
 
   it('跟随系统时按系统亮暗取对应侧字段', () => {
-    const base = { themeMode: 'system' as const, juyaLightStyleId: 'card' as const, juyaDarkStyleId: 'pop' as const }
-    expect(resolveJuyaVariant(settings(base), false)?.id).toBe('card-light')
+    const base = { themeMode: 'system' as const, juyaLightStyleId: 'folio' as const, juyaDarkStyleId: 'pop' as const }
+    expect(resolveJuyaVariant(settings(base), false)?.id).toBe('folio-light')
     expect(resolveJuyaVariant(settings(base), true)?.id).toBe('pop-dark')
   })
 
@@ -200,14 +200,26 @@ describe('resolveJuyaVariant（橘鸦风格三态解析）', () => {
     expect(meta?.styleId).toBe('dreamcore')
   })
 
-  it('注册表提供五风格 × 亮暗双变体共 10 项', () => {
-    expect(JUYA_STYLES).toHaveLength(10)
+  it('注册表提供八风格 × 亮暗双变体共 16 项', () => {
+    expect(JUYA_STYLES).toHaveLength(16)
     const styleIds = new Set(JUYA_STYLES.map((s) => s.styleId))
-    expect(styleIds.size).toBe(5)
+    expect(styleIds.size).toBe(8)
     for (const styleId of styleIds) {
       const schemes = JUYA_STYLES.filter((s) => s.styleId === styleId).map((s) => s.colorScheme)
       expect(new Set(schemes).size, String(styleId)).toBe(2)
     }
+  })
+
+  it('新增风格（nocturne/editorial/wabi）按亮暗正确解析', () => {
+    expect(
+      resolveJuyaVariant(settings({ themeMode: 'dark', juyaDarkStyleId: 'nocturne' }), true)?.id
+    ).toBe('nocturne-dark')
+    expect(
+      resolveJuyaVariant(settings({ themeMode: 'light', juyaLightStyleId: 'editorial' }), false)?.id
+    ).toBe('editorial-light')
+    expect(
+      resolveJuyaVariant(settings({ themeMode: 'light', juyaLightStyleId: 'wabi' }), false)?.id
+    ).toBe('wabi-light')
   })
 
   it('未知 styleId 解析为 null 而非抛错', () => {

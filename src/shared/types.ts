@@ -46,7 +46,33 @@ export interface ShortcutConfig {
 }
 
 /** 橘鸦定制阅读风格标识。'off' = 关闭（回退通用阅读页）。 */
-export type JuyaStyleId = 'off' | 'card' | 'y2k' | 'pop' | 'newsprint90s' | 'dreamcore'
+export type JuyaStyleId =
+  | 'off'
+  | 'folio'
+  | 'y2k'
+  | 'pop'
+  | 'newsprint90s'
+  | 'dreamcore'
+  | 'nocturne'
+  | 'editorial'
+  | 'wabi'
+
+/** 橘鸦定制阅读风格合法 id 集合（含 'off'）。主进程迁移/清洗用（见 StoreService）。 */
+export const JUYA_STYLE_IDS: readonly JuyaStyleId[] = [
+  'off',
+  'folio',
+  'y2k',
+  'pop',
+  'newsprint90s',
+  'dreamcore',
+  'nocturne',
+  'editorial',
+  'wabi'
+]
+
+/** 橘鸦定制阅读风格默认值（2026-09-24 重设计：'card' 被 'folio' 取代）。 */
+export const DEFAULT_JUYA_LIGHT: JuyaStyleId = 'folio'
+export const DEFAULT_JUYA_DARK: JuyaStyleId = 'nocturne'
 
 /** 橘鸦 AI 早报内置源的唯一身份判据（用户新增源只会生成 'src-*' id，不会冲突）。 */
 export const JUYA_SOURCE_ID = 'juya-daily'
@@ -146,8 +172,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   miniSize: { w: 360, h: 480 },
   uiZoom: 1,
-  juyaLightStyleId: 'card',
-  juyaDarkStyleId: 'card'
+  juyaLightStyleId: DEFAULT_JUYA_LIGHT,
+  juyaDarkStyleId: DEFAULT_JUYA_DARK
 }
 
 export const DEFAULT_SOURCE: FeedSource = {

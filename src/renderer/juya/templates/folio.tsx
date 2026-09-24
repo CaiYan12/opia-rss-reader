@@ -1,19 +1,26 @@
 import { EntryTitle, ImageGrid, Lead, LinksBlock, OverviewItems, Paragraphs } from './shared'
-import { DefaultFeedItem, FeedShell, Scene } from './parts'
+import { DefaultFeedItem, FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
-const VARIANT_CLASS = 'jydream'
+const VARIANT_CLASS = 'jyfolio'
 
-/** 蒸汽梦核式（第二轮定制排版）：synthwave 场景（条纹太阳 + 透视霓虹网格，Scene 固定层），
- *  条目首图通栏 21/9 + 其余两列子网格（hero 媒体），毛玻璃卡片即文字遮罩。 */
+/** 纸感精读式（第二轮定制排版）：刊头两端排布（标题 + 竖排日期）+ 朱色短粗线与印章水印，
+ *  概览改两列目录（点状引线），条目图片 plate 题注装裱；信纸横格与朱丝栏叠在内容区背景。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
-      <Scene sun grid="persp" />
       <div className="juya-issue">
         <header className="juya-masthead">
           <h1>{issue.heading || article.title}</h1>
+          <span className="juya-date-line">
+            {new Date(article.pubDate).toLocaleDateString('zh-CN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              weekday: 'long'
+            })}
+          </span>
         </header>
         {issue.overview && <OverviewItems overview={issue.overview} onOpenLink={onOpenLink} />}
         {issue.sections.map((section) => (
@@ -24,7 +31,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
                 <EntryTitle entry={entry} onOpenLink={onOpenLink} />
                 {entry.lead && <Lead lead={entry.lead} />}
                 <Paragraphs paragraphs={entry.paragraphs} />
-                {entry.images.length > 0 && <ImageGrid images={entry.images} mode="hero" />}
+                {entry.images.length > 0 && <ImageGrid images={entry.images} mode="plate" />}
                 <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
               </article>
             ))}
@@ -50,4 +57,4 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
   )
 }
 
-export const dreamcoreTemplate: JuyaTemplate = { IssueView, FeedList }
+export const folioTemplate: JuyaTemplate = { IssueView, FeedList }

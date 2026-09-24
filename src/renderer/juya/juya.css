@@ -1,5 +1,5 @@
 /* ==========================================================================
-   橘鸦定制阅读风格样式（五风格 × 亮暗双变体）。
+   橘鸦定制阅读风格样式（八风格 × 亮暗双变体 = 16 变体，2026-09-24 重设计）。
    规则：全部样式集中本文件；组件侧只挂类名，不内联颜色。
    变体作用域：[data-juya-variant="<styleId>-<scheme>"] 定义调色板 token，
    结构类 .juya-* 消费 token；风格专属结构类 .jy<abbr>-* 叠加版式差异。
@@ -139,6 +139,76 @@
 .juya-media img {
   border-radius: var(--jy-radius, 8px);
   border: 1px solid var(--jy-border);
+}
+
+/* 图集网格：自适应多列海报 */
+.juya-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+/* 大图横幅：首图通栏 21/9，其余图片两列子网格 */
+.juya-media-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.juya-media-hero img:first-child {
+  grid-column: 1 / -1;
+  aspect-ratio: 21 / 9;
+  object-fit: cover;
+}
+
+/* 题注装裱：figure + figcaption */
+.juya-media-plate {
+  gap: 14px;
+}
+
+.juya-plate {
+  margin: 0;
+  padding: 10px;
+  background: var(--jy-card);
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius, 8px);
+}
+
+.juya-plate figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--jy-muted);
+}
+
+/* 图文并排：正文与图左右分栏（flip 由 .juya-entry-alt 反转），窄窗回落纵排 */
+.juya-entry-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.juya-entry-alt .juya-entry-row {
+  flex-direction: row-reverse;
+}
+
+.juya-entry-row .juya-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.juya-entry-row .juya-entry-figure {
+  flex: none;
+  width: 260px;
+}
+
+@media (max-width: 640px) {
+  .juya-entry-row {
+    flex-direction: column;
+  }
+  .juya-entry-row .juya-entry-figure {
+    width: 100%;
+  }
 }
 
 .juya-links {
@@ -330,103 +400,243 @@
 }
 
 /* ==========================================================================
-   变体调色板（10 个）。自绘背景：纯 CSS 渐变/重复图案 + 内联 SVG data URI。
+   变体调色板（16 个）。自绘背景：纯 CSS 渐变/重复图案 + 内联 SVG data URI。
    ========================================================================== */
 
-/* ---- 卡片主题式 ---- */
-[data-juya-variant='card-light'] {
-  --jy-bg: #f6f1e7;
-  background-image: radial-gradient(rgba(193, 80, 46, 0.07) 1px, transparent 1.5px);
-  background-size: 18px 18px;
-  --jy-card: #fffdf8;
-  --jy-border: #e7ddc9;
-  --jy-heading: #33302a;
-  --jy-text: #43403a;
-  --jy-muted: #8a8172;
-  --jy-accent: #c1502e;
-  --jy-on-accent: #ffffff;
-  --jy-link: #a8431f;
-  --jy-lead-bg: #f3ecdd;
-  --jy-focus: #c1502e;
-  --jy-radius: 12px;
+/* ---- 纸感精读式（2026-09-24 重设计新增，替代 card，亮侧默认） ----
+   朱丝栏：内容区两侧内嵌绯色竖线（中式线装书）；和纸细颗粒材质 */
+[data-juya-variant='folio-light'] {
+  --jy-bg: #f6f2e9;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.38 0 0 0 0 0.30 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  --jy-card: #fffdf6;
+  --jy-border: #ddd3bd;
+  --jy-heading: #2b2620;
+  --jy-text: #3d372e;
+  --jy-muted: #7d7462;
+  --jy-accent: #b3452e;
+  --jy-on-accent: #fff8ef;
+  --jy-link: #9a3a24;
+  --jy-lead-bg: #f1e9d6;
+  --jy-focus: #b3452e;
+  --jy-radius: 10px;
+  --jy-font-body: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Songti SC', serif;
+  --jy-font-heading: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Songti SC', serif;
 }
 
-[data-juya-variant='card-dark'] {
-  --jy-bg: #1d1b17;
-  background-image: radial-gradient(rgba(240, 160, 128, 0.06) 1px, transparent 1.5px);
-  background-size: 18px 18px;
-  --jy-card: #2a2721;
-  --jy-border: #3d382f;
-  --jy-heading: #f2ede3;
-  --jy-text: #cfc8ba;
-  --jy-muted: #8f8676;
-  --jy-accent: #e0764f;
-  --jy-on-accent: #201511;
-  --jy-link: #f0a080;
-  --jy-lead-bg: #242119;
-  --jy-focus: #f0a080;
-  --jy-radius: 12px;
+[data-juya-variant='folio-dark'] {
+  --jy-bg: #17140f;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.75 0 0 0 0 0.71 0 0 0 0 0.62 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  --jy-card: #201b14;
+  --jy-border: #3a3226;
+  --jy-heading: #ede4d2;
+  --jy-text: #c9bfa9;
+  --jy-muted: #8d8268;
+  --jy-accent: #d0714f;
+  --jy-on-accent: #1c120c;
+  --jy-link: #e0956f;
+  --jy-lead-bg: #241e15;
+  --jy-focus: #e0956f;
+  --jy-radius: 10px;
+  --jy-font-body: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Songti SC', serif;
+  --jy-font-heading: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Songti SC', serif;
 }
 
-.jycard .juya-entry {
+/* 书目式刊头（下划细线 + 朱色短粗线，无彩色横幅）；日期右对齐；印章水印在内容区右上角。
+   内容区背景 = 朱丝栏（两侧绯色竖线）+ 信纸横格（卡片实底遮罩，格线不压文字） */
+.jyfolio .juya-issue {
+  position: relative;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 0 10px,
+      rgba(179, 69, 46, 0.28) 10px 11px,
+      transparent 11px calc(100% - 11px),
+      rgba(179, 69, 46, 0.28) calc(100% - 11px) calc(100% - 10px),
+      transparent calc(100% - 10px)
+    ),
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(125, 116, 98, 0.14) 27px 28px);
+}
+
+[data-juya-variant='folio-dark'] .jyfolio .juya-issue {
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 0 10px,
+      rgba(208, 113, 79, 0.3) 10px 11px,
+      transparent 11px calc(100% - 11px),
+      rgba(208, 113, 79, 0.3) calc(100% - 11px) calc(100% - 10px),
+      transparent calc(100% - 10px)
+    ),
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(141, 130, 104, 0.12) 27px 28px);
+}
+
+.jyfolio .juya-issue::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 72px;
+  height: 72px;
+  rotate: -8deg;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%23b3452e' stroke-width='6'/%3E%3Crect x='28' y='28' width='20' height='44' fill='%23b3452e'/%3E%3Crect x='56' y='28' width='16' height='16' fill='%23b3452e'/%3E%3Crect x='56' y='56' width='16' height='16' fill='%23b3452e'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  transition: opacity 300ms var(--ease-out, ease-out);
+}
+
+.jyfolio .juya-issue:hover::after {
+  opacity: 0.24;
+}
+
+[data-juya-variant='folio-dark'] .jyfolio .juya-issue::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%23d0714f' stroke-width='6'/%3E%3Crect x='28' y='28' width='20' height='44' fill='%23d0714f'/%3E%3Crect x='56' y='28' width='16' height='16' fill='%23d0714f'/%3E%3Crect x='56' y='56' width='16' height='16' fill='%23d0714f'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+  opacity: 0.1;
+  mix-blend-mode: screen;
+}
+
+.jyfolio .juya-masthead {
+  border-bottom: 1px solid var(--jy-border);
+  padding-bottom: 16px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.jyfolio .juya-masthead::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 64px;
+  border-bottom: 3px solid var(--jy-accent);
+}
+
+.jyfolio .juya-masthead h1 {
+  font-size: 30px;
+  letter-spacing: 0.01em;
+}
+
+.jyfolio .juya-date-line {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--jy-muted);
+  white-space: nowrap;
+  padding-bottom: 4px;
+}
+
+/* 概览改两列目录：条目间点状引线 */
+.jyfolio .juya-overview {
+  column-count: 2;
+  column-gap: 32px;
+}
+
+.jyfolio .juya-overview li::after {
+  content: '';
+  flex: 1;
+  margin-left: 8px;
+  border-bottom: 1px dotted var(--jy-border);
+}
+
+/* 条目书页卡片；图片 plate 装裱（方角 + 居中题注）；相关链接恢复序号式 */
+.jyfolio .juya-entry {
   background: var(--jy-card);
   border: 1px solid var(--jy-border);
-  border-radius: var(--jy-radius);
-  padding: 18px 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 0 rgba(43, 38, 32, 0.08), 0 10px 24px -18px rgba(43, 38, 32, 0.35);
 }
 
-.jycard .juya-masthead {
-  background: var(--jy-accent);
-  color: var(--jy-on-accent);
-  border-radius: var(--jy-radius);
-  padding: 22px 24px;
+.jyfolio .juya-plate {
+  border-radius: 4px;
 }
 
-.jycard .juya-masthead h1 {
-  color: inherit;
+.jyfolio .juya-plate figcaption {
+  text-align: center;
 }
 
-.jycard .juya-overview li::before {
-  content: '▪';
-  color: var(--jy-accent);
+.jyfolio .juya-links {
+  list-style: decimal;
+  padding-left: 20px;
+}
+
+.jyfolio .juya-index {
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+/* 订阅页横版纸面封面：16/10；纸不浮动——hover 只加深阴影 */
+.jyfolio .juya-feed-item {
+  transition: box-shadow 160ms var(--ease-out, ease-out);
+}
+
+.jyfolio .juya-feed-item:hover {
+  transform: none;
+  box-shadow: 0 1px 0 rgba(43, 38, 32, 0.08), 0 16px 30px -16px rgba(43, 38, 32, 0.42);
+}
+
+.jyfolio .juya-feed-cover {
+  aspect-ratio: 16 / 10;
+}
+
+.jyfolio .juya-feed-compact .juya-feed-cover {
+  width: 64px;
+  height: 40px;
+}
+
+@media (max-width: 520px) {
+  .jyfolio .juya-issue::after {
+    display: none;
+  }
+  .jyfolio .juya-overview {
+    column-count: 1;
+  }
 }
 
 /* ---- 千禧网页式（Y2K） ---- */
 [data-juya-variant='y2k-light'] {
-  --jy-bg: #dce6f5;
-  background-image: linear-gradient(180deg, #eef4fd 0%, #d4e2f6 40%, #c6d8f0 100%);
+  --jy-bg: #d6e4f8;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M28 20l2.2 5.8L36 28l-5.8 2.2L28 36l-2.2-5.8L20 28l5.8-2.2z' fill='%23ffffff' fill-opacity='0.8'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #eef4fd 0%, #d4e2f6 40%, #c6d8f0 100%);
   --jy-card: #f4f8ff;
-  --jy-border: #8fa8c8;
-  --jy-heading: #12233f;
+  --jy-border: #9db4d6;
+  --jy-heading: #0e1e3c;
   --jy-text: #26364f;
-  --jy-muted: #5c6e8a;
+  --jy-muted: #54688c;
   --jy-accent: #2456d6;
   --jy-on-accent: #ffffff;
-  --jy-link: #1a3fa8;
+  --jy-link: #163a9e;
   --jy-lead-bg: #e8effc;
   --jy-focus: #0050c8;
   --jy-radius: 2px;
   --jy-font-body: Tahoma, Verdana, 'Segoe UI', 'Noto Sans SC', sans-serif;
-  --jy-font-heading: Verdana, Tahoma, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: 'Trebuchet MS', 'Arial Black', 'Noto Sans SC', sans-serif;
 }
 
 [data-juya-variant='y2k-dark'] {
-  --jy-bg: #0c1226;
-  background-image: linear-gradient(180deg, #101a38 0%, #0a0f22 55%, #141b3d 100%);
-  --jy-card: #182344;
-  --jy-border: #3c5488;
+  --jy-bg: #080d1f;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M28 20l2.2 5.8L36 28l-5.8 2.2L28 36l-2.2-5.8L20 28l5.8-2.2z' fill='%23b9d2ff' fill-opacity='0.5'/%3E%3C/svg%3E"),
+    linear-gradient(0deg, rgba(91, 157, 255, 0.1), transparent 40%),
+    linear-gradient(180deg, #0d1735 0%, #080d1f 55%, #101a3d 100%);
+  --jy-card: #101a38;
+  --jy-border: #3f5a94;
   --jy-heading: #d7e6ff;
   --jy-text: #a8bad8;
-  --jy-muted: #64779c;
-  --jy-accent: #4d8dff;
+  --jy-muted: #8093b8;
+  --jy-accent: #5b9dff;
   --jy-on-accent: #061024;
-  --jy-link: #7db8ff;
+  --jy-link: #8fc0ff;
   --jy-lead-bg: #121c38;
   --jy-focus: #7db8ff;
   --jy-radius: 2px;
   --jy-font-body: Tahoma, Verdana, 'Segoe UI', 'Noto Sans SC', sans-serif;
-  --jy-font-heading: Verdana, Tahoma, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: 'Trebuchet MS', 'Arial Black', 'Noto Sans SC', sans-serif;
 }
 
 /* 像素感边框：双层 inset 高光/阴影模拟斜面，链接复古 ↗ */
@@ -465,14 +675,110 @@
   font-weight: 700;
 }
 
+/* 铬面渐变刊头字（暗侧反向）；栏目题点状引线；序号徽章贴纸化 */
+.jyy2k .juya-masthead h1 {
+  background: linear-gradient(180deg, #ffffff, #b9c8e8 55%, #7e93c4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+[data-juya-variant='y2k-dark'] .jyy2k .juya-masthead h1 {
+  background: linear-gradient(180deg, #f4f8ff, #9fb6e0 55%, #5c77a8);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.jyy2k .juya-section > h2 {
+  border-bottom: 2px dotted var(--jy-border);
+  padding-bottom: 6px;
+}
+
+.jyy2k .juya-index {
+  background: var(--jy-card);
+  color: var(--jy-accent);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* 窗口化刊头：标题栏 + 关闭按钮图形（模拟 9x 窗口） */
+.jyy2k .juya-masthead {
+  position: relative;
+  padding-top: 32px;
+}
+
+.jyy2k .juya-masthead::before {
+  content: '◆ AI_DAILY.EXE — 运行中';
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  font-size: 10px;
+  font-family: var(--jy-font-heading);
+  letter-spacing: 0.5px;
+  color: var(--jy-muted);
+}
+
+.jyy2k .juya-masthead::after {
+  content: '×';
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  width: 18px;
+  height: 16px;
+  line-height: 15px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--jy-on-accent);
+  background: var(--jy-accent);
+  border: 1px solid var(--jy-border);
+}
+
+/* 图文并排：240px 像素相框 */
+.jyy2k .juya-entry-row .juya-entry-figure {
+  width: 240px;
+}
+
+.jyy2k .juya-entry-figure img {
+  border: 2px solid var(--jy-border);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.65),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.18),
+    2px 2px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* 订阅卡右上角像素点；compact 行首 » */
+.jyy2k .juya-feed-item {
+  position: relative;
+}
+
+.jyy2k .juya-feed-item::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: var(--jy-accent);
+}
+
+.jyy2k .juya-feed-compact .juya-feed-title::before {
+  content: '» ';
+  color: var(--jy-accent);
+}
+
 /* ---- 波普艺术式 ---- */
 [data-juya-variant='pop-light'] {
   --jy-bg: #ffe957;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='3' cy='3' r='2' fill='%23e8c83a'/%3E%3C/svg%3E");
+  background-image:
+    radial-gradient(rgba(232, 200, 58, 0.9) 1.6px, transparent 1.7px),
+    radial-gradient(rgba(224, 36, 94, 0.28) 1.2px, transparent 1.3px);
+  background-size: 16px 16px, 22px 22px;
+  background-position: 0 0, 8px 11px;
   --jy-card: #fffdf0;
   --jy-border: #141414;
   --jy-heading: #141414;
-  --jy-text: #242424;
+  --jy-text: #1f1f1f;
   --jy-muted: #5a5a5a;
   --jy-accent: #e0245e;
   --jy-on-accent: #ffffff;
@@ -485,11 +791,15 @@
 
 [data-juya-variant='pop-dark'] {
   --jy-bg: #14141a;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='3' cy='3' r='2' fill='%2326262e'/%3E%3C/svg%3E");
+  background-image:
+    radial-gradient(rgba(38, 38, 46, 0.9) 1.6px, transparent 1.7px),
+    radial-gradient(rgba(255, 46, 116, 0.2) 1.2px, transparent 1.3px);
+  background-size: 16px 16px, 22px 22px;
+  background-position: 0 0, 8px 11px;
   --jy-card: #1f1f28;
   --jy-border: #ffe957;
   --jy-heading: #ffe957;
-  --jy-text: #e8e8e0;
+  --jy-text: #f2f2ea;
   --jy-muted: #9a9aa4;
   --jy-accent: #ff2e74;
   --jy-on-accent: #ffffff;
@@ -533,15 +843,115 @@
   background: var(--jy-bg);
 }
 
+/* 导语气泡化：3px 粗边框 + 圆角 + 三角尾巴（替换原单边框） */
 .jypop .juya-lead {
-  border-left: 6px solid var(--jy-accent);
+  border: 3px solid var(--jy-border);
+  border-radius: 14px;
+  position: relative;
 }
 
+.jypop .juya-lead::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  bottom: -12px;
+  border: 6px solid transparent;
+  border-top-color: var(--jy-border);
+  border-left-width: 8px;
+  border-right-width: 8px;
+}
+
+/* 栏目题三色系轮换（品红/蓝/黑反白，硬编码三色为构成记忆点） */
 .jypop .juya-section > h2 {
   display: inline-block;
-  background: var(--jy-heading);
-  color: var(--jy-bg);
   padding: 2px 10px;
+  color: #ffffff;
+}
+
+.jypop .juya-section:nth-of-type(3n + 1) > h2 {
+  background: #e0245e;
+}
+
+.jypop .juya-section:nth-of-type(3n + 2) > h2 {
+  background: #1f4fd8;
+}
+
+.jypop .juya-section:nth-of-type(3n + 3) > h2 {
+  background: #141414;
+}
+
+/* 第二轮定制排版：图片海报网格/首图通栏（与条目同语言：3px 边 + 硬阴影）；
+   序号徽章放大为绝对定位角标，hover 回正 */
+.jypop .juya-entry {
+  position: relative;
+}
+
+.jypop .juya-media-grid,
+.jypop .juya-media-hero {
+  gap: 12px;
+}
+
+.jypop .juya-media-grid img,
+.jypop .juya-media-hero img {
+  border: 3px solid var(--jy-border);
+  box-shadow: 6px 6px 0 var(--jy-border);
+}
+
+.jypop .juya-entry > h3 .juya-index {
+  position: absolute;
+  top: -16px;
+  left: -16px;
+  margin-left: 0;
+  font-size: 18px;
+  padding: 4px 10px;
+  transform: rotate(-6deg);
+  transition: transform 200ms var(--ease-out, ease-out);
+}
+
+.jypop .juya-entry:nth-child(odd) > h3 .juya-index {
+  transform: rotate(6deg);
+}
+
+.jypop .juya-entry > h3 .juya-index:hover {
+  transform: rotate(0deg);
+}
+
+/* 刊头爆炸星 + 订阅卡动效（hover 微倾斜） */
+.jypop .juya-masthead h1 {
+  position: relative;
+  display: inline-block;
+}
+
+.jypop .juya-masthead h1::before {
+  content: '';
+  position: absolute;
+  left: -30px;
+  top: -12px;
+  width: 36px;
+  height: 36px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0 L58 30 L85 15 L70 42 L100 50 L70 58 L85 85 L58 70 L50 100 L42 70 L15 85 L30 58 L0 50 L30 42 L15 15 L42 30 Z' fill='%23ffffff'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+  transform: rotate(-8deg);
+}
+
+/* 订阅卡：hover 微倾斜（波普允许喧闹） */
+.jypop .juya-feed-item:hover {
+  transform: translateY(-2px) rotate(-1.5deg);
+}
+
+/* 订阅封面 4/3，日期贴纸圆（meta 内无 class 的裸 span = 日期；未读圆点/来源 chip 有类名） */
+.jypop .juya-feed-cover {
+  aspect-ratio: 4 / 3;
+}
+
+.jypop .juya-feed-meta > span:not([class]) {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 2px solid var(--jy-heading);
+  border-radius: 999px;
+  background: var(--jy-card);
+  color: var(--jy-heading);
+  font-weight: 700;
 }
 
 /* ---- 90 年代报刊式 ---- */
@@ -653,38 +1063,43 @@
 
 /* ---- 蒸汽梦核式 ---- */
 [data-juya-variant='dreamcore-light'] {
-  --jy-bg: #efe6fb;
-  background-image: linear-gradient(160deg, #f6e9ff 0%, #e6ecff 45%, #ffe9f4 100%);
-  --jy-card: rgba(255, 255, 255, 0.72);
+  --jy-bg: #f3ecff;
+  --jy-card: rgba(255, 255, 255, 0.8);
   --jy-border: rgba(124, 77, 255, 0.35);
-  --jy-heading: #3a2b63;
-  --jy-text: #4a4066;
-  --jy-muted: #8578a8;
-  --jy-accent: #7c4dff;
+  --jy-heading: #342a58;
+  --jy-text: #463e60;
+  --jy-muted: #75689c;
+  --jy-accent: #6d4de0;
   --jy-on-accent: #ffffff;
-  --jy-link: #5e35d1;
+  --jy-link: #5737c2;
   --jy-lead-bg: rgba(124, 77, 255, 0.08);
   --jy-focus: #7c4dff;
   --jy-radius: 16px;
+  /* synthwave pastel 场景 token（太阳/网格，.juya-scene 层消费） */
+  --jy-scene-sun-1: #ffd9ec;
+  --jy-scene-sun-2: #b78cff;
+  --jy-scene-grid-line: rgba(143, 99, 255, 0.22);
+  --jy-scene-horizon: rgba(183, 140, 255, 0.5);
 }
 
 [data-juya-variant='dreamcore-dark'] {
-  --jy-bg: #0d0a1a;
-  background-image:
-    radial-gradient(600px 300px at 15% 0%, rgba(124, 77, 255, 0.28), transparent 65%),
-    radial-gradient(500px 280px at 90% 30%, rgba(255, 64, 160, 0.16), transparent 60%),
-    linear-gradient(180deg, #120d26 0%, #0d0a1a 100%);
-  --jy-card: rgba(26, 20, 48, 0.82);
-  --jy-border: rgba(179, 136, 255, 0.35);
-  --jy-heading: #e8ddff;
-  --jy-text: #bcb2d8;
-  --jy-muted: #7d71a0;
-  --jy-accent: #9c6bff;
+  --jy-bg: #0b0918;
+  --jy-card: rgba(24, 19, 44, 0.85);
+  --jy-border: rgba(158, 132, 255, 0.32);
+  --jy-heading: #e6dcff;
+  --jy-text: #c0b6dc;
+  --jy-muted: #9388b8;
+  --jy-accent: #8f63ff;
   --jy-on-accent: #120d26;
-  --jy-link: #c9a8ff;
-  --jy-lead-bg: rgba(156, 107, 255, 0.12);
-  --jy-focus: #b388ff;
+  --jy-link: #c3a9ff;
+  --jy-lead-bg: rgba(143, 99, 255, 0.12);
+  --jy-focus: #b89aff;
   --jy-radius: 16px;
+  /* synthwave 场景 token：日轮 #ffd319→#ff2975，霓虹网格品红线，地平线辉光 */
+  --jy-scene-sun-1: #ffd319;
+  --jy-scene-sun-2: #ff2975;
+  --jy-scene-grid-line: rgba(255, 41, 117, 0.5);
+  --jy-scene-horizon: rgba(255, 209, 25, 0.9);
 }
 
 /* 发光边框 + 毛玻璃卡片；背景氛围漂移（每屏唯一动效，可关闭：reduced-motion 下静态） */
@@ -694,7 +1109,7 @@
   border: 1px solid var(--jy-border);
   border-radius: var(--jy-radius);
   backdrop-filter: blur(6px);
-  box-shadow: 0 0 18px rgba(124, 77, 255, 0.18);
+  box-shadow: 0 0 18px rgba(124, 92, 255, 0.12);
 }
 
 .jydream .juya-entry {
@@ -720,26 +1135,645 @@
 .jydream .juya-feed-item {
   background: var(--jy-card);
   backdrop-filter: blur(6px);
-  box-shadow: 0 0 14px rgba(124, 77, 255, 0.16);
+  box-shadow: 0 0 14px rgba(124, 92, 255, 0.12);
 }
 
-@keyframes jy-dream-drift {
+/* 订阅封面 16/9（featured 21/9），hover 发光加深 */
+.jydream .juya-feed-cover {
+  aspect-ratio: 16 / 9;
+}
+
+.jydream .juya-feed-featured .juya-feed-cover {
+  aspect-ratio: 21 / 9;
+}
+
+.jydream .juya-feed-item:hover {
+  box-shadow: 0 0 22px rgba(124, 92, 255, 0.28);
+}
+
+/* ==========================================================================
+   场景固定层（.juya-scene）：synthwave 太阳/透视网格（dreamcore）、星空/地平网格（y2k 暗）。
+   sticky 假固定：内容在 uiZoom 缩放容器内，position:fixed 会被 CSS zoom 破坏锚定；
+   sticky 相对滚动容器吸附且不随缩放漂移，负 margin 抵消占位。
+   动画一律挂 .juya-scene-* 子层（.juya-root 永无 animation，reduced-motion 断言结构保证）。
+   ========================================================================== */
+.juya-scene {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  margin-bottom: -100vh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.juya-scene > * {
+  position: absolute;
+}
+
+.juya-issue,
+.juya-feed {
+  position: relative;
+  z-index: 1;
+}
+
+/* 条纹太阳：实心上弦 + 下弦逐层分离的切面条纹（单 mask 多停靠点手写） */
+.juya-scene-sun {
+  top: 7%;
+  left: 50%;
+  translate: -50% 0;
+  width: min(46vh, 420px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 36%,
+    var(--jy-scene-sun-1) 0%,
+    var(--jy-scene-sun-2) 62%,
+    transparent 74%
+  );
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0 44%,
+    transparent 44% 52%,
+    #000 52% 62%,
+    transparent 62% 68%,
+    #000 68% 74%,
+    transparent 74% 79%,
+    #000 79% 84%,
+    transparent 84% 88%,
+    #000 88% 92%,
+    transparent 92% 95%,
+    #000 95% 98%,
+    transparent 98% 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0 44%,
+    transparent 44% 52%,
+    #000 52% 62%,
+    transparent 62% 68%,
+    #000 68% 74%,
+    transparent 74% 79%,
+    #000 79% 84%,
+    transparent 84% 88%,
+    #000 88% 92%,
+    transparent 92% 95%,
+    #000 95% 98%,
+    transparent 98% 100%
+  );
+  animation: jy-sun-float 12s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes jy-sun-float {
   from {
-    background-position: 0% 0%;
+    transform: translateY(0);
   }
   to {
-    background-position: 120% 60%;
+    transform: translateY(10px);
   }
 }
 
-[data-juya-variant='dreamcore-dark'].juya-root {
-  animation: jy-dream-drift 40s linear infinite alternate;
-  background-size: 160% 160%;
+/* 透视霓虹网格：rotateX 压向地平线，mask 渐隐近端，background-position 滚动 = 向观者涌来 */
+.juya-scene-grid-persp {
+  left: -25%;
+  right: -25%;
+  bottom: 0;
+  height: 46vh;
+  transform: perspective(360px) rotateX(63deg);
+  transform-origin: bottom center;
+  background-image:
+    repeating-linear-gradient(90deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 72px),
+    repeating-linear-gradient(0deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 56px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 34%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 34%);
+  animation: jy-grid-scroll 3.2s linear infinite;
+  will-change: background-position;
+  contain: strict;
+}
+
+@keyframes jy-grid-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 56px;
+  }
+}
+
+/* 地平线辉光线 */
+.juya-scene-grid-persp::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--jy-scene-horizon);
+  box-shadow: 0 0 18px 4px var(--jy-scene-horizon);
+}
+
+/* y2k 暗：星野（三层径向点阵，缓慢闪烁）+ 地平网格（静景） */
+[data-juya-variant='y2k-dark'] {
+  --jy-scene-star: #dfe9ff;
+  --jy-scene-grid-line: rgba(91, 157, 255, 0.28);
+}
+
+.juya-scene-stars {
+  inset: 0;
+  background-image:
+    radial-gradient(1.4px 1.4px at 22% 18%, var(--jy-scene-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 68% 32%, var(--jy-scene-star) 50%, transparent 51%),
+    radial-gradient(1.8px 1.8px at 44% 64%, var(--jy-scene-star) 50%, transparent 51%);
+  background-size: 260px 260px, 180px 180px, 340px 340px;
+  animation: jy-twinkle 5s ease-in-out infinite alternate;
+}
+
+@keyframes jy-twinkle {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.juya-scene-grid {
+  left: -20%;
+  right: -20%;
+  bottom: 0;
+  height: 30vh;
+  transform: perspective(300px) rotateX(60deg);
+  transform-origin: bottom center;
+  background-image:
+    repeating-linear-gradient(90deg, var(--jy-scene-grid-line) 0 1px, transparent 1px 56px),
+    repeating-linear-gradient(0deg, var(--jy-scene-grid-line) 0 1px, transparent 1px 44px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 46%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 46%);
+}
+
+/* y2k 亮侧不挂场景（保留原有星光渐变材质） */
+[data-juya-variant='y2k-light'] .juya-scene {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-juya-variant='dreamcore-dark'].juya-root {
+  .juya-scene-sun,
+  .juya-scene-grid-persp,
+  .juya-scene-stars {
     animation: none;
+  }
+}
+
+/* ---- 暗夜精修式（2026-09-24 重设计新增，暗侧默认） ----
+   发丝级 alpha 分层边框；暗侧仅顶部一道极光渐晕（无第二光源，克制无霓虹） */
+[data-juya-variant='nocturne-light'] {
+  --jy-bg: #fbfbfc;
+  --jy-card: #ffffff;
+  --jy-border: rgba(15, 15, 24, 0.1);
+  --jy-heading: #17181d;
+  --jy-text: #3a3b44;
+  --jy-muted: #70717c;
+  --jy-accent: #4f5ed8;
+  --jy-on-accent: #ffffff;
+  --jy-link: #4051c9;
+  --jy-lead-bg: rgba(15, 15, 24, 0.04);
+  --jy-focus: #4f5ed8;
+  --jy-radius: 12px;
+  --jy-font-body: Inter, 'SF Pro Text', 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: Inter, 'SF Pro Display', 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+[data-juya-variant='nocturne-dark'] {
+  --jy-bg: #0a0a0c;
+  background-image: radial-gradient(1200px 480px at 50% -12%, rgba(110, 123, 255, 0.14), transparent 62%);
+  --jy-card: #121216;
+  --jy-border: rgba(255, 255, 255, 0.08);
+  --jy-heading: #f4f4f6;
+  --jy-text: #c4c5cc;
+  --jy-muted: #8a8b94;
+  --jy-accent: #6e7bff;
+  --jy-on-accent: #0a0a0c;
+  --jy-link: #93a1ff;
+  --jy-lead-bg: rgba(255, 255, 255, 0.04);
+  --jy-focus: #8b97ff;
+  --jy-radius: 12px;
+  --jy-font-body: Inter, 'SF Pro Text', 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: Inter, 'SF Pro Display', 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+/* 银灰渐变刊头字（亮暗各一组）；条目去卡片化：发丝线分隔 + hover 抬升；等宽数字元信息 */
+.jynoct .juya-masthead h1 {
+  letter-spacing: -0.02em;
+  font-size: 30px;
+  background: linear-gradient(180deg, #ffffff, #b9bcc7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-juya-variant='nocturne-light'] .jynoct .juya-masthead h1 {
+  background: linear-gradient(180deg, #17181d, #3a3b44);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.jynoct .juya-entry {
+  border-bottom: 1px solid var(--jy-border);
+  padding: 4px 2px 18px;
+}
+
+.jynoct .juya-entry:hover {
+  background: var(--jy-lead-bg);
+  border-radius: 8px;
+}
+
+.jynoct .juya-feed-meta {
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
+}
+
+.jynoct .juya-feed-item {
+  transition: border-color 160ms var(--ease-out, ease-out), transform 160ms var(--ease-out, ease-out);
+}
+
+.jynoct .juya-feed-item:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+[data-juya-variant='nocturne-light'] .jynoct .juya-feed-item:hover {
+  border-color: rgba(15, 15, 24, 0.2);
+}
+
+/* 第二轮定制排版：图文并排图恒在右（纪律排布），题注等宽；序号退化为灰色 # 小字 */
+.jynoct .juya-entry-row {
+  gap: 24px;
+}
+
+.jynoct .juya-entry-row .juya-entry-figure {
+  width: 200px;
+}
+
+.jynoct .juya-entry-figure img {
+  border-radius: 8px;
+}
+
+.jynoct .juya-plate {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.jynoct .juya-plate figcaption {
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.jynoct .juya-index {
+  background: transparent;
+  color: var(--jy-muted);
+  border-radius: 0;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
+}
+
+/* 订阅封面 16/9 发丝边；featured 顶部渐变高光线 */
+.jynoct .juya-feed-cover {
+  aspect-ratio: 16 / 9;
+}
+
+.jynoct .juya-feed-featured {
+  position: relative;
+}
+
+.jynoct .juya-feed-featured::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--jy-link), transparent);
+}
+
+/* ---- 杂志编辑式（2026-09-24 重设计新增） ----
+   与 newsprint90s 的市井报刊对照的高端杂志：纯平留白，刊物感靠排版 */
+[data-juya-variant='editorial-light'] {
+  --jy-bg: #fbf9f4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.52 0 0 0 0 0.46 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  --jy-card: #ffffff;
+  --jy-border: #d8d2c4;
+  --jy-heading: #14120e;
+  --jy-text: #2e2b24;
+  --jy-muted: #6e6a5e;
+  --jy-accent: #8a2f2b;
+  --jy-on-accent: #faf6ee;
+  --jy-link: #7a2825;
+  --jy-lead-bg: #f4f0e6;
+  --jy-focus: #8a2f2b;
+  --jy-radius: 2px;
+  --jy-font-heading: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Times New Roman', serif;
+  --jy-font-body: 'Helvetica Neue', Helvetica, 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+[data-juya-variant='editorial-dark'] {
+  --jy-bg: #131210;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.75 0 0 0 0 0.72 0 0 0 0 0.65 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  --jy-card: #1c1a17;
+  --jy-border: #35312a;
+  --jy-heading: #ede8dd;
+  --jy-text: #c5bfb2;
+  --jy-muted: #8b8577;
+  --jy-accent: #b3564c;
+  --jy-on-accent: #161310;
+  --jy-link: #cf7d6f;
+  --jy-lead-bg: #1e1c18;
+  --jy-focus: #d08a7d;
+  --jy-radius: 2px;
+  --jy-font-heading: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Times New Roman', serif;
+  --jy-font-body: 'Helvetica Neue', Helvetica, 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+/* 双发丝线书眉；巨型衬线刊头；悬挂栏目序号（CSS 计数器）；导语首字下沉 */
+.jyedit .juya-issue {
+  max-width: 860px;
+  counter-reset: jysec;
+}
+
+.jyedit .juya-masthead {
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  padding: 18px 0 14px;
+  position: relative;
+}
+
+.jyedit .juya-masthead::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--jy-border);
+}
+
+.jyedit .juya-masthead h1 {
+  font-size: 40px;
+  letter-spacing: -0.01em;
+}
+
+.jyedit .juya-date-line {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jy-muted);
+  margin-top: 8px;
+}
+
+.jyedit .juya-section > h2 {
+  counter-increment: jysec;
+  font-size: 22px;
+  border-bottom: 1px solid var(--jy-border);
+  padding-bottom: 8px;
+}
+
+.jyedit .juya-section > h2::before {
+  content: counter(jysec, decimal-leading-zero) ' / ';
+  font-style: italic;
+  font-weight: 400;
+  color: var(--jy-accent);
+}
+
+.jyedit .juya-lead::first-letter {
+  font-family: var(--jy-font-heading);
+  font-size: 2.6em;
+  float: left;
+  line-height: 0.85;
+  padding: 4px 8px 0 0;
+  color: var(--jy-accent);
+}
+
+.jyedit .juya-entry > h3 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.jyedit .juya-entry p {
+  max-width: 68ch;
+}
+
+/* 第二轮定制排版：deck 副题、封面故事节奏、colophon 刊尾、裁切角标 */
+.jyedit .juya-deck {
+  max-width: 46ch;
+  margin: -8px auto 24px;
+  text-align: center;
+  font-family: var(--jy-font-heading);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--jy-muted);
+}
+
+.jyedit .juya-entry + .juya-entry {
+  border-top: 1px solid var(--jy-border);
+  padding-top: 28px;
+}
+
+.jyedit .juya-entry-row {
+  gap: 40px;
+}
+
+.jyedit .juya-entry-row .juya-entry-figure {
+  width: 46%;
+}
+
+.jyedit .juya-media-hero img {
+  transition: transform 600ms var(--ease-out, ease-out);
+}
+
+.jyedit .juya-media-hero img:hover {
+  transform: scale(1.02);
+}
+
+.jyedit .juya-plate {
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.jyedit .juya-plate figcaption {
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.jyedit .juya-colophon {
+  margin-top: 48px;
+  padding-top: 12px;
+  border-top: 3px double var(--jy-border);
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--jy-muted);
+}
+
+.jyedit .juya-issue {
+  position: relative;
+}
+
+.jyedit .juya-issue::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-top: 1px solid var(--jy-border);
+  border-left: 1px solid var(--jy-border);
+}
+
+.jyedit .juya-issue::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 24px;
+  height: 24px;
+  border-right: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+}
+
+/* 订阅封面 3/2 杂志摄影横图；featured 大卡标题 26px */
+.jyedit .juya-feed-cover {
+  aspect-ratio: 3 / 2;
+}
+
+.jyedit .juya-feed-featured .juya-feed-title {
+  font-size: 26px;
+}
+
+@media (max-width: 640px) {
+  .jyedit .juya-entry-row .juya-entry-figure {
+    width: 100%;
+  }
+}
+
+/* ---- 侘寂日杂式（2026-09-24 重设计新增） ----
+   和纸长纤维肌理（各向异性 feTurbulence）；不对称粗陶圆角；陶土/苔色大地双色 */
+[data-juya-variant='wabi-light'] {
+  --jy-bg: #efede6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55 0.09' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.42 0 0 0 0 0.35 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23w)'/%3E%3C/svg%3E");
+  --jy-card: #f7f5ee;
+  --jy-border: #d5d0c2;
+  --jy-heading: #37332b;
+  --jy-text: #4a463c;
+  --jy-muted: #6f6a58;
+  --jy-accent: #a5654a;
+  --jy-on-accent: #f6f1e8;
+  --jy-link: #6e7a5b;
+  --jy-lead-bg: #e7e3d6;
+  --jy-focus: #a5654a;
+  --jy-radius: 18px 6px 18px 6px;
+  --jy-font-heading: 'Noto Serif SC', 'Songti SC', serif;
+  --jy-font-body: 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+[data-juya-variant='wabi-dark'] {
+  --jy-bg: #1e1c18;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55 0.09' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.75 0 0 0 0 0.72 0 0 0 0 0.65 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23w)'/%3E%3C/svg%3E");
+  --jy-card: #262420;
+  --jy-border: #3d392f;
+  --jy-heading: #e3ded1;
+  --jy-text: #bdb7a7;
+  --jy-muted: #96907c;
+  --jy-accent: #b37a5e;
+  --jy-on-accent: #221c16;
+  --jy-link: #96a07f;
+  --jy-lead-bg: #292620;
+  --jy-focus: #c99a7d;
+  --jy-radius: 18px 6px 18px 6px;
+  --jy-font-heading: 'Noto Serif SC', 'Songti SC', serif;
+  --jy-font-body: 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+/* 低饱和平涂 + 软双影（接触影 + 环境影）；手绘感有机圆序号；栏目题陶土小方块 */
+.jywabi .juya-entry,
+.jywabi .juya-feed-item {
+  background: var(--jy-card);
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius);
+  box-shadow: 0 2px 0 rgba(58, 52, 40, 0.05), 0 14px 28px -20px rgba(58, 52, 40, 0.25);
+}
+
+.jywabi .juya-entry {
+  padding: 22px 24px;
+}
+
+.jywabi .juya-masthead h1 {
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.jywabi .juya-index {
+  background: transparent;
+  color: var(--jy-accent);
+  border: 1px solid var(--jy-accent);
+  border-radius: 46% 54% 52% 48% / 48% 46% 54% 52%;
+}
+
+.jywabi .juya-section > h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+}
+
+.jywabi .juya-section > h2::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--jy-accent);
+  flex: none;
+}
+
+.jywabi .juya-lead {
+  border-left: none;
+  background: color-mix(in srgb, var(--jy-accent) 8%, var(--jy-card));
+  border-radius: var(--jy-radius);
+}
+
+/* 第二轮定制排版：条目奇偶错位的不对称节奏；图片两列有机圆角网格 */
+.jywabi .juya-entry:nth-of-type(odd) {
+  margin-right: clamp(0px, 6vw, 56px);
+}
+
+.jywabi .juya-entry:nth-of-type(even) {
+  margin-left: clamp(0px, 6vw, 56px);
+}
+
+.jywabi .juya-media-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* 订阅封面 4/3 横版（最接近方形但仍宽 > 高）；featured 加大版粗陶圆角 */
+.jywabi .juya-feed-cover {
+  aspect-ratio: 4 / 3;
+}
+
+.jywabi .juya-feed-featured {
+  border-radius: 28px 8px 28px 8px;
+}
+
+@media (max-width: 640px) {
+  .jywabi .juya-entry:nth-of-type(odd) {
+    margin-right: 0;
+  }
+  .jywabi .juya-entry:nth-of-type(even) {
+    margin-left: 0;
   }
 }
 
@@ -751,9 +1785,12 @@
   .jynews .juya-entry-columns {
     column-count: 1;
   }
-  .jycard .juya-masthead,
+  .jyfolio .juya-masthead,
   .jydream .juya-masthead,
   .jypop .juya-masthead {
     padding: 16px;
+  }
+  .jyedit .juya-masthead {
+    padding: 14px 0 10px;
   }
 }

@@ -1,16 +1,15 @@
 import { EntryTitle, ImageGrid, Lead, LinksBlock, OverviewItems, Paragraphs } from './shared'
-import { DefaultFeedItem, FeedShell, Scene } from './parts'
+import { DefaultFeedItem, FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
-const VARIANT_CLASS = 'jydream'
+const VARIANT_CLASS = 'jywabi'
 
-/** 蒸汽梦核式（第二轮定制排版）：synthwave 场景（条纹太阳 + 透视霓虹网格，Scene 固定层），
- *  条目首图通栏 21/9 + 其余两列子网格（hero 媒体），毛玻璃卡片即文字遮罩。 */
+/** 侘寂日杂式（第二轮定制排版）：条目奇偶错位的不对称节奏（CSS 承担），
+ *  图片两列有机圆角网格；空间留白即版式。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
-      <Scene sun grid="persp" />
       <div className="juya-issue">
         <header className="juya-masthead">
           <h1>{issue.heading || article.title}</h1>
@@ -24,7 +23,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
                 <EntryTitle entry={entry} onOpenLink={onOpenLink} />
                 {entry.lead && <Lead lead={entry.lead} />}
                 <Paragraphs paragraphs={entry.paragraphs} />
-                {entry.images.length > 0 && <ImageGrid images={entry.images} mode="hero" />}
+                {entry.images.length > 0 && <ImageGrid images={entry.images} mode="grid" />}
                 <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
               </article>
             ))}
@@ -50,4 +49,4 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
   )
 }
 
-export const dreamcoreTemplate: JuyaTemplate = { IssueView, FeedList }
+export const wabiTemplate: JuyaTemplate = { IssueView, FeedList }

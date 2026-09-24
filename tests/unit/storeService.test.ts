@@ -70,7 +70,7 @@ describe('StoreService.getSettings 旧数据深合并', () => {
     expect(settings.clickBehavior).toBe('browser')
     expect(settings.externalLinkBehavior).toBe(DEFAULT_SETTINGS.externalLinkBehavior)
     expect(settings.uiZoom).toBe(1)
-    expect(settings.juyaLightStyleId).toBe('card')
+    expect(settings.juyaLightStyleId).toBe('folio')
   })
 
   it('layout 与 layout.fields 逐层合并（旧数据只有 preset 时字段取默认）', () => {
@@ -181,6 +181,37 @@ describe('StoreService.migrateThemeSettings（v0.1.x 单主题 → 三态）', (
     const saved = raw.data.settings as Record<string, unknown>
     expect(saved.darkThemeId).toBeTruthy()
     expect(saved.lightThemeId).toBeTruthy()
+  })
+})
+
+describe('StoreService.migrateJuyaStyleSettings（card 移除迁移，2026-09-24 重设计）', () => {
+  it('合法值完全不动（不写盘）', () => {
+    seedSettings({ juyaLightStyleId: 'y2k', juyaDarkStyleId: 'dreamcore' })
+    const before = structuredClone(raw.data.settings)
+    store.migrateJuyaStyleSettings()
+    expect(raw.data.settings).toEqual(before)
+  })
+
+  it("旧 'card' 值迁移为 folio（亮）/ nocturne（暗）并写盘", () => {
+    seedSettings({ juyaLightStyleId: 'card', juyaDarkStyleId: 'card' })
+    store.migrateJuyaStyleSettings()
+    const saved = raw.data.settings as Record<string, unknown>
+    expect(saved.juyaLightStyleId).toBe('folio')
+    expect(saved.juyaDarkStyleId).toBe('nocturne')
+  })
+
+  it('非法值回退该侧默认并写盘', () => {
+    seedSettings({ juyaLightStyleId: 'nope', juyaDarkStyleId: 'wabi' })
+    store.migrateJuyaStyleSettings()
+    const saved = raw.data.settings as Record<string, unknown>
+    expect(saved.juyaLightStyleId).toBe('folio')
+    expect(saved.juyaDarkStyleId).toBe('wabi')
+  })
+
+  it('读取路径即时清洗：不跑迁移也不泄漏旧值到运行态', () => {
+    seedSettings({ juyaLightStyleId: 'card' })
+    expect(store.getSettings().juyaLightStyleId).toBe('folio')
+    expect(store.getSettings().juyaDarkStyleId).toBe('nocturne')
   })
 })
 

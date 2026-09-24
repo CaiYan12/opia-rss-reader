@@ -43,6 +43,7 @@ app.whenReady().then(() => {
     }
   }
   store.migrateThemeSettings(theme.list())
+  store.migrateJuyaStyleSettings()
   console.log('[main] plugin registry:', JSON.stringify(plugins.snapshot()))
 
   feed.onUpdated = (sourceId) => {

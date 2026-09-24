@@ -4,13 +4,13 @@ import { loadApp, openFirstArticle, activeTab } from './setup'
 /** 阅读页分流与降级：橘鸦定制路径三重判据（源身份 + 风格开启 + 解析成功）。
  *  keep-alive 下主页与阅读页同时在 DOM，故断言限定活动标签容器。 */
 
-test('默认（卡片式）：橘鸦文章走定制模板（结构化栏目/条目/编号徽章）', async ({ page }) => {
+test('默认（纸感精读式）：橘鸦文章走定制模板（结构化栏目/条目/编号徽章）', async ({ page }) => {
   await loadApp(page, 'default')
   await openFirstArticle(page)
 
   const root = activeTab(page).locator('.juya-root')
   await expect(root).toBeVisible()
-  await expect(root).toHaveAttribute('data-juya-variant', 'card-light')
+  await expect(root).toHaveAttribute('data-juya-variant', 'folio-light')
   await expect(root.locator('.juya-masthead h1')).toHaveText('AI 早报 2026-08-28')
   await expect(root.locator('.juya-section > h2')).toHaveText(['要闻', '模型发布', '产品应用'])
   // 条目内编号徽章带 # 前缀（概览区徽章为纯数字，故限定条目作用域）

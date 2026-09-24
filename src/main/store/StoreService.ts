@@ -1,15 +1,26 @@
 import Store from 'electron-store'
 import {
+  DEFAULT_JUYA_DARK,
+  DEFAULT_JUYA_LIGHT,
   DEFAULT_SETTINGS,
   DEFAULT_SOURCE,
+  JUYA_STYLE_IDS,
   type Article,
   type FeedSource,
   type HistoryEntry,
+  type JuyaStyleId,
   type SavedSession,
   type Settings
 } from '../../shared/types'
 import { resolveThemeScheme } from '../../shared/theme'
 import type { ThemeTokens } from '../../shared/types'
+
+/** 清洗单个橘鸦风格 id：持久化数据可能残留已移除的 'card' 等旧值（旧数据未经类型校验）。 */
+function cleanJuyaStyleId(value: unknown, fallback: JuyaStyleId): JuyaStyleId {
+  return typeof value === 'string' && (JUYA_STYLE_IDS as readonly string[]).includes(value)
+    ? (value as JuyaStyleId)
+    : fallback
+}
 
 interface StoreShape {
   settings: Settings
@@ -51,7 +62,10 @@ export class StoreService {
       shortcuts: {
         ...DEFAULT_SETTINGS.shortcuts,
         ...saved?.shortcuts
-      }
+      },
+      // 清洗橘鸦风格：'card' 已于 2026-09-24 重设计中移除，旧值回退该侧默认（即时生效，不依赖写盘）
+      juyaLightStyleId: cleanJuyaStyleId(saved?.juyaLightStyleId, DEFAULT_JUYA_LIGHT),
+      juyaDarkStyleId: cleanJuyaStyleId(saved?.juyaDarkStyleId, DEFAULT_JUYA_DARK)
     }
   }
 
@@ -74,6 +88,16 @@ export class StoreService {
       darkThemeId: scheme === 'dark' && legacy ? legacy.id : 'windows-dark'
     }
     delete next.activeThemeId
+    this.store.set('settings', next)
+  }
+
+  /** 橘鸦风格移除迁移（仿 migrateThemeSettings）：持久层残留非法值时写回清洗结果。 */
+  migrateJuyaStyleSettings(): void {
+    const saved = this.store.get('settings')
+    const cleanLight = cleanJuyaStyleId(saved?.juyaLightStyleId, DEFAULT_JUYA_LIGHT)
+    const cleanDark = cleanJuyaStyleId(saved?.juyaDarkStyleId, DEFAULT_JUYA_DARK)
+    if (cleanLight === saved?.juyaLightStyleId && cleanDark === saved?.juyaDarkStyleId) return
+    const next = { ...this.getSettings(), juyaLightStyleId: cleanLight, juyaDarkStyleId: cleanDark }
     this.store.set('settings', next)
   }
 

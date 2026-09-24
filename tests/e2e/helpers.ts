@@ -48,6 +48,9 @@ export type Scenario =
   | 'pop'
   | 'newsprint'
   | 'y2k'
+  | 'nocturne'
+  | 'editorial'
+  | 'wabi'
   | 'system'
   | 'grid4'
   | 'compact'
@@ -89,6 +92,13 @@ export function makeStubScript(scenario: Scenario): string {
     settings.juyaLightStyleId = 'newsprint90s'
   } else if (scenario === 'y2k') {
     settings.juyaLightStyleId = 'y2k'
+  } else if (scenario === 'nocturne') {
+    settings.themeMode = 'dark'
+    settings.juyaDarkStyleId = 'nocturne'
+  } else if (scenario === 'editorial') {
+    settings.juyaLightStyleId = 'editorial'
+  } else if (scenario === 'wabi') {
+    settings.juyaLightStyleId = 'wabi'
   } else if (scenario === 'system') {
     settings.themeMode = 'system'
   } else if (scenario === 'grid4') {

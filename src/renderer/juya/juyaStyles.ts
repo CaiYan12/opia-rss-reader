@@ -1,11 +1,12 @@
 import type { JuyaStyleId } from '../../shared/types'
 
 /** 橘鸦定制阅读风格注册表（渲染进程内置、只读，不进 ThemeService/ThemeEditor 体系）。
- *  五种风格 × 亮暗双变体 = 10 个条目；用户仅能选择，不可编辑（见 docs/PLAN-20260828.md Q11）。 */
+ *  八种风格 × 亮暗双变体 = 16 个条目；用户仅能选择，不可编辑（见 docs/PLAN-20260828.md Q11）。
+ *  2026-09-24 重设计：card 被 folio 取代，新增 nocturne/editorial/wabi。 */
 
 export type JuyaStyleVariantId =
-  | 'card-light'
-  | 'card-dark'
+  | 'folio-light'
+  | 'folio-dark'
   | 'y2k-light'
   | 'y2k-dark'
   | 'pop-light'
@@ -14,6 +15,12 @@ export type JuyaStyleVariantId =
   | 'newsprint90s-dark'
   | 'dreamcore-light'
   | 'dreamcore-dark'
+  | 'nocturne-light'
+  | 'nocturne-dark'
+  | 'editorial-light'
+  | 'editorial-dark'
+  | 'wabi-light'
+  | 'wabi-dark'
 
 export interface JuyaStyleMeta {
   /** 变体唯一 id：`${styleId}-${colorScheme}` */
@@ -33,19 +40,19 @@ export interface JuyaStyleMeta {
 
 export const JUYA_STYLES: JuyaStyleMeta[] = [
   {
-    id: 'card-light',
-    styleId: 'card',
-    name: '卡片主题式',
+    id: 'folio-light',
+    styleId: 'folio',
+    name: '纸感精读式',
     colorScheme: 'light',
-    focusColor: '#c1502e',
+    focusColor: '#b3452e',
     background: 'css-svg'
   },
   {
-    id: 'card-dark',
-    styleId: 'card',
-    name: '卡片主题式',
+    id: 'folio-dark',
+    styleId: 'folio',
+    name: '纸感精读式',
     colorScheme: 'dark',
-    focusColor: '#f0a080',
+    focusColor: '#e0956f',
     background: 'css-svg'
   },
   {
@@ -110,6 +117,54 @@ export const JUYA_STYLES: JuyaStyleMeta[] = [
     name: '蒸汽梦核式',
     colorScheme: 'dark',
     focusColor: '#b388ff',
+    background: 'css-svg'
+  },
+  {
+    id: 'nocturne-light',
+    styleId: 'nocturne',
+    name: '暗夜精修式',
+    colorScheme: 'light',
+    focusColor: '#4f5ed8',
+    background: 'css-svg'
+  },
+  {
+    id: 'nocturne-dark',
+    styleId: 'nocturne',
+    name: '暗夜精修式',
+    colorScheme: 'dark',
+    focusColor: '#8b97ff',
+    background: 'css-svg'
+  },
+  {
+    id: 'editorial-light',
+    styleId: 'editorial',
+    name: '杂志编辑式',
+    colorScheme: 'light',
+    focusColor: '#8a2f2b',
+    background: 'css-svg'
+  },
+  {
+    id: 'editorial-dark',
+    styleId: 'editorial',
+    name: '杂志编辑式',
+    colorScheme: 'dark',
+    focusColor: '#d08a7d',
+    background: 'css-svg'
+  },
+  {
+    id: 'wabi-light',
+    styleId: 'wabi',
+    name: '侘寂日杂式',
+    colorScheme: 'light',
+    focusColor: '#a5654a',
+    background: 'css-svg'
+  },
+  {
+    id: 'wabi-dark',
+    styleId: 'wabi',
+    name: '侘寂日杂式',
+    colorScheme: 'dark',
+    focusColor: '#c99a7d',
     background: 'css-svg'
   }
 ]

@@ -4,10 +4,10 @@ import { loadApp, openFirstArticle, activeTab } from './setup'
 /** 订阅页（HomeView 橘鸦源）风格化 + 响应式基线（Playwright 可覆盖部分）。
  *  keep-alive 下断言限定活动标签容器。 */
 
-test('默认（卡片式）：橘鸦订阅页渲染风格化期号列表', async ({ page }) => {
+test('默认（纸感精读式）：橘鸦订阅页渲染风格化期号列表', async ({ page }) => {
   await loadApp(page, 'default')
   const root = activeTab(page).locator('.juya-root')
-  await expect(root).toHaveAttribute('data-juya-variant', 'card-light')
+  await expect(root).toHaveAttribute('data-juya-variant', 'folio-light')
   const feed = root.locator('.juya-feed')
   await expect(feed).toBeVisible()
   await expect(feed.locator('.juya-feed-title')).toHaveText(['2026-08-28'])
@@ -68,19 +68,41 @@ test('reduced-motion：梦核背景漂移动画停用', async ({ page }) => {
   expect(animated === 'none' || animated === '' || animated === null).toBeTruthy()
 })
 
-test('五风格逐一断言阅读页根节点结构类', async ({ page }) => {
-  const cases: Array<{ scenario: 'default' | 'y2k' | 'pop' | 'newsprint' | 'dark'; cls: string }> = [
-    { scenario: 'default', cls: 'jycard' },
+test('八风格逐一断言阅读页根节点结构类', async ({ page }) => {
+  const cases: Array<{
+    scenario: 'default' | 'y2k' | 'pop' | 'newsprint' | 'dark' | 'nocturne' | 'editorial' | 'wabi'
+    cls: string
+  }> = [
+    { scenario: 'default', cls: 'jyfolio' },
     { scenario: 'y2k', cls: 'jyy2k' },
     { scenario: 'pop', cls: 'jypop' },
     { scenario: 'newsprint', cls: 'jynews' },
-    { scenario: 'dark', cls: 'jydream' }
+    { scenario: 'dark', cls: 'jydream' },
+    { scenario: 'nocturne', cls: 'jynoct' },
+    { scenario: 'editorial', cls: 'jyedit' },
+    { scenario: 'wabi', cls: 'jywabi' }
   ]
   for (const c of cases) {
     await loadApp(page, c.scenario)
     await openFirstArticle(page)
     await expect(activeTab(page).locator(`.juya-root.${c.cls}`)).toBeVisible()
   }
+})
+
+test('场景层：梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、暗夜不挂场景', async ({ page }) => {
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+  const dreamRoot = activeTab(page).locator('.juya-root.jydream')
+  await expect(dreamRoot.locator('.juya-scene-sun')).toBeVisible()
+  await expect(dreamRoot.locator('.juya-scene-grid-persp')).toBeVisible()
+
+  await loadApp(page, 'y2k')
+  await openFirstArticle(page)
+  await expect(activeTab(page).locator('.juya-root .juya-scene')).toBeHidden()
+
+  await loadApp(page, 'nocturne')
+  await openFirstArticle(page)
+  await expect(activeTab(page).locator('.juya-root .juya-scene')).toHaveCount(0)
 })
 
 test('橘鸦订阅页遵循「布局」预设 grid 的列数（gridColumns=4）', async ({ page }) => {

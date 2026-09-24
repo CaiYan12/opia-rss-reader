@@ -1,16 +1,15 @@
-import { EntryTitle, ImageGrid, Lead, LinksBlock, OverviewItems, Paragraphs } from './shared'
-import { DefaultFeedItem, FeedShell, Scene } from './parts'
+import { OverviewItems } from './shared'
+import { DefaultFeedItem, EntrySplit, FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
-const VARIANT_CLASS = 'jydream'
+const VARIANT_CLASS = 'jynoct'
 
-/** 蒸汽梦核式（第二轮定制排版）：synthwave 场景（条纹太阳 + 透视霓虹网格，Scene 固定层），
- *  条目首图通栏 21/9 + 其余两列子网格（hero 媒体），毛玻璃卡片即文字遮罩。 */
+/** 暗夜精修式（第二轮定制排版）：图文并排但图恒在右侧（纪律感不交替），
+ *  题注等宽字体；序号退化为灰色 # 前缀小字（发丝线体系的一部分）。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
-      <Scene sun grid="persp" />
       <div className="juya-issue">
         <header className="juya-masthead">
           <h1>{issue.heading || article.title}</h1>
@@ -20,13 +19,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
           <section className="juya-section" key={section.heading}>
             <h2>{section.heading}</h2>
             {section.entries.map((entry, i) => (
-              <article className="juya-entry" key={i}>
-                <EntryTitle entry={entry} onOpenLink={onOpenLink} />
-                {entry.lead && <Lead lead={entry.lead} />}
-                <Paragraphs paragraphs={entry.paragraphs} />
-                {entry.images.length > 0 && <ImageGrid images={entry.images} mode="hero" />}
-                <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
-              </article>
+              <EntrySplit key={i} entry={entry} onOpenLink={onOpenLink} mediaMode="plate" />
             ))}
           </section>
         ))}
@@ -50,4 +43,4 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
   )
 }
 
-export const dreamcoreTemplate: JuyaTemplate = { IssueView, FeedList }
+export const nocturneTemplate: JuyaTemplate = { IssueView, FeedList }

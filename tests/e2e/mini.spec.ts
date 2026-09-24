@@ -31,7 +31,7 @@ test.describe('Mini 模式展开摘要', () => {
     await expect(activeTab(page).locator('.juya-root')).toBeVisible()
     await expect(activeTab(page).locator('[data-juya-variant]')).toHaveAttribute(
       'data-juya-variant',
-      'card-light'
+      'folio-light'
     )
     const external = await page.evaluate(
       () => window.__stubCalls.filter(([kind]) => kind === 'openExternal').length

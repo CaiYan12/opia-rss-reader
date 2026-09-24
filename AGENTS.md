@@ -115,5 +115,7 @@ powershell -File build.ps1 -Run   # 构建并启动
 - [x] 橘鸦全风格定制排版 + 场景化背景（2026-09-24 第二轮）：7 风格手写模板摆脱工厂统一骨架（shared.tsx 原子层 + parts.tsx FeedShell/EntrySplit/Scene）；图文排版 per-style（y2k/nocturne 图文并排、pop/dreamcore 首图通栏、folio/editorial plate 题注、wabi 奇偶错位）；场景背景 dreamcore=synthwave（条纹太阳 mask + 透视霓虹网格滚动）、y2k 暗=星空+地平网格、folio=信纸格线+印章水印、editorial=颗粒+裁切角标；动效放开（reduced-motion 降级底线保留），root 永不挂 animation。
 - [x] 测试基建补齐 + 插件 API 文档/示例（2026-08-31）：**完成**。README 计划两项落地——① IPC/FeedService/标签会话/主题系统自动化测试（vitest 268/268、Playwright 75/75、tsc 零错误、`npm run build` 成功）；② `docs/PLUGIN_API.md` + 三示例插件（example-json-feed / example-theme / example-hello）。顺带加固：插件主题注册逐个 try/catch（坏主题不再拖垮启动）、`readdirSync` 失败按根隔离、`collectThemes` 按 `provides` 门控、删除 `window:mini-changed` 裸通道、`plugin-api.ts` TSDoc 对齐实际行为。
 - [x] Mini模式不完全（2026-08-31）：**完成**。日期行左侧三角可展开（手风琴单开）：橘鸦订阅展开简报（概览）纯文本，其他订阅展示限长（120 字符）文本摘要；「查看更多 →」跳正常模式阅读页并退出 Mini，不开外链；标签满上限时提示并留在 Mini。验证：tsc 零错误 / vitest 279/279 / Playwright 78/78。
-- [ ] v0.2.0 发版（2026-09-24）：八风格重设计 + 全风格定制排版 + 场景化背景 + 发行产物命名统一为 `v` 前缀。构建由用户在 IDE 外执行 `build.bat`；发布方式：附注 tag `v0.2.0` + GitHub Release（latest，附件 zip 与 portable.exe，notes 含大小与 SHA-256 校验表）。
+- [x] v0.2.0 发版（2026-09-24）：八风格重设计 + 全风格定制排版 + 场景化背景 + 发行产物命名统一为 `v` 前缀，构建由用户在 IDE 外执行 `build.bat`。
+  - **已发布**（GitHub Release，附注 tag）：tag `v0.2.0` → commit `d3bd788`；附件 `OpiaRSSReader-v0.2.0-portable.exe` 95,171,122 bytes / `OpiaRSSReader-v0.2.0-win32-x64.zip` 142,681,122 bytes；解包目录 `OpiaRSSReader-v0.2.0-win32-x64\`；内嵌 `ProductVersion 0.2.0.0` 与 tag 一致。
+  - 校验：tsc 0 错误 / vitest 287 / Playwright 82；构建前需关闭 VSCode（`build.ps1` 清 `release/` 用 `-ErrorAction SilentlyContinue`，被锁文件会**静默漏删**——本次残留了旧 `OpiaRSSReader-0.1.1-win32-x64\resources\app.asar`，构建后必须核对 `release/` 恰好只有本次三形态）。
 - [ ] 其他待测试内容

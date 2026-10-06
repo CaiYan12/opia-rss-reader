@@ -103,6 +103,20 @@ powershell -File build.ps1 -Run   # 构建并启动
 - 调试得出的可复用教训（如上面的窗口行为事实）须沉淀到本文件与项目记忆（`~/.trae-cn/memory/projects/-d-Dev-opia-rss-reader--p2-8c5b710068a2fd63ae01/project_memory.md`）。
 - 犯错（错误 Root Cause 判断、虚构验证结果等）时必须更新记忆，避免重复犯错。
 
+## Agent skills
+
+### Issue tracker
+
+Issues 与规格存于本仓库 GitHub Issues（`CaiYan12/opia-rss-reader`），一切读写经 `gh` CLI。见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+五个 triage 角色沿用同名 label（`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`）。见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文布局：根目录 `GLOSSARY.md` + `docs/adr/`（两者均尚未创建，由 `/domain-modeling` 按需惰性生成）。本文件 `AGENTS.md` 已承担多数术语的约定职责。见 `docs/agents/domain.md`。
+
 ## 计划任务
 
 - [x] v0.1.0：标签化窗口重构（无边框+TabStrip+会话持久化+Mini 修复+源切换下拉+默认订阅星形切换）

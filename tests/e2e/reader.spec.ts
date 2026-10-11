@@ -85,3 +85,16 @@ test('千禧网页式：结构类 jyy2k 挂载', async ({ page }) => {
   const root = activeTab(page).locator('.juya-root')
   await expect(root).toHaveClass(/jyy2k/)
 })
+
+test('基层规则：相关链接标签为 12px 小标签，相关链接 hover 有下划线反馈', async ({ page }) => {
+  await loadApp(page, 'default')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  // ③：base 段落规则排除标签后，「相关链接」标签按自身 12px 生效（此前被 14.5px 段落规则压制）
+  await expect(root.locator('.juya-links-label').first()).toHaveCSS('font-size', '12px')
+  // ⑦：相关链接 hover 出现下划线（与条目标题链接的 hover 反馈一致）
+  const link = root.locator('.juya-links a').first()
+  await link.hover()
+  await expect(link).toHaveCSS('text-decoration-line', 'underline')
+})

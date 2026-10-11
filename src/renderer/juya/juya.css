@@ -66,6 +66,12 @@
   text-decoration: none;
 }
 
+/* 概览链接 hover 下划线反馈（此前无任何 hover 提示；offset 为 CJK 阅读留出间隙） */
+.juya-overview a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .juya-section {
   margin-bottom: 32px;
 }
@@ -123,7 +129,8 @@
   line-height: 1.7;
 }
 
-.juya-entry p {
+/* 段落规则排除「相关链接」标签（<p.juya-links-label>），否则 0,1,1 特异性压制其 12px 小标签样式 */
+.juya-entry p:not(.juya-links-label) {
   margin: 0 0 10px;
   font-size: 14.5px;
   line-height: 1.8;
@@ -228,6 +235,12 @@
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+
+/* 相关链接 hover 下划线反馈（与条目标题链接的 hover 行为一致） */
+.juya-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .juya-links a::after {

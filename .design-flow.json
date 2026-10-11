@@ -5,7 +5,7 @@
   "history": [
     { "stage": "brief", "date": "2026-08-28", "outputs": ["AGENTS.md 橘鸦定制阅读系统约定"] },
     { "stage": "implement", "date": "2026-09-24", "outputs": ["八风格×16 变体（juya.css + 手写模板）"] },
-    { "stage": "polish", "date": "2026-10-11", "outputs": ["folio 横格对齐 + 去卡片 + 概览两列修复", "folio 首行缩进 + 图文内容流排布（JuyaEntry.blocks）", "folio 视觉体验独立评审报告（子代理，只读）"] }
+    { "stage": "polish", "date": "2026-10-11", "outputs": ["folio 横格对齐 + 去卡片 + 概览两列修复", "folio 首行缩进 + 图文内容流排布（JuyaEntry.blocks）", "folio 视觉体验独立评审报告（子代理，只读）", "评审建议 ①②：死选择器复活 + muted AA（juyaCssGuard 静态守卫）", "评审建议 ③⑤⑥⑦⑧：SDD 三任务（基层链接修复/hover、文武线+朱菱分隔符、纸面满屏）+ 最终验收 PASS"] }
   ],
   "outputs": { "brief": "AGENTS.md", "polish": "src/renderer/juya/juya.css" },
   "decisions": [
@@ -21,6 +21,6 @@
     "已执行 ①+②（2026-10-11，commit 见 git log）：5 处死选择器改复合形式 + folio muted 亮 #6a6250/暗 #998e75（双底色实算 5.0-5.7 ≥4.5）+ tests/unit/juyaCssGuard.test.ts 静态守卫（死形态+对比度）+ AGENTS.md 约定。评审建议 ③-⑧ 用户未批准，未动手",
     "code-review 双轴结论：Spec 无缺失无越权；Standards 无硬违规。已采纳：守卫 NaN 消息对称性。记录不动：守卫 lum() 与 src/shared/theme.ts themeBackgroundLuminance 同构（测试隔离，第三份出现再提取）；--jy-ruled 仍用旧 muted RGB（装饰色不受 AA 约束，色相耦合为已知维护点）"
   ],
-  "blocked": ["评审建议 ③-⑧（标签字号/印章压日期/纸面满屏/h2 文武线/链接 hover/条目分隔）待用户圈定"],
-  "next": "polish: 用户批准后执行评审建议 ③-⑧ 或其余七风格体检"
+  "blocked": ["评审建议 ④（印章压日期行）未获批未做；其余七风格体检待启动"],
+  "next": "polish: 其余七风格（y2k/pop/newsprint90s/dreamcore/nocturne/editorial/wabi）逐一体检；或按用户指示处理 ④"
 }

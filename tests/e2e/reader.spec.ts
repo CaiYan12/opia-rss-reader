@@ -86,6 +86,32 @@ test('千禧网页式：结构类 jyy2k 挂载', async ({ page }) => {
   await expect(root).toHaveClass(/jyy2k/)
 })
 
+test('folio 签名件：栏目题文武线与条目朱菱分隔符', async ({ page }) => {
+  await loadApp(page, 'default')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  // ⑥ 文武线：h2 的 ::after 为 2px 全宽朱色粗线（细线由 h2 自身 border-bottom 提供；
+  //    toHaveCSS 不支持伪元素，改用 evaluate 取 getComputedStyle(h2, '::after')）
+  const h2 = activeTab(page).locator('.jyfolio .juya-section > h2').first()
+  const wenwu = await h2.evaluate((el) => {
+    const cs = getComputedStyle(el, '::after')
+    return { borderTopWidth: cs.borderTopWidth, borderTopColor: cs.borderTopColor }
+  })
+  expect(wenwu.borderTopWidth).toBe('2px')
+  expect(wenwu.borderTopColor).toBe('rgb(179, 69, 46)')
+  // ⑧ 朱菱分隔符：全文恰 2 个（要闻/产品应用两栏目各 1；单条目栏目与首条目前不出现）
+  await expect(root.locator('.jyfolio-divider')).toHaveCount(2)
+  // 第一个分隔符必须位于第一个条目之后（同栏目相邻条目之间，而非栏目交界处）
+  const afterFirstEntry = await root.evaluate((el) => {
+    const entry = el.querySelector('.juya-entry')
+    const divider = el.querySelector('.jyfolio-divider')
+    if (!entry || !divider) return false
+    return (entry.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+  })
+  expect(afterFirstEntry).toBe(true)
+})
+
 test('基层规则：相关链接标签为 12px 小标签，相关链接 hover 有下划线反馈', async ({ page }) => {
   await loadApp(page, 'default')
   await openFirstArticle(page)

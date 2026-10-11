@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { EntryTitle, Lead, LinksBlock, OverviewItems } from './shared'
 import { DefaultFeedItem, FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
@@ -65,12 +66,20 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
           <section className="juya-section" key={section.heading}>
             <h2>{section.heading}</h2>
             {section.entries.map((entry, i) => (
-              <article className="juya-entry" key={i}>
-                <EntryTitle entry={entry} onOpenLink={onOpenLink} />
-                {entry.lead && <Lead lead={entry.lead} />}
-                <EntryFlow entry={entry} />
-                <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
-              </article>
+              <Fragment key={i}>
+                {/* 书尾花押式分隔符：仅同栏目相邻条目之间（i>0）渲染，细线—朱菱—细线 */}
+                {i > 0 && (
+                  <div className="jyfolio-divider" aria-hidden="true">
+                    <span />
+                  </div>
+                )}
+                <article className="juya-entry">
+                  <EntryTitle entry={entry} onOpenLink={onOpenLink} />
+                  {entry.lead && <Lead lead={entry.lead} />}
+                  <EntryFlow entry={entry} />
+                  <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
+                </article>
+              </Fragment>
             ))}
           </section>
         ))}

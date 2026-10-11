@@ -541,6 +541,24 @@
   padding-bottom: 4px;
 }
 
+/* 栏目题文武线（中式报刊栏目线，呼应刊头「粗短线+细长线」但全宽区分）：
+   细线走 h2 自身 border-bottom（1px 纸色）+ padding-bottom 8px，
+   粗线为 ::after 绝对定位的 2px 朱色全宽线，压在细线下方 2px（bottom:-5px = 1px 边框 + 2px 空隙 + 2px 线高） */
+.jyfolio .juya-section > h2 {
+  position: relative;
+  border-bottom: 1px solid var(--jy-border);
+  padding-bottom: 8px;
+}
+
+.jyfolio .juya-section > h2::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  border-top: 2px solid var(--jy-accent);
+}
+
 /* 概览两列目录：条目间点状引线。基类 .juya-overview 是 flex 纵排，
    而 flex 容器不参与 CSS 多列布局——必须切回 block，column-count 才生效 */
 .jyfolio .juya-overview {
@@ -614,6 +632,32 @@
 .jyfolio .juya-index {
   border-radius: 3px;
   letter-spacing: 0.05em;
+}
+
+/* 条目分隔符（书尾花押式）：细线—朱菱—细线，由 folio.tsx 在 i>0 时插于条目前，
+   仅同栏目相邻条目之间出现（栏目交界由 h2 文武线承担）；margin 28px 与条目节奏同拍 */
+.jyfolio-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 28px;
+}
+
+/* 两侧引线：flex:1 弹性等分，1px 纸色细线 */
+.jyfolio-divider::before,
+.jyfolio-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--jy-border);
+}
+
+/* 中央朱菱：7px 见方 accent 方块经 clip-path 裁出菱形 */
+.jyfolio-divider span {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--jy-accent);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
 }
 
 /* 订阅页横版纸面封面：16/10；纸不浮动——hover 只加深阴影 */

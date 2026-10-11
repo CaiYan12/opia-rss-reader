@@ -31,7 +31,10 @@
         "恢复会话后补跑 code-review 双轴真实子代理：Spec PASS（七条全落地零越权）/ Standards PASS（零 P0-P2），采纳 P3×2（守卫正则转义、AGENTS.md content 措辞）",
         "browser-visual-qa 最终验收 PASS：亮暗双变体×订阅/阅读页，CDP 字体取证 SimSun 正文/SimHei 标题落地，暗侧网格入视口 DOM+肉眼双证",
         "遗留事务处理批次（SDD，4 任务 5 提交 183a4d1/3052955/2237bf8/37e8feb/93bee50）：共享层三项修复（FeedShell 补 key、EntrySplit h3 后代形态+editorial 同步+y2k 兜底移除、ReaderView 橘鸦分支补高度链修断底）+ folio ④ 日期右让 88px",
-        "SDD 全流程：每任务实现→Explore 评审→完成；最终整体评审 PASS（I-1 文档同步修复波 93bee50，复审 ALL ADDRESSED）+ browser-visual-qa PASS（间隙 20px 精确、三风格 h3 恢复、断底 gapBelowRoot=0、key 警告归零）"
+        "SDD 全流程：每任务实现→Explore 评审→完成；最终整体评审 PASS（I-1 文档同步修复波 93bee50，复审 ALL ADDRESSED）+ browser-visual-qa PASS（间隙 20px 精确、三风格 h3 恢复、断底 gapBelowRoot=0、key 警告归零）",
+        "pop 只读审计报告（ui-motion-and-accessibility-auditor，15 张 TEMP 截图）：9 项发现（F-1 星压字/F-2 RM 击穿/F-3 暗 chip 隐形/F-4 中文无显示字/F-5 贴纸失衡/F-6 窄窗竖排/F-7 暗色黄过载/F-8 气泡尾/F-9 超大自然数缺席）+ 建议 ①-⑦，零共享层改动",
+        "pop 建议 ①a②b③④⑤⑥⑦ 实施（implement 子代理，commit 807d5b1）：暗色减黄/暗 chip 复活/星压字修复/RM 门控恢复/贴纸 nowrap+窄窗降级/中文印刷标题/超大斜置期号+爆炸星链接标签；守卫 pop 组 8 项",
+        "pop 双轴评审 Spec/Standards 双 PASS（P3×2 采纳）+ browser-visual-qa PASS（A-H 全过）；①b 字体栈与 ②a 纯 CSS 自由化四项用户未批未做"
       ]
     }
   ],
@@ -58,11 +61,15 @@
     "dev server watcher 漏失效教训（2026-10-11）：改 CSS 后 vite 可能不重转换（视觉验收实测复现），touch 文件触发重转即可；坏探针：fetch(…?direct) 返回 vite 772B index.html 回退页，应以 document.styleSheets 规则转储为准",
     "folio ④ 修法裁定（2026-10-11）：四选一询问未获回答，控制者按最佳判断采用推荐候选「日期右让 88px」（印章零改动），独立提交 37e8feb 可单独回退",
     "共享层 h3 修复「嵌套才改」裁定：editorial 覆盖同步改后代（其模板用 EntrySplit）；pop/newsprint 模板核实 h3 为直接子级，保留 > 形态（改了属无谓放宽）",
-    "EntrySplit h3 兜底移除：共享层修后 y2k 17px 由共享层提供，y2k 段内兜底与守卫断言同步收敛为锁定共享层后代形态"
+    "EntrySplit h3 兜底移除：共享层修后 y2k 17px 由共享层提供，y2k 段内兜底与守卫断言同步收敛为锁定共享层后代形态",
+    "pop 体检启动（2026-10-11）：用户点名 ui-motion-and-accessibility-auditor + design-flow，只读审计产出建议清单待裁决；用户预判问题=中文字体落位、排版不够波普自由化，允许参考在线波普设计资源",
+    "pop 审计结论（2026-10-11）：构成语言（3px 描边+6px 硬阴影+贴纸+三色 chip+气泡）执行完整、对比度 16 组全达标；缺口在文字层（中文标题=正文字族加粗，Impact 仅盖拉丁）与三处缺陷（星压字、RM 击穿、暗 chip 隐形）。建议 ①-⑥ 均只触 pop 段与 pop.tsx；⑦（暗色减黄）主观须裁决",
+    "pop 实施裁定记录（2026-10-11）：①a 只加 text-shadow 印刷感不改字体栈；期号核实 JuyaIssue 无独立期号字段→取期头日期渲染 MM.DD（缺失回退 pubDate，均无不渲染）；⑦ 阴影选深紫 #4a2d7a（#000 对 #14141a 仅 1.14:1）；②b 期号 on-accent 白字（品红底原案不可见）、星底 #d81b60（白字 4.95:1）——三处择型经双轴评审裁定授权内"
   ],
   "blocked": [
-    "共享 `.juya-scene` 100vh 未扣应用 chrome 128px 根因（y2k 已段内缓解）待另开任务；@520px 窄屏日期 88px 空让位（当前窗口 minWidth 720 不可达，防御性）",
-    "y2k/folio 真机核对已由用户通过（2026-10-11）；构建产物验证仍归用户 IDE 外执行"
+    "pop 真机核对项：期号数字字形观感、爆炸星密度、深紫阴影可辨度（AGENTS.md 已记）；420px 布局预设 2 列偏窄属布局策略议题非缺陷",
+    "基层 `.juya-links a::after` 「 ↗」缺 / '' 读屏 alt（共享层，pop 审计仅记录）",
+    "共享 `.juya-scene` 100vh 未扣应用 chrome 128px 根因待另开任务（pop 无 Scene 层不受影响）"
   ],
-  "next": "polish: 共享层三项 + folio ④ 已全部落地并通过双门禁；继续其余六风格体检（pop/newsprint90s/dreamcore/nocturne/editorial/wabi）"
+  "next": "polish: pop 已封版；继续其余五风格体检（newsprint90s/dreamcore/nocturne/editorial/wabi）"
 }

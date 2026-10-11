@@ -39,3 +39,4 @@ tests/fixtures/
 
 # Playwright run artifacts
 test-results/
+.superpowers/

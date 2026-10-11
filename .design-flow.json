@@ -34,7 +34,9 @@
         "SDD 全流程：每任务实现→Explore 评审→完成；最终整体评审 PASS（I-1 文档同步修复波 93bee50，复审 ALL ADDRESSED）+ browser-visual-qa PASS（间隙 20px 精确、三风格 h3 恢复、断底 gapBelowRoot=0、key 警告归零）",
         "pop 只读审计报告（ui-motion-and-accessibility-auditor，15 张 TEMP 截图）：9 项发现（F-1 星压字/F-2 RM 击穿/F-3 暗 chip 隐形/F-4 中文无显示字/F-5 贴纸失衡/F-6 窄窗竖排/F-7 暗色黄过载/F-8 气泡尾/F-9 超大自然数缺席）+ 建议 ①-⑦，零共享层改动",
         "pop 建议 ①a②b③④⑤⑥⑦ 实施（implement 子代理，commit 807d5b1）：暗色减黄/暗 chip 复活/星压字修复/RM 门控恢复/贴纸 nowrap+窄窗降级/中文印刷标题/超大斜置期号+爆炸星链接标签；守卫 pop 组 8 项",
-        "pop 双轴评审 Spec/Standards 双 PASS（P3×2 采纳）+ browser-visual-qa PASS（A-H 全过）；①b 字体栈与 ②a 纯 CSS 自由化四项用户未批未做"
+        "pop 双轴评审 Spec/Standards 双 PASS（P3×2 采纳）+ browser-visual-qa PASS（A-H 全过）；①b 字体栈与 ②a 纯 CSS 自由化四项用户未批未做",
+        "pop 刊头多色矩形拼贴改造（用户指令：头部不限于一方块、多色矩形彰显风格、不侵正文；commit 0e1c04a）：4 色域 grid（蓝沟槽/品红标题面板/黄期号面板黑字 14.95:1/黑底 Ben-Day 色带），暗侧四处复合覆盖，窄窗期号面板隐藏+去残列沟槽",
+        "刊头改造双轴评审 Spec/Standards 双 PASS + browser-visual-qa PASS（masthead-正文 24px 间距实测不变）"
       ]
     }
   ],
@@ -64,12 +66,12 @@
     "EntrySplit h3 兜底移除：共享层修后 y2k 17px 由共享层提供，y2k 段内兜底与守卫断言同步收敛为锁定共享层后代形态",
     "pop 体检启动（2026-10-11）：用户点名 ui-motion-and-accessibility-auditor + design-flow，只读审计产出建议清单待裁决；用户预判问题=中文字体落位、排版不够波普自由化，允许参考在线波普设计资源",
     "pop 审计结论（2026-10-11）：构成语言（3px 描边+6px 硬阴影+贴纸+三色 chip+气泡）执行完整、对比度 16 组全达标；缺口在文字层（中文标题=正文字族加粗，Impact 仅盖拉丁）与三处缺陷（星压字、RM 击穿、暗 chip 隐形）。建议 ①-⑥ 均只触 pop 段与 pop.tsx；⑦（暗色减黄）主观须裁决",
-    "pop 实施裁定记录（2026-10-11）：①a 只加 text-shadow 印刷感不改字体栈；期号核实 JuyaIssue 无独立期号字段→取期头日期渲染 MM.DD（缺失回退 pubDate，均无不渲染）；⑦ 阴影选深紫 #4a2d7a（#000 对 #14141a 仅 1.14:1）；②b 期号 on-accent 白字（品红底原案不可见）、星底 #d81b60（白字 4.95:1）——三处择型经双轴评审裁定授权内"
+    "pop 实施裁定记录（2026-10-11）：①a 只加 text-shadow 印刷感不改字体栈；期号核实 JuyaIssue 无独立期号字段→取期头日期渲染 MM.DD（缺失回退 pubDate，均无不渲染）；⑦ 阴影选深紫 #4a2d7a（#000 对 #14141a 仅 1.14:1）；②b 期号 on-accent 白字（品红底原案不可见）、星底 #d81b60（白字 4.95:1）——三处择型经双轴评审裁定授权内",
+    "pop 刊头拼贴裁定（2026-10-11）：期号影改品红 #e0e045e→#e0245e（黄面板上原 border 黄影同色隐形/亮侧黑字黑影融字，对黄底 3.72:1）；暗侧沟槽 #141414（靠黄描边分隔，刻意低对比）；期号黑/黄为波普经典对"
   ],
   "blocked": [
-    "pop 真机核对项：期号数字字形观感、爆炸星密度、深紫阴影可辨度（AGENTS.md 已记）；420px 布局预设 2 列偏窄属布局策略议题非缺陷",
-    "基层 `.juya-links a::after` 「 ↗」缺 / '' 读屏 alt（共享层，pop 审计仅记录）",
-    "共享 `.juya-scene` 100vh 未扣应用 chrome 128px 根因待另开任务（pop 无 Scene 层不受影响）"
+    "pop 真机核对项：拼贴比例与蓝沟槽饱和度观感、色带 26px 观感、期号字形/爆炸星密度、深紫阴影可辨度；420px 下 3px 边框渲染为 2.86px 属 DPR 取整伪差待真机复核",
+    "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
   ],
-  "next": "polish: pop 已封版；继续其余五风格体检（newsprint90s/dreamcore/nocturne/editorial/wabi）"
+  "next": "polish: pop 刊头拼贴完成；等用户真机裁决或继续其余五风格体检（newsprint90s/dreamcore/nocturne/editorial/wabi）"
 }

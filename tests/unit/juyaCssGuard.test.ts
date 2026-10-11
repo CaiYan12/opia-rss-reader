@@ -88,8 +88,17 @@ describe('y2k 视觉审计守卫（2026-10-11 建议①-⑦）', () => {
     expect(rule).toContain('text-indent: 2em')
   })
 
-  it('③ 条目标题层级兜底：EntrySplit 嵌套 h3 回到 17px', () => {
-    expect(y2kRule('\\.juya-entry h3')).toContain('font-size: 17px')
+  it('③ 共享层条目标题改后代形态：EntrySplit 嵌套 h3 恢复 17px（y2k 兜底移除）', () => {
+    // `.juya-entry > h3` 子选择器打不中 EntrySplit 的 .juya-entry-row 嵌套
+    // （曾致 y2k/nocturne/editorial 阅读页标题丢失样式）；共享层锁定后代形态。
+    const shared = css.match(/(?:^|\n)\.juya-entry h3 \{[^}]*\}/)?.[0] ?? ''
+    expect(shared, '共享层 .juya-entry h3 应存在且 17px').toContain('font-size: 17px')
+    expect(css.match(/(?:^|\n)\.juya-entry h3 a \{[^}]*\}/)?.[0] ?? '', '共享层标题链接应为后代形态').toBeTruthy()
+    expect(css, '共享层不得残留 .juya-entry > h3 子选择器死形态').not.toMatch(/(?:^|\n)\.juya-entry > h3/)
+    // editorial 同用 EntrySplit，自有覆盖必须同步后代形态
+    const edit = css.match(/(?:^|\n)\.jyedit \.juya-entry h3 \{[^}]*\}/)?.[0] ?? ''
+    expect(edit, 'editorial 覆盖应为后代形态且 20px').toContain('font-size: 20px')
+    expect(css, '共享层修复后 y2k 兜底应已移除').not.toMatch(/(?:^|\n)\.jyy2k \.juya-entry h3 \{/)
   })
 
   it('④ 亮侧铬面刊头字渐变末端对亮底 ≥ 3:1（大文本 AA），暗侧渐变保持不变', () => {

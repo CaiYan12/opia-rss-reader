@@ -90,7 +90,9 @@
   margin-bottom: 28px;
 }
 
-.juya-entry > h3 {
+/* 条目标题用后代形态而非子选择器：EntrySplit（y2k/nocturne/editorial）把 h3
+   嵌进 .juya-entry-row > .juya-entry-body，`>` 形态打不中（曾致标题丢失样式） */
+.juya-entry h3 {
   font-family: var(--jy-font-heading, inherit);
   font-size: 17px;
   line-height: 1.4;
@@ -100,12 +102,12 @@
   overflow-wrap: anywhere;
 }
 
-.juya-entry > h3 a {
+.juya-entry h3 a {
   color: inherit;
   text-decoration: none;
 }
 
-.juya-entry > h3 a:hover {
+.juya-entry h3 a:hover {
   text-decoration: underline;
 }
 
@@ -769,13 +771,6 @@
    「相关链接」小标签（p.juya-links-label）排除；导语为 blockquote.juya-lead，天然不命中 p 选择器 */
 .jyy2k .juya-entry p:not(.juya-links-label) {
   text-indent: 2em;
-}
-
-/* 审计③条目标题层级兜底：EntrySplit 图文并排把 h3 嵌进 .juya-entry-row > .juya-entry-body，
-   共享层 `.juya-entry > h3`（17px）打不中嵌套结构 → computed 14px 反小于正文 14.5px。
-   共享层选择器修复属建议⑧（另开任务），此处仅 y2k 作用域兜底字号 */
-.jyy2k .juya-entry h3 {
-  font-size: 17px;
 }
 
 .jyy2k .juya-masthead {
@@ -1707,7 +1702,7 @@
   color: var(--jy-accent);
 }
 
-.jyedit .juya-entry > h3 {
+.jyedit .juya-entry h3 {
   font-size: 20px;
   font-weight: 700;
 }

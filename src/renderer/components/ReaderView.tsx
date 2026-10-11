@@ -73,8 +73,16 @@ export function ReaderView({ article }: Props): JSX.Element {
     <div className="flex h-full flex-col">
       {toolbar}
       <div className="flex-1 overflow-y-auto">
-        {/* 内容区随 uiZoom 缩放；工具栏在 zoom 容器外，保持固定尺寸 */}
-        <div style={{ zoom: uiZoom }}>
+        {/* 内容区随 uiZoom 缩放；工具栏在 zoom 容器外，保持固定尺寸。
+            橘鸦分支补齐高度链（min-height 100% + flex 列容器，配合 .juya-root 的 flex:1），
+            短内容时纸面铺满视口；通用阅读分支保持原样 */}
+        <div
+          style={
+            juya
+              ? { zoom: uiZoom, minHeight: '100%', display: 'flex', flexDirection: 'column' }
+              : { zoom: uiZoom }
+          }
+        >
           {juya ? (
             <juya.template.IssueView
               article={article}

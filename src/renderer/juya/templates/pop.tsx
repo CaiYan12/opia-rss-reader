@@ -23,13 +23,20 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
       <div className="juya-issue">
+        {/* 2026-10-11 用户指令：刊头由单方块改多色矩形拼贴（品红标题面板 + 荧光黄期号面板 +
+            黑色 Ben-Day 色带，蓝色沟槽分隔），全部矩形收在 .juya-masthead 盒内不外溢正文 */}
         <header className="juya-masthead">
-          <h1>{issue.heading || article.title}</h1>
+          <div className="jypop-title-panel">
+            <h1>{issue.heading || article.title}</h1>
+          </div>
           {issueNo && (
-            <span className="jypop-issue-no" aria-hidden="true">
-              {issueNo}
-            </span>
+            <div className="jypop-issue-panel">
+              <span className="jypop-issue-no" aria-hidden="true">
+                {issueNo}
+              </span>
+            </div>
           )}
+          <div className="jypop-strip" aria-hidden="true" />
         </header>
         {issue.overview && <OverviewItems overview={issue.overview} onOpenLink={onOpenLink} />}
         {issue.sections.map((section) => (

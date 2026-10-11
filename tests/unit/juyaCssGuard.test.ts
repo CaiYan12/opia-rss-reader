@@ -283,8 +283,134 @@ describe('pop 视觉审计守卫（2026-10-11 建议①a②b③④⑤⑥⑦，�
     expect(tsx).toContain('jypop-issue-no')
     expect(tsx).toContain('aria-hidden="true"')
     expect(tsx, '期号字段缺失时应条件渲染').toMatch(/issueNo\s*&&/)
-    // 期号白字对品红刊头为大文本装饰件，锁 AA 大字线（评审 P3：此前未入守卫）
+    // 2026-10-11 刊头拼贴改版：白字对品红底的主体由期号（已入黄面板）改为 h1 标题面板，
+    // 断言与数值不变（accent token 仍为两变体刊头品红，白字大文本 ≥3）
     const accent = tokenHex(variantBlock('pop-dark'), '--jy-accent')
-    expect(contrast(0xffffff, accent), '期号白字/品红刊头（大文本）').toBeGreaterThanOrEqual(3)
+    expect(contrast(0xffffff, accent), '白字/品红（大文本）').toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('pop 刊头多面板拼贴守卫（2026-10-11 用户指令：刊头由单方块改多色矩形拼贴，不影响正文阅读）', () => {
+  const titlePanel = () => popRule('\\.jypop-title-panel')
+  const issuePanel = () => popRule('\\.jypop-issue-panel')
+  const strip = () => popRule('\\.jypop-strip')
+  const masthead = () => popRule('\\.juya-masthead')
+  const issueNo = () => popRule('\\.jypop-issue-no')
+
+  it('① 拼贴构成存在：刊头网格容器 + 标题面板/期号面板/色带 ≥3 个新面板选择器（pop.tsx 结构同步）', () => {
+    expect(masthead(), '刊头应为网格拼贴容器').toContain('display: grid')
+    expect(masthead(), '网格分区应含底缘色带行').toContain("'strip strip'")
+    for (const [name, rule] of [
+      ['标题面板', titlePanel()],
+      ['期号面板', issuePanel()],
+      ['色带', strip()]
+    ] as const) {
+      expect(rule, `${name}规则应存在`).toBeTruthy()
+    }
+    const tsx = readFileSync(join(process.cwd(), 'src/renderer/juya/templates/pop.tsx'), 'utf-8')
+    expect(tsx).toContain('jypop-title-panel')
+    expect(tsx).toContain('jypop-issue-panel')
+    expect(tsx).toContain('jypop-strip')
+  })
+
+  it('② 期号黄面板：#ffe957 底 + 期号黑字对比 ≥4.5（黑/黄波普经典对），暗侧不得改底色', () => {
+    const panel = issuePanel()
+    expect(panel).toContain('background: #ffe957')
+    const no = issueNo()
+    expect(no, '期号颜色必须随黄底新配，不得沿用 on-accent 白字').not.toContain('var(--jy-on-accent)')
+    const color = Number.parseInt(no.match(/color:\s*(#[0-9a-fA-F]{6})/)?.[1]?.slice(1) ?? 'zz', 16)
+    expect(color, '期号颜色应为显式 6 位 hex').not.toBeNaN()
+    expect(contrast(color, 0xffe957), '期号黑字/黄面板').toBeGreaterThanOrEqual(4.5)
+    const darkOverride =
+      css.match(/\[data-juya-variant='pop-dark'\]\.jypop \.jypop-issue-panel \{[^}]*\}/)?.[0] ?? ''
+    expect(darkOverride, '暗侧期号面板覆盖应存在（描边改黑防黄边融底）').toBeTruthy()
+    expect(darkOverride, '暗侧不得改期号面板底色（换底须重算对比）').not.toContain('background')
+  })
+
+  it('③ 标题白字对品红面板（两变体）≥3（大文本 AA）', () => {
+    for (const variant of ['pop-light', 'pop-dark']) {
+      const accent = tokenHex(variantBlock(variant), '--jy-accent')
+      expect(contrast(0xffffff, accent), `${variant} h1 白字/品红面板`).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('④ 色带：黑底 Ben-Day 白点纹理；暗侧蓝色带覆盖存在（黑带融进暗底不可辨）', () => {
+    const band = strip()
+    expect(band).toContain('background-color: #141414')
+    expect(band, '色带应有 Ben-Day 网点纹理').toContain('radial-gradient')
+    const darkBand = css.match(/\[data-juya-variant='pop-dark'\]\.jypop \.jypop-strip \{[^}]*\}/)?.[0] ?? ''
+    expect(darkBand, '暗侧蓝色带覆盖应存在').toContain('background-color: #1f4fd8')
+  })
+
+  it('⑤ 星形几何自查（基础 + ≤520px 窄窗两上下文）：面板左留白 ≥44px（星 left:-40px 收在标题面板内）+ 顶部 ≥12px；min-width:0 防长标题撑破', () => {
+    // 解析 padding 简写（1/2/3/4 值）或显式 padding-left/top
+    const padSide = (block: string, side: 'top' | 'left'): number => {
+      const explicit = block.match(new RegExp(`padding-${side}:\\s*(-?[\\d.]+)px`))
+      if (explicit) return Number.parseFloat(explicit[1])
+      const vals = (block.match(/padding:\s*([^;]+);/)?.[1] ?? '')
+        .trim()
+        .split(/\s+/)
+        .map((v) => Number.parseFloat(v))
+      if (vals.length === 1) return vals[0]
+      if (vals.length === 2) return side === 'top' ? vals[0] : vals[1]
+      if (vals.length === 3) return side === 'top' ? vals[0] : vals[1]
+      if (vals.length === 4) return side === 'top' ? vals[0] : vals[3]
+      return NaN
+    }
+    const panelBlocks = extractBlocks(css, /(?:^|\n)[ \t]*\.jypop \.jypop-title-panel \{/)
+    const h1Blocks = extractBlocks(css, /(?:^|\n)[ \t]*\.jypop \.juya-masthead h1 \{/)
+    const narrow = extractBlocks(css, /@media \(max-width: 520px\) \{/).join('\n')
+    const inNarrow = (block: string): boolean => narrow.includes(block)
+    const maxMargin = (blocks: string[]): number =>
+      Math.max(
+        0,
+        ...blocks
+          .map((b) => Number.parseFloat(b.match(/margin-left:\s*(-?[\d.]+)px/)?.[1] ?? 'NaN'))
+          .filter(Number.isFinite)
+      )
+    // 基础上下文：面板 padding-left + 媒体块外 h1 margin-left ≥ 44（星宽外缘 40 + 4px 富余）
+    const basePanel = panelBlocks.find((b) => !inNarrow(b)) ?? ''
+    expect(basePanel, '基础标题面板规则应存在').toBeTruthy()
+    expect(
+      padSide(basePanel, 'left') + maxMargin(h1Blocks.filter((b) => !inNarrow(b))),
+      '基础面板左留白合计 ≥ 44'
+    ).toBeGreaterThanOrEqual(44)
+    expect(padSide(basePanel, 'top'), '面板 padding-top ≥ 12（星形 top:-12px 不出面板）').toBeGreaterThanOrEqual(12)
+    // 窄窗上下文：520px 块内面板 padding-left + h1 margin-left 同样 ≥ 44
+    const narrowPanel = panelBlocks.find((b) => inNarrow(b)) ?? ''
+    expect(narrowPanel, '窄窗标题面板补值规则应存在').toBeTruthy()
+    expect(
+      padSide(narrowPanel, 'left') + maxMargin(h1Blocks.filter((b) => inNarrow(b))),
+      '窄窗面板左留白合计 ≥ 44'
+    ).toBeGreaterThanOrEqual(44)
+    expect(basePanel, 'grid 行内防长标题撑破面板').toContain('min-width: 0')
+  })
+
+  it('⑥ 期号面板 padding ≥10px：56px 期号 -7° 斜置角不出黄面板（旋转 bbox 高约 73px > 56px 内容盒）', () => {
+    const padding = (issuePanel().match(/padding:\s*([^;]+);/)?.[1] ?? '')
+      .trim()
+      .split(/\s+/)
+      .map((v) => Number.parseFloat(v))
+    expect(padding[0], '期号面板 padding-top 覆盖斜置外溢角').toBeGreaterThanOrEqual(10)
+  })
+
+  it('⑦ 新面板规则零 animation/transition（静态构成，.juya-root 永无 animation）', () => {
+    for (const [name, rule] of [
+      ['刊头', masthead()],
+      ['标题面板', titlePanel()],
+      ['期号面板', issuePanel()],
+      ['色带', strip()]
+    ] as const) {
+      expect(rule, `${name}不得新增动效`).not.toMatch(/animation|transition/)
+    }
+  })
+
+  it('⑧ 暗侧拼贴：刊头沟槽改暗 + 面板硬阴影随暗侧语言（深紫 #4a2d7a），全部复合选择器形态', () => {
+    const darkMasthead =
+      css.match(/\[data-juya-variant='pop-dark'\]\.jypop \.juya-masthead \{[^}]*\}/)?.[0] ?? ''
+    expect(darkMasthead, '暗侧刊头沟槽覆盖应存在').toContain('background: #141414')
+    const darkTitle =
+      css.match(/\[data-juya-variant='pop-dark'\]\.jypop \.jypop-title-panel \{[^}]*\}/)?.[0] ?? ''
+    expect(darkTitle, '暗侧标题面板阴影应随暗侧硬阴影语言').toContain('box-shadow: 6px 6px 0 #4a2d7a')
   })
 })

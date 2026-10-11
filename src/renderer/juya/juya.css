@@ -971,15 +971,75 @@
   padding: 18px 20px;
 }
 
+/* 2026-10-11 用户指令：刊头多色矩形拼贴构成（头部不局限于一个方块，多面板彰显风格，
+   全部面板收在刊头盒内不外溢正文）。蓝色沟槽底 = 第三个色域；面板间以既有描边/硬阴影语言分隔 */
 .jypop .juya-masthead {
-  background: var(--jy-accent);
+  background: #1f4fd8;
   color: var(--jy-on-accent);
-  padding: 24px;
-  /* 审计建议②b-a：刊头两端排布（标题左 / 超大斜置期号右） */
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title issue'
+    'strip strip';
+  gap: 12px;
+}
+
+/* 主标题面板：品红底（--jy-accent，亮 #e0245e / 暗 #ff2e74），白字 h1 继承刊头色；
+   padding-left 28 + h1 margin-left 16 = 44px，爆炸星（left:-40px）收在面板内；
+   min-width:0 防长标题撑破（h1 自带 overflow-wrap:anywhere） */
+.jypop .jypop-title-panel {
+  grid-area: title;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--jy-accent);
+  border: 3px solid var(--jy-border);
+  box-shadow: 6px 6px 0 var(--jy-border);
+  padding: 14px 16px 16px 28px;
+}
+
+/* 期号面板：荧光黄独立色块（黑/黄波普经典对），斜置期号居中；
+   padding 14 ≥ 旋转外溢角约 8.3px（56px 字 -7° bbox 高约 73px > 56px 内容盒） */
+.jypop .jypop-issue-panel {
+  grid-area: issue;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: center;
+  background: #ffe957;
+  border: 3px solid var(--jy-border);
+  box-shadow: 6px 6px 0 var(--jy-border);
+  padding: 14px 20px;
+}
+
+/* 底缘装饰色带：黑底 Ben-Day 白点（呼应亮变体页面网点语言），纯装饰无文字 */
+.jypop .jypop-strip {
+  grid-area: strip;
+  height: 26px;
+  background-color: #141414;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.32) 1.6px, transparent 1.7px);
+  background-size: 14px 14px;
+}
+
+/* 暗侧拼贴覆盖（复合选择器形态）：沟槽改暗底（霓虹面板浮于夜色）；
+   面板硬阴影随暗侧既有语言换深紫 #4a2d7a（与刊头/条目阴影同值，对比 1.70 可辨）；
+   期号面板描边改黑（黄面板 + 黄描边（--jy-border 暗侧=#ffe957）会融边），底色不动 */
+[data-juya-variant='pop-dark'].jypop .juya-masthead {
+  background: #141414;
+}
+
+[data-juya-variant='pop-dark'].jypop .jypop-strip {
+  background-color: #1f4fd8;
+}
+
+[data-juya-variant='pop-dark'].jypop .jypop-title-panel {
+  box-shadow: 6px 6px 0 #4a2d7a;
+}
+
+[data-juya-variant='pop-dark'].jypop .jypop-issue-panel {
+  border-color: #141414;
+  box-shadow: 6px 6px 0 #4a2d7a;
 }
 
 .jypop .juya-masthead h1 {
@@ -988,7 +1048,7 @@
   text-transform: none;
   letter-spacing: 0.5px;
   /* 审计建议①a：中文标题印刷感——右下硬位移黑影（平涂印刷 offsets；不描边、不改字体栈，①b 未批不做）。
-     h1 两侧均坐在品红刊头底（--jy-accent）上，黑影混合后仍可辨，亮暗共用同一值 */
+     h1 坐在品红标题面板（--jy-accent）上，黑影混合后仍可辨，亮暗共用同一值 */
   text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.28);
 }
 
@@ -1079,7 +1139,8 @@
 .jypop .juya-masthead h1 {
   position: relative;
   display: inline-block;
-  /* 审计建议③ 配套：给爆炸星留位，-40px 星形左缘恰收在刊头边框内（窄窗见 520px 媒体块补值） */
+  /* 审计建议③ 配套：给爆炸星留位，-40px 星形左缘收在标题面板内
+     （面板 padding-left 28 + 本 margin 16 = 44px 左留白，窄窗见 520px 媒体块补值） */
   margin-left: 16px;
 }
 
@@ -1096,17 +1157,18 @@
   transform: rotate(-8deg);
 }
 
-/* 审计建议②b-a：刊头右侧超大斜置期号（装饰性重复期头日期，aria-hidden）。
-   原案「品红 accent」在品红刊头底（--jy-accent）上不可见，改用 on-accent 白字；
-   6px 硬位移阴影呼应卡片语言（亮 #141414 / 暗 #ffe957，随 --jy-border） */
+/* 刊头右侧超大斜置期号（装饰性重复期头日期，aria-hidden），2026-10-11 拼贴改版后坐在荧光黄
+   期号面板（.jypop-issue-panel）内：白字对黄底不可读，改黑字 #141414（黑/黄经典对，对比 14.95，
+   两变体面板同为黄底故共用）；硬位移阴影改品红 #e0245e——原 --jy-border 影（亮黑/暗黄）在
+   黑字/黄底上分别融字与隐形，品红既可辨（对比 3.72）又与标题面板同色呼应（套印错位感） */
 .jypop .jypop-issue-no {
   flex: none;
   font-family: var(--jy-font-heading, inherit);
   font-size: 56px;
   line-height: 1;
   letter-spacing: 1px;
-  color: var(--jy-on-accent);
-  text-shadow: 6px 6px 0 var(--jy-border);
+  color: #141414;
+  text-shadow: 6px 6px 0 #e0245e;
   transform: rotate(-7deg);
   user-select: none;
 }
@@ -2014,11 +2076,20 @@
     font-weight: 400;
     white-space: normal;
   }
-  /* 审计建议②b-a：超大期号为纯装饰（aria-hidden），窄窗直接隐藏不挤压标题 */
-  .jypop .jypop-issue-no {
+  /* 超大期号为纯装饰（aria-hidden），2026-10-11 拼贴改版后连同期号黄面板一起隐藏不挤压标题 */
+  .jypop .jypop-issue-panel {
     display: none;
   }
-  /* 审计建议③ 配套：窄窗刊头 padding 收窄后加大 h1 左边距，星形左缘仍收在刊头边框内 */
+  /* 期号列塌缩后 12px 列沟槽会残留在标题面板右侧（视觉验收 2026-10-11），
+     窄窗下去列沟槽保留行沟槽，标题面板严格占满 */
+  .jypop .juya-masthead {
+    gap: 12px 0;
+  }
+  /* 审计建议③ 配套：窄窗加大 h1 左边距，标题面板 padding-left 补 20px，
+     星形左缘收在面板内（20 + 24 = 44px 左留白，与基础上下文同裕度） */
+  .jypop .jypop-title-panel {
+    padding-left: 20px;
+  }
   .jypop .juya-masthead h1 {
     margin-left: 24px;
   }

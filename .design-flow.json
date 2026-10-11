@@ -3,11 +3,40 @@
   "track": "code-first",
   "updated": "2026-10-11",
   "history": [
-    { "stage": "brief", "date": "2026-08-28", "outputs": ["AGENTS.md 橘鸦定制阅读系统约定"] },
-    { "stage": "implement", "date": "2026-09-24", "outputs": ["八风格×16 变体（juya.css + 手写模板）"] },
-    { "stage": "polish", "date": "2026-10-11", "outputs": ["folio 横格对齐 + 去卡片 + 概览两列修复", "folio 首行缩进 + 图文内容流排布（JuyaEntry.blocks）", "folio 视觉体验独立评审报告（子代理，只读）", "评审建议 ①②：死选择器复活 + muted AA（juyaCssGuard 静态守卫）", "评审建议 ③⑤⑥⑦⑧：SDD 三任务（基层链接修复/hover、文武线+朱菱分隔符、纸面满屏）+ 最终验收 PASS", "folio 封版；y2k 视觉体验审计报告（ui-motion-and-accessibility-auditor，只读，13 截图）"] }
+    {
+      "stage": "brief",
+      "date": "2026-08-28",
+      "outputs": [
+        "AGENTS.md 橘鸦定制阅读系统约定"
+      ]
+    },
+    {
+      "stage": "implement",
+      "date": "2026-09-24",
+      "outputs": [
+        "八风格×16 变体（juya.css + 手写模板）"
+      ]
+    },
+    {
+      "stage": "polish",
+      "date": "2026-10-11",
+      "outputs": [
+        "folio 横格对齐 + 去卡片 + 概览两列修复",
+        "folio 首行缩进 + 图文内容流排布（JuyaEntry.blocks）",
+        "folio 视觉体验独立评审报告（子代理，只读）",
+        "评审建议 ①②：死选择器复活 + muted AA（juyaCssGuard 静态守卫）",
+        "评审建议 ③⑤⑥⑦⑧：SDD 三任务（基层链接修复/hover、文武线+朱菱分隔符、纸面满屏）+ 最终验收 PASS",
+        "folio 封版；y2k 视觉体验审计报告（ui-motion-and-accessibility-auditor，只读，13 截图）",
+        "y2k 建议①-⑦实施（implement 子代理，commit 8c9f0ce）：中文字体栈/段首缩进 2em/h3 兜底/铬字对比/瓷砖降噪/网格入视口/AT 静默+@supports 回退",
+        "恢复会话后补跑 code-review 双轴真实子代理：Spec PASS（七条全落地零越权）/ Standards PASS（零 P0-P2），采纳 P3×2（守卫正则转义、AGENTS.md content 措辞）",
+        "browser-visual-qa 最终验收 PASS：亮暗双变体×订阅/阅读页，CDP 字体取证 SimSun 正文/SimHei 标题落地，暗侧网格入视口 DOM+肉眼双证"
+      ]
+    }
   ],
-  "outputs": { "brief": "AGENTS.md", "polish": "src/renderer/juya/juya.css" },
+  "outputs": {
+    "brief": "AGENTS.md",
+    "polish": "src/renderer/juya/juya.css"
+  },
   "decisions": [
     "用户点名 /design-flow + /frontend-design（2026-10-11，橘鸦风格修复阶段）",
     "folio 信纸横格下沉到正文段落：行高=格距 28px 结构性对齐，容器只留朱丝栏（容器级横格无法对齐任意结构文本，已移除）",
@@ -21,8 +50,15 @@
     "已执行 ①+②（2026-10-11，commit 见 git log）：5 处死选择器改复合形式 + folio muted 亮 #6a6250/暗 #998e75（双底色实算 5.0-5.7 ≥4.5）+ tests/unit/juyaCssGuard.test.ts 静态守卫（死形态+对比度）+ AGENTS.md 约定。评审建议 ③-⑧ 用户未批准，未动手",
     "code-review 双轴结论：Spec 无缺失无越权；Standards 无硬违规。已采纳：守卫 NaN 消息对称性。记录不动：守卫 lum() 与 src/shared/theme.ts themeBackgroundLuminance 同构（测试隔离，第三份出现再提取）；--jy-ruled 仍用旧 muted RGB（装饰色不受 AA 约束，色相耦合为已知维护点）",
     "folio 封版（用户 2026-10-11）",
-    "y2k 审计（ui-motion-and-accessibility-auditor，2026-10-11）：两已知问题证实——中文全部字形落 Noto Sans SC/雅黑与默认界面字零差异（Tahoma/Trebuchet 仅盖拉丁）、text-indent 0px；新发现：条目 h3 14px 反小于正文 14.5px（.juya-entry > h3 打不中 EntrySplit 嵌套，波及 y2k/nocturne/editorial 三风格）、亮侧铬字最差对 2.65:1、暗侧地平网格 post-transform 72px 恒在视口外（.juya-scene 100vh 未扣 chrome 高度 128px）、星光瓷砖过响读作壁纸。建议①宋体正文+黑体标题/②缩进2em/③h3层级/④铬字对比/⑤瓷砖降噪/⑥网格抬入视口/⑦伪元素AT静默 已交用户，未动手"
+    "y2k 审计（ui-motion-and-accessibility-auditor，2026-10-11）：两已知问题证实——中文全部字形落 Noto Sans SC/雅黑与默认界面字零差异（Tahoma/Trebuchet 仅盖拉丁）、text-indent 0px；新发现：条目 h3 14px 反小于正文 14.5px（.juya-entry > h3 打不中 EntrySplit 嵌套，波及 y2k/nocturne/editorial 三风格）、亮侧铬字最差对 2.65:1、暗侧地平网格 post-transform 72px 恒在视口外（.juya-scene 100vh 未扣 chrome 高度 128px）、星光瓷砖过响读作壁纸。建议①宋体正文+黑体标题/②缩进2em/③h3层级/④铬字对比/⑤瓷砖降噪/⑥网格抬入视口/⑦伪元素AT静默 已交用户，未动手",
+    "y2k ①-⑦实施技术替代（2026-10-11）：④双影用 filter: drop-shadow 实现——text-shadow 在 background-clip:text 下会盖住渐变填充（Chromium 绘制顺序），禁用 text-shadow；双影只挂亮侧，暗侧渐变未动",
+    "y2k 流程事件（2026-10-11）：上一会话因「Captcha verification failed」模型请求失败中断于用户批准后，本会话经 ReadSessionContext + db input_history 找回原指令并接续执行；实施代理无子代理工具改自审，协调者补跑真实双轴评审后采纳 P3×2 并 amend 入 8c9f0ce",
+    "dev server watcher 漏失效教训（2026-10-11）：改 CSS 后 vite 可能不重转换（视觉验收实测复现），touch 文件触发重转即可；坏探针：fetch(…?direct) 返回 vite 772B index.html 回退页，应以 document.styleSheets 规则转储为准"
   ],
-  "blocked": ["评审建议 ④（印章压日期行）未获批未做；y2k 审计建议 ①-⑦ 待用户决定；共享层 bug 两项（EntrySplit 风格 h3 选择器、短内容背景断底、FeedShell 缺 key）待另开任务"],
-  "next": "polish: 等用户裁决 y2k 建议；或继续其余风格（pop/newsprint90s/dreamcore/nocturne/editorial/wabi）体检"
+  "blocked": [
+    "评审建议 ④（印章压日期行）未获批未做",
+    "共享层 bug 三项另开任务：EntrySplit h3 选择器（`.juya-entry > h3` 打不中嵌套，波及 y2k/nocturne/editorial）、短内容阅读页 .juya-root 背景断底、FeedShell articles.map 缺 React key（视觉验收已复现该警告）",
+    "y2k 真机核对项：SimSun 高分屏（≥125%）渲染、160px 砖密度、暗侧网格 bottom:136px 不同窗口高度、亮侧双影观感"
+  ],
+  "next": "polish: y2k ①-⑦已实施并通过双轴评审+视觉验收（等用户真机核对/裁决）；或继续其余风格体检（pop/newsprint90s/dreamcore/nocturne/editorial/wabi）；或按用户指示开共享层修复任务"
 }

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { cloneElement, type CSSProperties } from 'react'
 import type { Article, LayoutConfig } from '../../../shared/types'
 import type { JuyaStyleVariantId } from '../juyaStyles'
 import type { JuyaEntry } from '../parseJuyaIssue'
@@ -81,7 +81,11 @@ export function FeedShell({
             <div className="juya-feed-grid" style={gridProps}>
               {articles
                 .slice(1)
-                .map((a, i) => renderItem(a, i + 1, 'card', feedFieldGates(layout.fields, 'card'), delay(i + 1)))}
+                .map((a, i) =>
+                  cloneElement(renderItem(a, i + 1, 'card', feedFieldGates(layout.fields, 'card'), delay(i + 1)), {
+                    key: a.guid
+                  })
+                )}
             </div>
           )}
         </div>
@@ -95,7 +99,11 @@ export function FeedShell({
           {empty ? (
             <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>
           ) : (
-            articles.map((a, i) => renderItem(a, i, 'compact', feedFieldGates(layout.fields, 'compact'), delay(i)))
+            articles.map((a, i) =>
+              cloneElement(renderItem(a, i, 'compact', feedFieldGates(layout.fields, 'compact'), delay(i)), {
+                key: a.guid
+              })
+            )
           )}
         </div>
       </div>
@@ -107,7 +115,11 @@ export function FeedShell({
         {empty ? (
           <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>
         ) : (
-          articles.map((a, i) => renderItem(a, i, 'card', feedFieldGates(layout.fields, 'card'), delay(i)))
+          articles.map((a, i) =>
+            cloneElement(renderItem(a, i, 'card', feedFieldGates(layout.fields, 'card'), delay(i)), {
+              key: a.guid
+            })
+          )
         )}
       </div>
     </div>

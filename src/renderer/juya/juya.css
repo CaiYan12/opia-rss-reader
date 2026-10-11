@@ -8,7 +8,7 @@
 
 .juya-root {
   min-height: 100%;
-  /* 父级为 flex 列容器时（HomeView 订阅页）铺满剩余高度；非 flex 父级（ReaderView 等）该属性惰性 */
+  /* 父级为 flex 列容器时（HomeView 订阅页）铺满剩余高度；ReaderView 的橘鸦分支与订阅页同走 flex 高度链 */
   flex: 1;
   background-color: var(--jy-bg);
   color: var(--jy-text);
@@ -549,6 +549,8 @@
   color: var(--jy-muted);
   white-space: nowrap;
   padding-bottom: 4px;
+  /* 建议④：日期右让印章（2026-10-11 遗留事务处理，修法为最小侵入候选，独立提交可回退） */
+  padding-right: 88px;
 }
 
 /* 栏目题文武线（中式报刊栏目线，呼应刊头「粗短线+细长线」但全宽区分）：

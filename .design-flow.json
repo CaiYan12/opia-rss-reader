@@ -5,7 +5,7 @@
   "history": [
     { "stage": "brief", "date": "2026-08-28", "outputs": ["AGENTS.md 橘鸦定制阅读系统约定"] },
     { "stage": "implement", "date": "2026-09-24", "outputs": ["八风格×16 变体（juya.css + 手写模板）"] },
-    { "stage": "polish", "date": "2026-10-11", "outputs": ["folio 横格对齐 + 去卡片 + 概览两列修复", "folio 首行缩进 + 图文内容流排布（JuyaEntry.blocks）", "folio 视觉体验独立评审报告（子代理，只读）", "评审建议 ①②：死选择器复活 + muted AA（juyaCssGuard 静态守卫）", "评审建议 ③⑤⑥⑦⑧：SDD 三任务（基层链接修复/hover、文武线+朱菱分隔符、纸面满屏）+ 最终验收 PASS"] }
+    { "stage": "polish", "date": "2026-10-11", "outputs": ["folio 横格对齐 + 去卡片 + 概览两列修复", "folio 首行缩进 + 图文内容流排布（JuyaEntry.blocks）", "folio 视觉体验独立评审报告（子代理，只读）", "评审建议 ①②：死选择器复活 + muted AA（juyaCssGuard 静态守卫）", "评审建议 ③⑤⑥⑦⑧：SDD 三任务（基层链接修复/hover、文武线+朱菱分隔符、纸面满屏）+ 最终验收 PASS", "folio 封版；y2k 视觉体验审计报告（ui-motion-and-accessibility-auditor，只读，13 截图）"] }
   ],
   "outputs": { "brief": "AGENTS.md", "polish": "src/renderer/juya/juya.css" },
   "decisions": [
@@ -19,8 +19,10 @@
     "发现未修（全风格共有）：.juya-links-label 12px 被 .juya-entry p 特异性压制，标签渲染 14.5px",
     "子代理独立评审（2026-10-11）最重要发现：变体暗色覆盖选择器形态错误（[data-juya-variant] 与 .jyfolio 同元素，后代选择器永不匹配）——folio-dark 朱丝栏色与印章 screen 混合从未生效；同构死代码还有 y2k-dark(:724) 与 nocturne-light(:1412,:1442)。次优先：亮色 muted 对比度 3.8-4.1 低于 AA、印章压日期行、订阅页短内容纸面不满屏、h2 缺签名（建议文武线）、概览/相关链接无 hover",
     "已执行 ①+②（2026-10-11，commit 见 git log）：5 处死选择器改复合形式 + folio muted 亮 #6a6250/暗 #998e75（双底色实算 5.0-5.7 ≥4.5）+ tests/unit/juyaCssGuard.test.ts 静态守卫（死形态+对比度）+ AGENTS.md 约定。评审建议 ③-⑧ 用户未批准，未动手",
-    "code-review 双轴结论：Spec 无缺失无越权；Standards 无硬违规。已采纳：守卫 NaN 消息对称性。记录不动：守卫 lum() 与 src/shared/theme.ts themeBackgroundLuminance 同构（测试隔离，第三份出现再提取）；--jy-ruled 仍用旧 muted RGB（装饰色不受 AA 约束，色相耦合为已知维护点）"
+    "code-review 双轴结论：Spec 无缺失无越权；Standards 无硬违规。已采纳：守卫 NaN 消息对称性。记录不动：守卫 lum() 与 src/shared/theme.ts themeBackgroundLuminance 同构（测试隔离，第三份出现再提取）；--jy-ruled 仍用旧 muted RGB（装饰色不受 AA 约束，色相耦合为已知维护点）",
+    "folio 封版（用户 2026-10-11）",
+    "y2k 审计（ui-motion-and-accessibility-auditor，2026-10-11）：两已知问题证实——中文全部字形落 Noto Sans SC/雅黑与默认界面字零差异（Tahoma/Trebuchet 仅盖拉丁）、text-indent 0px；新发现：条目 h3 14px 反小于正文 14.5px（.juya-entry > h3 打不中 EntrySplit 嵌套，波及 y2k/nocturne/editorial 三风格）、亮侧铬字最差对 2.65:1、暗侧地平网格 post-transform 72px 恒在视口外（.juya-scene 100vh 未扣 chrome 高度 128px）、星光瓷砖过响读作壁纸。建议①宋体正文+黑体标题/②缩进2em/③h3层级/④铬字对比/⑤瓷砖降噪/⑥网格抬入视口/⑦伪元素AT静默 已交用户，未动手"
   ],
-  "blocked": ["评审建议 ④（印章压日期行）未获批未做；其余七风格体检待启动"],
-  "next": "polish: 其余七风格（y2k/pop/newsprint90s/dreamcore/nocturne/editorial/wabi）逐一体检；或按用户指示处理 ④"
+  "blocked": ["评审建议 ④（印章压日期行）未获批未做；y2k 审计建议 ①-⑦ 待用户决定；共享层 bug 两项（EntrySplit 风格 h3 选择器、短内容背景断底、FeedShell 缺 key）待另开任务"],
+  "next": "polish: 等用户裁决 y2k 建议；或继续其余风格（pop/newsprint90s/dreamcore/nocturne/editorial/wabi）体检"
 }

@@ -936,7 +936,9 @@
   background-position: 0 0, 8px 11px;
   --jy-card: #1f1f28;
   --jy-border: #ffe957;
-  --jy-heading: #ffe957;
+  /* 审计建议⑦：暗色减黄（2026-10-11 用户批准）——heading 荧光黄改米白（荧光黄大字在深底过艳）；
+     border 保留荧光黄作为描边记忆点。引用 --jy-heading 的元素（编号徽章/日期贴纸）随之变米白属预期 */
+  --jy-heading: #f2f2ea;
   --jy-text: #f2f2ea;
   --jy-muted: #9a9aa4;
   --jy-accent: #ff2e74;
@@ -956,6 +958,14 @@
   box-shadow: 6px 6px 0 var(--jy-border);
 }
 
+/* 审计建议⑦：硬阴影暗侧覆盖（亮色 var(--jy-border)=#141414 字节不变）——
+   #000 在 #14141a 底上几乎不可见（对比 1.14:1、暗于底色），深紫 #4a2d7a 保留波普色相且可辨（对比 1.70） */
+[data-juya-variant='pop-dark'].jypop .juya-entry,
+[data-juya-variant='pop-dark'].jypop .juya-masthead,
+[data-juya-variant='pop-dark'].jypop .juya-feed-item {
+  box-shadow: 6px 6px 0 #4a2d7a;
+}
+
 .jypop .juya-entry {
   background: var(--jy-card);
   padding: 18px 20px;
@@ -965,6 +975,11 @@
   background: var(--jy-accent);
   color: var(--jy-on-accent);
   padding: 24px;
+  /* 审计建议②b-a：刊头两端排布（标题左 / 超大斜置期号右） */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .jypop .juya-masthead h1 {
@@ -972,6 +987,9 @@
   font-size: 34px;
   text-transform: none;
   letter-spacing: 0.5px;
+  /* 审计建议①a：中文标题印刷感——右下硬位移黑影（平涂印刷 offsets；不描边、不改字体栈，①b 未批不做）。
+     h1 两侧均坐在品红刊头底（--jy-accent）上，黑影混合后仍可辨，亮暗共用同一值 */
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.28);
 }
 
 .jypop .juya-index {
@@ -1018,6 +1036,13 @@
   background: #141414;
 }
 
+/* 审计建议④：暗 chip 隐形修复（2026-10-11 用户批准）——亮色 #141414 底字节不变；
+   暗侧 #141414 底在 #14141a 页面上隐形，覆盖为米白底（--jy-heading，⑦ 后）+ 深底字（对比 16.3） */
+[data-juya-variant='pop-dark'].jypop .juya-section:nth-of-type(3n + 3) > h2 {
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+}
+
 /* 第二轮定制排版：图片海报网格/首图通栏（与条目同语言：3px 边 + 硬阴影）；
    序号徽章放大为绝对定位角标，hover 回正 */
 .jypop .juya-entry {
@@ -1050,20 +1075,19 @@
   transform: rotate(6deg);
 }
 
-.jypop .juya-entry > h3 .juya-index:hover {
-  transform: rotate(0deg);
-}
-
 /* 刊头爆炸星 + 订阅卡动效（hover 微倾斜） */
 .jypop .juya-masthead h1 {
   position: relative;
   display: inline-block;
+  /* 审计建议③ 配套：给爆炸星留位，-40px 星形左缘恰收在刊头边框内（窄窗见 520px 媒体块补值） */
+  margin-left: 16px;
 }
 
 .jypop .juya-masthead h1::before {
   content: '';
   position: absolute;
-  left: -30px;
+  /* 审计建议③（2026-10-11 用户批准）：-40px 使 36px 星形整体落在 h1 文字盒外（原 -30px 右缘压字 6px） */
+  left: -40px;
   top: -12px;
   width: 36px;
   height: 36px;
@@ -1072,9 +1096,31 @@
   transform: rotate(-8deg);
 }
 
-/* 订阅卡：hover 微倾斜（波普允许喧闹） */
-.jypop .juya-feed-item:hover {
-  transform: translateY(-2px) rotate(-1.5deg);
+/* 审计建议②b-a：刊头右侧超大斜置期号（装饰性重复期头日期，aria-hidden）。
+   原案「品红 accent」在品红刊头底（--jy-accent）上不可见，改用 on-accent 白字；
+   6px 硬位移阴影呼应卡片语言（亮 #141414 / 暗 #ffe957，随 --jy-border） */
+.jypop .jypop-issue-no {
+  flex: none;
+  font-family: var(--jy-font-heading, inherit);
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: var(--jy-on-accent);
+  text-shadow: 6px 6px 0 var(--jy-border);
+  transform: rotate(-7deg);
+  user-select: none;
+}
+
+/* 审计建议⑤：hover 动效包进 no-preference（RM 下徽章 ±6° 静态交替与卡片静止不动） */
+@media (prefers-reduced-motion: no-preference) {
+  .jypop .juya-entry > h3 .juya-index:hover {
+    transform: rotate(0deg);
+  }
+
+  /* 订阅卡：hover 微倾斜（波普允许喧闹） */
+  .jypop .juya-feed-item:hover {
+    transform: translateY(-2px) rotate(-1.5deg);
+  }
 }
 
 /* 订阅封面 4/3，日期贴纸圆（meta 内无 class 的裸 span = 日期；未读圆点/来源 chip 有类名） */
@@ -1090,6 +1136,21 @@
   background: var(--jy-card);
   color: var(--jy-heading);
   font-weight: 700;
+  /* 审计建议⑥（2026-10-11 用户批准）：日期一行不折行（窄窗降级见 520px 媒体块） */
+  white-space: nowrap;
+}
+
+/* 审计建议②b：相关链接标签爆炸框化（风格自有覆盖，基层 .juya-links-label 不动）——
+   爆炸星 SVG 拉伸铺底（preserveAspectRatio none），文字留在实心核内（padding 撑开不吞字）；
+   白字对星底 #d81b60 对比 4.95:1（守卫实算 ≥4.5） */
+.jypop .juya-links-label {
+  display: inline-block;
+  margin: 12px 0 6px;
+  padding: 9px 18px;
+  font-weight: 700;
+  color: #ffffff;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 50' preserveAspectRatio='none'%3E%3Cpath d='M20 8 L26 0 L33 8 L42 3 L50 8 L58 3 L67 8 L74 0 L80 8 L86 14 L97 18 L89 25 L100 32 L89 36 L86 42 L80 42 L74 50 L67 42 L58 47 L50 42 L42 47 L33 42 L26 50 L20 42 L14 36 L3 32 L11 25 L0 18 L14 14 Z' fill='%23d81b60'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
 }
 
 /* ---- 90 年代报刊式 ---- */
@@ -1941,5 +2002,24 @@
   }
   .jyedit .juya-masthead {
     padding: 14px 0 10px;
+  }
+  /* 审计建议⑥ 窄窗降级：日期贴纸退化为普通 meta 文本（去描边/圆角/nowrap，防 420px 横向溢出） */
+  .jypop .juya-feed-meta > span:not([class]) {
+    display: inline;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font-weight: 400;
+    white-space: normal;
+  }
+  /* 审计建议②b-a：超大期号为纯装饰（aria-hidden），窄窗直接隐藏不挤压标题 */
+  .jypop .jypop-issue-no {
+    display: none;
+  }
+  /* 审计建议③ 配套：窄窗刊头 padding 收窄后加大 h1 左边距，星形左缘仍收在刊头边框内 */
+  .jypop .juya-masthead h1 {
+    margin-left: 24px;
   }
 }

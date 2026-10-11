@@ -41,6 +41,38 @@ const tokenHex = (block: string, name: string): number => {
 const y2kRule = (rest: string): string =>
   css.match(new RegExp(`(?:^|\\n)\\.jyy2k ${rest} \\{[^}]*\\}`))?.[0] ?? ''
 
+/** 首条形如 `.jypop <rest> { … }` 的规则块（行首锚定，同 y2kRule） */
+const popRule = (rest: string): string =>
+  css.match(new RegExp(`(?:^|\\n)\\.jypop ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+/** 取首个匹配 opener 的完整块（花括号配平，可正确处理嵌套规则的媒体查询/支持查询块） */
+const extractBlock = (src: string, opener: RegExp): string => {
+  const m = src.match(opener)
+  if (!m || m.index === undefined) return ''
+  let depth = 0
+  for (let i = m.index + m[0].length - 1; i < src.length; i++) {
+    if (src[i] === '{') depth++
+    else if (src[i] === '}') {
+      depth--
+      if (depth === 0) return src.slice(m.index, i + 1)
+    }
+  }
+  return ''
+}
+
+/** 取全部匹配 opener 的完整块（同名媒体查询可能分散多处） */
+const extractBlocks = (src: string, opener: RegExp): string[] => {
+  const blocks: string[] = []
+  let rest = src
+  for (;;) {
+    const block = extractBlock(rest, opener)
+    if (!block) break
+    blocks.push(block)
+    rest = rest.replace(block, '')
+  }
+  return blocks
+}
+
 describe('juya.css 静态守卫', () => {
   it('变体覆盖不得使用「变体前缀 + 空格 + 风格类」的死形态', () => {
     const dead = css.match(/\[data-juya-variant='[^']+'\]\s+\.jy[\w-]*/g) ?? []
@@ -161,5 +193,98 @@ describe('y2k 视觉审计守卫（2026-10-11 建议①-⑦）', () => {
     expect(fallback, '应存在铬字 @supports 回退块').toBeTruthy()
     expect(fallback).toContain('.jyy2k .juya-masthead h1')
     expect(fallback).toContain('color: var(--jy-heading)')
+  })
+})
+
+describe('pop 视觉审计守卫（2026-10-11 建议①a②b③④⑤⑥⑦，用户批准）', () => {
+  it('⑦ 暗色减黄：heading 米白 #f2f2ea、border 仍荧光黄 #ffe957，硬阴影暗侧深紫覆盖（三选择器复合形态）', () => {
+    const dark = variantBlock('pop-dark')
+    expect(dark).toContain('--jy-heading: #f2f2ea')
+    expect(dark, 'border 保留荧光黄（减黄只减 heading）').toContain('--jy-border: #ffe957')
+    expect(variantBlock('pop-light'), '亮色 heading 不得被误改').toContain('--jy-heading: #141414')
+    const override =
+      css.match(
+        /\[data-juya-variant='pop-dark'\]\.jypop \.juya-entry,\n\[data-juya-variant='pop-dark'\]\.jypop \.juya-masthead,\n\[data-juya-variant='pop-dark'\]\.jypop \.juya-feed-item \{[^}]*\}/
+      )?.[0] ?? ''
+    expect(override, '暗侧硬阴影覆盖（entry/masthead/feed-item）应存在且为复合选择器').toBeTruthy()
+    expect(override).toContain('box-shadow: 6px 6px 0 #4a2d7a')
+  })
+
+  it('④ 暗 chip：亮色共享规则保持 #141414，暗侧覆盖米白底 + 深底字且对比 ≥4.5', () => {
+    const light = popRule('\\.juya-section:nth-of-type\\(3n \\+ 3\\) > h2')
+    expect(light, '亮色 #141414 字节不变').toContain('background: #141414')
+    const override =
+      css.match(
+        /\[data-juya-variant='pop-dark'\]\.jypop \.juya-section:nth-of-type\(3n \+ 3\) > h2 \{[^}]*\}/
+      )?.[0] ?? ''
+    expect(override, '暗侧覆盖应存在').toBeTruthy()
+    expect(override).toContain('background: var(--jy-heading)')
+    expect(override).toContain('color: var(--jy-bg)')
+    const dark = variantBlock('pop-dark')
+    const heading = tokenHex(dark, '--jy-heading')
+    const bg = tokenHex(dark, '--jy-bg')
+    expect(heading, 'pop-dark --jy-heading 应为 6 位 hex').not.toBeNaN()
+    expect(contrast(heading, bg), 'pop-dark chip 米白字对深底').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('③ 爆炸星整体移出 h1 文字盒：left -40px 且 -30px 无残留', () => {
+    const star = popRule('\\.juya-masthead h1::before')
+    expect(star).toContain('left: -40px')
+    expect(css, '旧值 -30px 不应残留').not.toContain('left: -30px')
+  })
+
+  it('①a 中文标题印刷感：h1 硬位移 text-shadow；字体栈锁死（①b 未批准，禁改）', () => {
+    const h1 = popRule('\\.juya-masthead h1')
+    expect(h1).toContain('text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.28)')
+    for (const variant of ['pop-light', 'pop-dark']) {
+      expect(variantBlock(variant)).toMatch(
+        /--jy-font-heading:\s*Impact,\s*'Arial Black',\s*'Noto Sans SC',\s*sans-serif/
+      )
+    }
+  })
+
+  it('⑤ RM 击穿修复：两条 pop hover 规则只存在于 no-preference 媒体内', () => {
+    const hoverSelectors = ['.jypop .juya-entry > h3 .juya-index:hover', '.jypop .juya-feed-item:hover']
+    const noPrefBlocks = extractBlocks(css, /@media \(prefers-reduced-motion: no-preference\) \{/)
+    expect(noPrefBlocks.length, 'no-preference 媒体块应存在').toBeGreaterThan(0)
+    const noPrefAll = noPrefBlocks.join('\n')
+    for (const sel of hoverSelectors) expect(noPrefAll, `「${sel}」应在媒体块内`).toContain(sel)
+    let outside = css
+    for (const block of noPrefBlocks) outside = outside.split(block).join('')
+    for (const sel of hoverSelectors) {
+      expect(outside.includes(sel), `「${sel}」不应存在于媒体块外`).toBe(false)
+    }
+  })
+
+  it('⑥ 日期贴纸 nowrap + 窄窗降级：主规则 nowrap，≤520px 退化为普通 meta 文本', () => {
+    const sticker = popRule('\\.juya-feed-meta > span:not\\(\\[class\\]\\)')
+    expect(sticker).toContain('white-space: nowrap')
+    const narrow = extractBlocks(css, /@media \(max-width: 520px\) \{/).join('\n')
+    expect(narrow, '520px 窄窗媒体块应存在').toBeTruthy()
+    const deg = narrow.match(/\.jypop \.juya-feed-meta > span:not\(\[class\]\) \{[^}]*\}/)?.[0] ?? ''
+    expect(deg, '贴纸窄窗降级规则应存在').toBeTruthy()
+    expect(deg).toContain('white-space: normal')
+    expect(deg).toContain('border: 0')
+  })
+
+  it('②b 相关链接标签爆炸框化：星形 SVG 底 + 粗体，文字对星底对比 ≥4.5（实算）', () => {
+    const label = popRule('\\.juya-links-label')
+    expect(label, '应有爆炸星 SVG 背景').toContain('data:image/svg+xml')
+    expect(label).toContain('font-weight: 700')
+    const fill = Number.parseInt(label.match(/fill='%23([0-9a-fA-F]{6})'/)?.[1] ?? 'zz', 16)
+    expect(fill, '星形填充应为 6 位 hex').not.toBeNaN()
+    const text = label.match(/color:\s*(#[0-9a-fA-F]{6})/)?.[1] ?? ''
+    expect(text, '标签文字应为显式 6 位 hex（不得沿用 muted）').toBeTruthy()
+    expect(contrast(fill, Number.parseInt(text.slice(1), 16)), '标签文字/星形底色').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('②b 刊头超大斜置期号：pop.tsx 渲染装饰性期号（aria-hidden + 条件渲染，缺失不塌）', () => {
+    const tsx = readFileSync(join(process.cwd(), 'src/renderer/juya/templates/pop.tsx'), 'utf-8')
+    expect(tsx).toContain('jypop-issue-no')
+    expect(tsx).toContain('aria-hidden="true"')
+    expect(tsx, '期号字段缺失时应条件渲染').toMatch(/issueNo\s*&&/)
+    // 期号白字对品红刊头为大文本装饰件，锁 AA 大字线（评审 P3：此前未入守卫）
+    const accent = tokenHex(variantBlock('pop-dark'), '--jy-accent')
+    expect(contrast(0xffffff, accent), '期号白字/品红刊头（大文本）').toBeGreaterThanOrEqual(3)
   })
 })

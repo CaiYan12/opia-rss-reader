@@ -699,12 +699,18 @@
   }
 }
 
-/* ---- 千禧网页式（Y2K） ---- */
+/* ---- 千禧网页式（Y2K） ----
+   星光瓷砖降噪（2026-10-11 审计⑤）：56px 严格网格过响 → 160px 双层砖、砖内错位 +
+   background-position 错相平铺制造伪随机感，透明度减半（亮 0.8→0.4 / 暗 0.5→0.3）。
+   中文字体栈落地（审计①）：原 Tahoma/Trebuchet 只盖拉丁，中文全落 Noto Sans SC 与默认界面字零差异；
+   正文改宋体系、标题改黑体系、伪标题栏（等宽装饰件）改 Courier New（2001 年中文网页的默认质感）。 */
 [data-juya-variant='y2k-light'] {
   --jy-bg: #d6e4f8;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M28 20l2.2 5.8L36 28l-5.8 2.2L28 36l-2.2-5.8L20 28l5.8-2.2z' fill='%23ffffff' fill-opacity='0.8'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cpath d='M44 36l2.2 5.8L52 48l-5.8 2.2L44 56l-2.2-5.8L36 48l5.8-2.2z' fill='%23ffffff' fill-opacity='0.4'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cpath d='M120 108l2.2 5.8L128 116l-5.8 2.2L120 124l-2.2-5.8L112 116l5.8-2.2z' fill='%23ffffff' fill-opacity='0.4'/%3E%3C/svg%3E"),
     linear-gradient(180deg, #eef4fd 0%, #d4e2f6 40%, #c6d8f0 100%);
+  background-position: 0 0, 81px 47px, 0 0;
   --jy-card: #f4f8ff;
   --jy-border: #9db4d6;
   --jy-heading: #0e1e3c;
@@ -716,16 +722,18 @@
   --jy-lead-bg: #e8effc;
   --jy-focus: #0050c8;
   --jy-radius: 2px;
-  --jy-font-body: Tahoma, Verdana, 'Segoe UI', 'Noto Sans SC', sans-serif;
-  --jy-font-heading: 'Trebuchet MS', 'Arial Black', 'Noto Sans SC', sans-serif;
+  --jy-font-body: 'SimSun', 'NSimSun', 'DengXian', serif;
+  --jy-font-heading: 'SimHei', 'Microsoft YaHei', sans-serif;
 }
 
 [data-juya-variant='y2k-dark'] {
   --jy-bg: #080d1f;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M28 20l2.2 5.8L36 28l-5.8 2.2L28 36l-2.2-5.8L20 28l5.8-2.2z' fill='%23b9d2ff' fill-opacity='0.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cpath d='M44 36l2.2 5.8L52 48l-5.8 2.2L44 56l-2.2-5.8L36 48l5.8-2.2z' fill='%23b9d2ff' fill-opacity='0.3'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cpath d='M116 100l2.2 5.8L124 108l-5.8 2.2L116 116l-2.2-5.8L108 108l5.8-2.2z' fill='%23b9d2ff' fill-opacity='0.3'/%3E%3C/svg%3E"),
     linear-gradient(0deg, rgba(91, 157, 255, 0.1), transparent 40%),
     linear-gradient(180deg, #0d1735 0%, #080d1f 55%, #101a3d 100%);
+  background-position: 0 0, 64px 97px, 0 0, 0 0;
   --jy-card: #101a38;
   --jy-border: #3f5a94;
   --jy-heading: #d7e6ff;
@@ -737,8 +745,8 @@
   --jy-lead-bg: #121c38;
   --jy-focus: #7db8ff;
   --jy-radius: 2px;
-  --jy-font-body: Tahoma, Verdana, 'Segoe UI', 'Noto Sans SC', sans-serif;
-  --jy-font-heading: 'Trebuchet MS', 'Arial Black', 'Noto Sans SC', sans-serif;
+  --jy-font-body: 'SimSun', 'NSimSun', 'DengXian', serif;
+  --jy-font-heading: 'SimHei', 'Microsoft YaHei', sans-serif;
 }
 
 /* 像素感边框：双层 inset 高光/阴影模拟斜面，链接复古 ↗ */
@@ -757,6 +765,19 @@
   padding: 16px 18px;
 }
 
+/* 审计②段首缩进 2em：信笺式阅读节奏；保留既有 10px 段距（folio 是「段距归零 + 缩进」的另一流派，勿混淆）。
+   「相关链接」小标签（p.juya-links-label）排除；导语为 blockquote.juya-lead，天然不命中 p 选择器 */
+.jyy2k .juya-entry p:not(.juya-links-label) {
+  text-indent: 2em;
+}
+
+/* 审计③条目标题层级兜底：EntrySplit 图文并排把 h3 嵌进 .juya-entry-row > .juya-entry-body，
+   共享层 `.juya-entry > h3`（17px）打不中嵌套结构 → computed 14px 反小于正文 14.5px。
+   共享层选择器修复属建议⑧（另开任务），此处仅 y2k 作用域兜底字号 */
+.jyy2k .juya-entry h3 {
+  font-size: 17px;
+}
+
 .jyy2k .juya-masthead {
   padding: 18px 20px;
   background: linear-gradient(180deg, var(--jy-card), var(--jy-lead-bg));
@@ -773,23 +794,40 @@
 }
 
 .jyy2k .juya-links a::after {
-  content: ' ↗';
+  content: ' ↗' / '';
   font-weight: 700;
 }
 
-/* 铬面渐变刊头字（暗侧反向）；栏目题点状引线；序号徽章贴纸化 */
+/* 铬面渐变刊头字（暗侧反向）；栏目题点状引线；序号徽章贴纸化。
+   审计④：亮侧渐变末端 #7e93c4 对亮底 #e8effc 仅 2.65:1（大文本 AA 下限 3:1）→ 末档深化为
+   #6b82b8（对 --jy-card 3.58:1 / 对 --jy-lead-bg 3.30:1，WCAG 实算过线）；暗侧 3.73:1 已合格不动 */
 .jyy2k .juya-masthead h1 {
-  background: linear-gradient(180deg, #ffffff, #b9c8e8 55%, #7e93c4);
+  background: linear-gradient(180deg, #ffffff, #b9c8e8 55%, #6b82b8);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   text-shadow: none;
 }
 
+/* 审计④经典「上白高光 + 下暗描边」双影，复刻 2001 铬字。
+   text-shadow 在 background-clip:text 下会盖住渐变填充（Chromium 绘制顺序所致），故用
+   filter: drop-shadow 对最终合成结果投影；仅亮侧挂，暗侧保持原样（审计：勿破坏） */
+[data-juya-variant='y2k-light'].jyy2k .juya-masthead h1 {
+  filter: drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.9)) drop-shadow(0 1px 0 rgba(14, 30, 60, 0.45));
+}
+
 [data-juya-variant='y2k-dark'].jyy2k .juya-masthead h1 {
   background: linear-gradient(180deg, #f4f8ff, #9fb6e0 55%, #5c77a8);
   -webkit-background-clip: text;
   background-clip: text;
+}
+
+/* 审计⑦回退：不支持 background-clip:text 的引擎上透明字会整体消失，退回实色标题 */
+@supports not (background-clip: text) {
+  .jyy2k .juya-masthead h1 {
+    background: none;
+    color: var(--jy-heading);
+  }
 }
 
 .jyy2k .juya-section > h2 {
@@ -809,19 +847,20 @@
   padding-top: 32px;
 }
 
+/* 审计①伪标题栏改等宽装饰件字族；审计⑦装饰文案经 content 空 alt 语法对辅助技术静默 */
 .jyy2k .juya-masthead::before {
-  content: '◆ AI_DAILY.EXE — 运行中';
+  content: '◆ AI_DAILY.EXE — 运行中' / '';
   position: absolute;
   top: 5px;
   left: 8px;
   font-size: 10px;
-  font-family: var(--jy-font-heading);
+  font-family: 'Courier New', monospace;
   letter-spacing: 0.5px;
   color: var(--jy-muted);
 }
 
 .jyy2k .juya-masthead::after {
-  content: '×';
+  content: '×' / '';
   position: absolute;
   top: 3px;
   right: 6px;
@@ -865,7 +904,7 @@
 }
 
 .jyy2k .juya-feed-compact .juya-feed-title::before {
-  content: '» ';
+  content: '» ' / '';
   color: var(--jy-accent);
 }
 
@@ -1375,10 +1414,11 @@
   box-shadow: 0 0 18px 4px var(--jy-scene-horizon);
 }
 
-/* y2k 暗：星野（三层径向点阵，缓慢闪烁）+ 地平网格（静景） */
+/* y2k 暗：星野（三层径向点阵，缓慢闪烁）+ 地平网格（静景）。
+   审计⑥：网格线透明度 0.28→0.35（抬入视口后同步补偿可视性） */
 [data-juya-variant='y2k-dark'] {
   --jy-scene-star: #dfe9ff;
-  --jy-scene-grid-line: rgba(91, 157, 255, 0.28);
+  --jy-scene-grid-line: rgba(91, 157, 255, 0.35);
 }
 
 .juya-scene-stars {
@@ -1412,6 +1452,13 @@
     repeating-linear-gradient(0deg, var(--jy-scene-grid-line) 0 1px, transparent 1px 44px);
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 46%);
   mask-image: linear-gradient(180deg, transparent 0, #000 46%);
+}
+
+/* 审计⑥y2k 暗地平网格抬入视口：共享 .juya-scene 高 100vh 未扣应用 chrome（标题栏 + 标签栏 128px），
+   网格 post-transform 后贴场景底且低于可见区下缘（实测 top 877 > 视口 820，任何窗口高度都看不到）。
+   根因属共享层（建议⑧类，另开任务），此处仅在 y2k 段抬升底边 136px ≈ 128px chrome + 8px 余量 */
+[data-juya-variant='y2k-dark'].jyy2k .juya-scene-grid {
+  bottom: 136px;
 }
 
 /* y2k 亮侧不挂场景（保留原有星光渐变材质） */

@@ -412,7 +412,7 @@
   --jy-border: #ddd3bd;
   --jy-heading: #2b2620;
   --jy-text: #3d372e;
-  --jy-muted: #7d7462;
+  --jy-muted: #6a6250;
   --jy-accent: #b3452e;
   --jy-on-accent: #fff8ef;
   --jy-link: #9a3a24;
@@ -431,7 +431,7 @@
   --jy-border: #3a3226;
   --jy-heading: #ede4d2;
   --jy-text: #c9bfa9;
-  --jy-muted: #8d8268;
+  --jy-muted: #998e75;
   --jy-accent: #d0714f;
   --jy-on-accent: #1c120c;
   --jy-link: #e0956f;
@@ -458,7 +458,7 @@
   );
 }
 
-[data-juya-variant='folio-dark'] .jyfolio .juya-issue {
+[data-juya-variant='folio-dark'].jyfolio .juya-issue {
   background-image: linear-gradient(
     90deg,
     transparent 0 10px,
@@ -489,7 +489,7 @@
   opacity: 0.24;
 }
 
-[data-juya-variant='folio-dark'] .jyfolio .juya-issue::after {
+[data-juya-variant='folio-dark'].jyfolio .juya-issue::after {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%23d0714f' stroke-width='6'/%3E%3Crect x='28' y='28' width='20' height='44' fill='%23d0714f'/%3E%3Crect x='56' y='28' width='16' height='16' fill='%23d0714f'/%3E%3Crect x='56' y='56' width='16' height='16' fill='%23d0714f'/%3E%3C/svg%3E")
     no-repeat center / contain;
   opacity: 0.1;
@@ -721,7 +721,7 @@
   text-shadow: none;
 }
 
-[data-juya-variant='y2k-dark'] .jyy2k .juya-masthead h1 {
+[data-juya-variant='y2k-dark'].jyy2k .juya-masthead h1 {
   background: linear-gradient(180deg, #f4f8ff, #9fb6e0 55%, #5c77a8);
   -webkit-background-clip: text;
   background-clip: text;
@@ -1409,7 +1409,7 @@
   color: transparent;
 }
 
-[data-juya-variant='nocturne-light'] .jynoct .juya-masthead h1 {
+[data-juya-variant='nocturne-light'].jynoct .juya-masthead h1 {
   background: linear-gradient(180deg, #17181d, #3a3b44);
   -webkit-background-clip: text;
   background-clip: text;
@@ -1439,7 +1439,7 @@
   transform: translateY(-1px);
 }
 
-[data-juya-variant='nocturne-light'] .jynoct .juya-feed-item:hover {
+[data-juya-variant='nocturne-light'].jynoct .juya-feed-item:hover {
   border-color: rgba(15, 15, 24, 0.2);
 }
 

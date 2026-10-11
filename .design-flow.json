@@ -1,0 +1,26 @@
+{
+  "stage": "polish",
+  "track": "code-first",
+  "updated": "2026-10-11",
+  "history": [
+    { "stage": "brief", "date": "2026-08-28", "outputs": ["AGENTS.md 橘鸦定制阅读系统约定"] },
+    { "stage": "implement", "date": "2026-09-24", "outputs": ["八风格×16 变体（juya.css + 手写模板）"] },
+    { "stage": "polish", "date": "2026-10-11", "outputs": ["folio 横格对齐 + 去卡片 + 概览两列修复", "folio 首行缩进 + 图文内容流排布（JuyaEntry.blocks）", "folio 视觉体验独立评审报告（子代理，只读）"] }
+  ],
+  "outputs": { "brief": "AGENTS.md", "polish": "src/renderer/juya/juya.css" },
+  "decisions": [
+    "用户点名 /design-flow + /frontend-design（2026-10-11，橘鸦风格修复阶段）",
+    "folio 信纸横格下沉到正文段落：行高=格距 28px 结构性对齐，容器只留朱丝栏（容器级横格无法对齐任意结构文本，已移除）",
+    "条目去卡片化：透明/无边框/无阴影直接写在纸上；plate 装裱与导语内衬保留实底（格线只在段落处出现，装裱语义不变）",
+    "概览两列修复：基类 .juya-overview 是 flex，flex 容器不参与 CSS 多列，folio 作用域切 display:block",
+    "段首缩进 2em + 段间距归零（缩进即段落标记，格线跨段落连续；信笺惯例取代空行分段的重复表意）",
+    "图文排布走 JuyaEntry.blocks（parseJuyaIssue 新增文档顺序交错块，paragraphs/images 为扁平投影保持兼容）：首图开卷通栏，其余图随文走 62% 窄幅左右交替，≤520px 回落全宽",
+    "特异性教训：margin 简写（0,3,0）压过 margin-left:auto（0,2,0），覆盖规则须同级特异性且靠后（.jyfolio-plate-right 修复记录）",
+    "发现未修（全风格共有）：.juya-links-label 12px 被 .juya-entry p 特异性压制，标签渲染 14.5px",
+    "子代理独立评审（2026-10-11）最重要发现：变体暗色覆盖选择器形态错误（[data-juya-variant] 与 .jyfolio 同元素，后代选择器永不匹配）——folio-dark 朱丝栏色与印章 screen 混合从未生效；同构死代码还有 y2k-dark(:724) 与 nocturne-light(:1412,:1442)。次优先：亮色 muted 对比度 3.8-4.1 低于 AA、印章压日期行、订阅页短内容纸面不满屏、h2 缺签名（建议文武线）、概览/相关链接无 hover",
+    "已执行 ①+②（2026-10-11，commit 见 git log）：5 处死选择器改复合形式 + folio muted 亮 #6a6250/暗 #998e75（双底色实算 5.0-5.7 ≥4.5）+ tests/unit/juyaCssGuard.test.ts 静态守卫（死形态+对比度）+ AGENTS.md 约定。评审建议 ③-⑧ 用户未批准，未动手",
+    "code-review 双轴结论：Spec 无缺失无越权；Standards 无硬违规。已采纳：守卫 NaN 消息对称性。记录不动：守卫 lum() 与 src/shared/theme.ts themeBackgroundLuminance 同构（测试隔离，第三份出现再提取）；--jy-ruled 仍用旧 muted RGB（装饰色不受 AA 约束，色相耦合为已知维护点）"
+  ],
+  "blocked": ["评审建议 ③-⑧（标签字号/印章压日期/纸面满屏/h2 文武线/链接 hover/条目分隔）待用户圈定"],
+  "next": "polish: 用户批准后执行评审建议 ③-⑧ 或其余七风格体检"
+}

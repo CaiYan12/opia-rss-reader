@@ -127,3 +127,26 @@ test('基层规则：相关链接标签为 12px 小标签，相关链接 hover �
   await link.hover()
   await expect(link).toHaveCSS('text-decoration-line', 'underline')
 })
+
+test('序号徽章统一宽度：与位数无关（一位数与两位数同宽，全风格 base 约定）', async ({ page }) => {
+  await loadApp(page, 'default')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  // 夹具概览均为一位数，无法暴露 1 位 vs 2 位的宽度差——克隆一个空徽章与 "10" 徽章并排实测：
+  // min-width 兜底下两者同宽；若兜底缺失，空徽章（仅内边距）显著窄于两位数徽章
+  const widths = await root.evaluate((el) => {
+    const li = el.querySelector('.juya-overview li')
+    const chip = li?.querySelector('.juya-index')
+    if (!(chip instanceof HTMLElement)) return null
+    const empty = chip.cloneNode() as HTMLElement
+    const double = chip.cloneNode() as HTMLElement
+    double.textContent = '10'
+    li?.append(empty, double)
+    return [chip, empty, double].map((c) => c.getBoundingClientRect().width)
+  })
+  expect(widths).not.toBeNull()
+  const [w0, wEmpty, wDouble] = widths as number[]
+  expect(w0).toBeCloseTo(wEmpty, 6)
+  expect(w0).toBeCloseTo(wDouble, 6)
+})

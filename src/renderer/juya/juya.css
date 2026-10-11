@@ -117,6 +117,12 @@
   background: var(--jy-accent);
   border-radius: 999px;
   padding: 1px 8px;
+  /* 序号徽章统一宽度（全风格）：min-width 取各风格徽章中最宽的两位数
+     （pop 2px 边框版 ≈ 2.66em，其余 ≤ 2.55em），border-box 使边框/内边距计入；
+     配合 text-align:center，一位数与两位数同宽，标题列随其对齐 */
+  min-width: 2.8em;
+  box-sizing: border-box;
+  text-align: center;
   vertical-align: 2px;
   margin-left: 6px;
 }
@@ -1532,6 +1538,9 @@
   color: var(--jy-muted);
   border-radius: 0;
   padding: 0;
+  /* 裸数字（无徽章底）：统一宽度收窄为数字列宽并左对齐，成表格式对齐而非大空徽章 */
+  min-width: 2em;
+  text-align: left;
   font-variant-numeric: tabular-nums;
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
 }

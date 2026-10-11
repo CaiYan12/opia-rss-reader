@@ -102,6 +102,9 @@ test('folio 签名件：栏目题文武线与条目朱菱分隔符', async ({ pa
   expect(wenwu.borderTopColor).toBe('rgb(179, 69, 46)')
   // ⑧ 朱菱分隔符：全文恰 2 个（要闻/产品应用两栏目各 1；单条目栏目与首条目前不出现）
   await expect(root.locator('.jyfolio-divider')).toHaveCount(2)
+  // 相邻三元组「条目—分隔符—条目」恰 2 个：排除 divider 误置栏目交界或栏目末尾的错误实现
+  // （仅 count=2 + 首个位置断言不足：那两种误置各恰好 2 个且首个仍在首个条目之后）
+  await expect(root.locator('.juya-entry + .jyfolio-divider + .juya-entry')).toHaveCount(2)
   // 第一个分隔符必须位于第一个条目之后（同栏目相邻条目之间，而非栏目交界处）
   const afterFirstEntry = await root.evaluate((el) => {
     const entry = el.querySelector('.juya-entry')

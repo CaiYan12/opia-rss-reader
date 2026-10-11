@@ -9,6 +9,9 @@ export interface JuyaImage {
   alt: string
 }
 
+/** 条目内容流块：按文档顺序交错记录段落与图片（图文混排模板用） */
+export type JuyaEntryBlock = { kind: 'p'; text: string } | { kind: 'img'; image: JuyaImage }
+
 export interface JuyaLink {
   text: string
   href: string
@@ -31,6 +34,8 @@ export interface JuyaEntry {
   /** 正文段落文本（不含「相关链接：」引导段与其后的链接列表） */
   paragraphs: string[]
   images: JuyaImage[]
+  /** 正文内容流：文档顺序的段落/图片交错块；paragraphs 与 images 是它的扁平投影（兼容旧模板） */
+  blocks: JuyaEntryBlock[]
   /** 「相关链接」列表 */
   links: JuyaLink[]
 }
@@ -82,6 +87,7 @@ function parseEntry(h3: Element): JuyaEntry {
     lead: null,
     paragraphs: [],
     images: [],
+    blocks: [],
     links: []
   }
 
@@ -93,7 +99,9 @@ function parseEntry(h3: Element): JuyaEntry {
       entry.lead = (node.textContent ?? '').trim() || null
     } else if (tag === 'P') {
       for (const img of node.querySelectorAll('img')) {
-        entry.images.push({ src: img.getAttribute('src') ?? '', alt: img.getAttribute('alt') ?? '' })
+        const image = { src: img.getAttribute('src') ?? '', alt: img.getAttribute('alt') ?? '' }
+        entry.images.push(image)
+        entry.blocks.push({ kind: 'img', image })
       }
       const text = (node.textContent ?? '').trim()
       if (text && node.querySelector('img') === null) {
@@ -101,6 +109,7 @@ function parseEntry(h3: Element): JuyaEntry {
           linksStarted = true
         } else if (!linksStarted) {
           entry.paragraphs.push(text)
+          entry.blocks.push({ kind: 'p', text })
         }
       }
     } else if (tag === 'UL' || tag === 'OL') {

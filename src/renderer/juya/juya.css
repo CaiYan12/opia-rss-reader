@@ -417,6 +417,7 @@
   --jy-on-accent: #fff8ef;
   --jy-link: #9a3a24;
   --jy-lead-bg: #f1e9d6;
+  --jy-ruled: rgba(125, 116, 98, 0.16);
   --jy-focus: #b3452e;
   --jy-radius: 10px;
   --jy-font-body: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Songti SC', serif;
@@ -435,6 +436,7 @@
   --jy-on-accent: #1c120c;
   --jy-link: #e0956f;
   --jy-lead-bg: #241e15;
+  --jy-ruled: rgba(141, 130, 104, 0.14);
   --jy-focus: #e0956f;
   --jy-radius: 10px;
   --jy-font-body: 'Noto Serif SC', 'Source Han Serif SC', Georgia, 'Songti SC', serif;
@@ -442,32 +444,29 @@
 }
 
 /* 书目式刊头（下划细线 + 朱色短粗线，无彩色横幅）；日期右对齐；印章水印在内容区右上角。
-   内容区背景 = 朱丝栏（两侧绯色竖线）+ 信纸横格（卡片实底遮罩，格线不压文字） */
+   内容区背景只留朱丝栏（两侧绯色竖线）；信纸横格下沉到正文段落——
+   行高 = 格距 28px，每行盒底缘即格线，天然对齐（容器级横格无法对齐任意结构文本，已移除） */
 .jyfolio .juya-issue {
   position: relative;
-  background-image:
-    linear-gradient(
-      90deg,
-      transparent 0 10px,
-      rgba(179, 69, 46, 0.28) 10px 11px,
-      transparent 11px calc(100% - 11px),
-      rgba(179, 69, 46, 0.28) calc(100% - 11px) calc(100% - 10px),
-      transparent calc(100% - 10px)
-    ),
-    repeating-linear-gradient(180deg, transparent 0 27px, rgba(125, 116, 98, 0.14) 27px 28px);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0 10px,
+    rgba(179, 69, 46, 0.28) 10px 11px,
+    transparent 11px calc(100% - 11px),
+    rgba(179, 69, 46, 0.28) calc(100% - 11px) calc(100% - 10px),
+    transparent calc(100% - 10px)
+  );
 }
 
 [data-juya-variant='folio-dark'] .jyfolio .juya-issue {
-  background-image:
-    linear-gradient(
-      90deg,
-      transparent 0 10px,
-      rgba(208, 113, 79, 0.3) 10px 11px,
-      transparent 11px calc(100% - 11px),
-      rgba(208, 113, 79, 0.3) calc(100% - 11px) calc(100% - 10px),
-      transparent calc(100% - 10px)
-    ),
-    repeating-linear-gradient(180deg, transparent 0 27px, rgba(141, 130, 104, 0.12) 27px 28px);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0 10px,
+    rgba(208, 113, 79, 0.3) 10px 11px,
+    transparent 11px calc(100% - 11px),
+    rgba(208, 113, 79, 0.3) calc(100% - 11px) calc(100% - 10px),
+    transparent calc(100% - 10px)
+  );
 }
 
 .jyfolio .juya-issue::after {
@@ -529,10 +528,17 @@
   padding-bottom: 4px;
 }
 
-/* 概览改两列目录：条目间点状引线 */
+/* 概览两列目录：条目间点状引线。基类 .juya-overview 是 flex 纵排，
+   而 flex 容器不参与 CSS 多列布局——必须切回 block，column-count 才生效 */
 .jyfolio .juya-overview {
+  display: block;
   column-count: 2;
   column-gap: 32px;
+}
+
+.jyfolio .juya-overview li {
+  margin-bottom: 6px;
+  break-inside: avoid;
 }
 
 .jyfolio .juya-overview li::after {
@@ -542,13 +548,41 @@
   border-bottom: 1px dotted var(--jy-border);
 }
 
-/* 条目书页卡片；图片 plate 装裱（方角 + 居中题注）；相关链接恢复序号式 */
+/* 条目不再装卡片：正文直接写在纸上（透明、无边框无阴影、与刊头同栏基线），
+   格线不再被实底遮挡。图片 plate 装裱与导语内衬仍为实底——格线只在段落处出现，
+   不会从其背后穿过（装裱件语义保留）。相关链接恢复序号式 */
 .jyfolio .juya-entry {
-  background: var(--jy-card);
-  border: 1px solid var(--jy-border);
-  border-radius: 4px;
-  padding: 20px 22px;
-  box-shadow: 0 1px 0 rgba(43, 38, 32, 0.08), 0 10px 24px -18px rgba(43, 38, 32, 0.35);
+  padding: 0;
+}
+
+/* 信纸横格：行高必须等于格距 28px（勿改 line-height 或格距其一，否则错位）；
+   段首缩进两字符（信笺惯例：缩进即段落标记，段间距归零，格线跨段落连续通栏）。
+   排除 LinksBlock 的标签 <p>（同为条目直接子元素，不得带格线与缩进） */
+.jyfolio .juya-entry p:not(.juya-links-label) {
+  margin: 0;
+  line-height: 28px;
+  text-indent: 2em;
+  background-image: repeating-linear-gradient(180deg, transparent 0 27px, var(--jy-ruled) 27px 28px);
+}
+
+/* 图随文走：plate 直接嵌在正文流内（无 .juya-media 包裹），开卷图通栏；
+   其余插图 62% 宽、左右交替错位（笺注插图式）；窄窗回落全宽 */
+.jyfolio .juya-entry > .juya-plate {
+  margin: 16px 0;
+}
+
+.jyfolio .jyfolio-plate-inset {
+  width: 62%;
+}
+
+/* 与上方 margin 简写同特异性（0,3,0）且靠后，才能盖过 margin-left:0 */
+.jyfolio .juya-entry > .jyfolio-plate-right {
+  margin-left: auto;
+}
+
+/* 段落下边距已归零，链接标签不再紧贴末条格线 */
+.jyfolio .juya-entry .juya-links-label {
+  margin: 12px 0 4px;
 }
 
 .jyfolio .juya-plate {
@@ -594,6 +628,9 @@
   }
   .jyfolio .juya-overview {
     column-count: 1;
+  }
+  .jyfolio .jyfolio-plate-inset {
+    width: 100%;
   }
 }
 

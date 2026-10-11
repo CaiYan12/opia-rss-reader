@@ -16,7 +16,8 @@ test('默认（纸感精读式）：橘鸦文章走定制模板（结构化栏�
   // 条目内编号徽章带 # 前缀（概览区徽章为纯数字，故限定条目作用域）
   await expect(root.locator('.juya-entry .juya-index').first()).toContainText('#1')
   await expect(root.locator('.juya-lead').first()).toBeVisible()
-  await expect(root.locator('.juya-media img').first()).toHaveAttribute('loading', 'lazy')
+  // folio 图文走内容流（plate 直接嵌在条目内，无 .juya-media 包裹），图片必须懒加载
+  await expect(root.locator('.juya-entry img').first()).toHaveAttribute('loading', 'lazy')
   // 工具栏仍为通用样式（收藏/原文存在）
   await expect(activeTab(page).getByTitle('在浏览器打开原文')).toBeVisible()
 })

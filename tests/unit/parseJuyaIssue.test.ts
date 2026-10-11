@@ -67,6 +67,22 @@ describe.skipIf(!hasFixture)('parseJuyaIssue — 完整结构', () => {
     expect(entry?.images).toEqual([])
   })
 
+  it('内容流 blocks：段落与图片按文档顺序交错，且与 paragraphs/images 扁平投影一致', () => {
+    const entry = issue?.sections[0]?.entries[0]
+    // 夹具条目一：两段正文后连排三图（图片原位保留，不再丢失交错信息）
+    expect(entry?.blocks.map((b) => b.kind)).toEqual(['p', 'p', 'img', 'img', 'img'])
+    expect(entry?.blocks.flatMap((b) => (b.kind === 'p' ? [b.text] : []))).toEqual(entry?.paragraphs)
+    expect(entry?.blocks.flatMap((b) => (b.kind === 'img' ? [b.image.src] : []))).toEqual(
+      entry?.images.map((i) => i.src)
+    )
+  })
+
+  it('无图条目：blocks 全为段落块', () => {
+    const entry = issue?.sections[0]?.entries[1]
+    expect(entry?.blocks.every((b) => b.kind === 'p')).toBe(true)
+    expect(entry?.blocks.length).toBeGreaterThan(0)
+  })
+
   it('各栏目条目数正确', () => {
     expect(issue?.sections[0]?.entries).toHaveLength(2)
     expect(issue?.sections[1]?.entries).toHaveLength(1)

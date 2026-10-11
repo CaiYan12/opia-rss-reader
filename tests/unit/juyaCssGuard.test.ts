@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { JUYA_STYLES } from '../../src/renderer/juya/juyaStyles'
 
 // juya.css 静态守卫（与 ipcContract 静态守卫同思路，不渲染、纯文本断言）：
 // 1) 变体覆盖必须写成复合选择器（[data-juya-variant='x'].jyY…）。
@@ -412,5 +413,65 @@ describe('pop 刊头多面板拼贴守卫（2026-10-11 用户指令：刊头由�
     const darkTitle =
       css.match(/\[data-juya-variant='pop-dark'\]\.jypop \.jypop-title-panel \{[^}]*\}/)?.[0] ?? ''
     expect(darkTitle, '暗侧标题面板阴影应随暗侧硬阴影语言').toContain('box-shadow: 6px 6px 0 #4a2d7a')
+  })
+})
+
+describe('滚动条风格适配守卫（2026-10-11 用户指令：橘鸦风格激活时内容区滚动条跟随风格色板）', () => {
+  // 约束：滚动条伪元素挂在滚动容器（.juya-root 的祖先）上，而 --jy-* 变量定义在 .juya-root（后代）
+  // —— CSS 自定义属性只向下继承，滚动容器读不到任何 var(--jy-*)/var(--t-*)，
+  // 因此规则形态只能是 .view-scroll:has([data-juya-variant='…'])::-webkit-scrollbar-thumb + 每变体字面色。
+  const scrollbarThumbRule = (variant: string): string =>
+    extractBlock(
+      css,
+      new RegExp(
+        `(?:^|\\n)\\.view-scroll:has\\(\\[data-juya-variant='${variant}'\\]\\)::-webkit-scrollbar-thumb \\{`
+      )
+    )
+
+  it('① 变体清单驱动：注册表 16 变体各有一条 .view-scroll:has()::-webkit-scrollbar-thumb 规则（未来加变体自动纳入守卫）', () => {
+    // 计数闸门：新增变体时此数须同步 bump，防止静默漏写滚动条规则
+    expect(JUYA_STYLES, '注册表应为 16 变体').toHaveLength(16)
+    for (const { id } of JUYA_STYLES) {
+      expect(scrollbarThumbRule(id), `${id} 滚动条 thumb 规则应存在`).toBeTruthy()
+    }
+  })
+
+  it('② 每条规则 background 为字面 6 位 hex（:has 容器读不到变量），且不引用任何 var()', () => {
+    for (const { id } of JUYA_STYLES) {
+      const rule = scrollbarThumbRule(id)
+      expect(rule, `${id} background 应为字面 hex`).toMatch(/background:\s*#[0-9a-fA-F]{6}\s*;/)
+      expect(rule, `${id} 不得引用 var()（滚动容器读不到 --jy-*/--t-*）`).not.toContain('var(')
+    }
+  })
+
+  it('③ 宽度/圆角/track（透明）继承全局：juya.css 不重复声明滚动条尺寸规则与 track 规则，区块零动效', () => {
+    expect(css, '不得重复声明 ::-webkit-scrollbar 尺寸规则（width/height 归全局）').not.toMatch(
+      /::-webkit-scrollbar\s*\{/
+    )
+    expect(css, '不得声明 track 规则（track 透明继承全局）').not.toContain('::-webkit-scrollbar-track')
+    const start = css.indexOf('/* ==== 滚动条风格适配')
+    expect(start, '滚动条风格适配区块应存在').toBeGreaterThanOrEqual(0)
+    const section = css.slice(start)
+    expect(section, '滚动条规则零新增 animation/transition').not.toMatch(/animation|transition/)
+  })
+
+  it('④ 全局 index.css 滚动条块字节不动（通用 UI 继续用主题滚动条）', () => {
+    const index = readFileSync(join(process.cwd(), 'src/renderer/styles/index.css'), 'utf-8')
+    expect(index).toMatch(/::-webkit-scrollbar \{\s*width: 8px;\s*height: 8px;\s*\}/)
+    expect(index).toMatch(/::-webkit-scrollbar-thumb \{\s*background: var\(--t-border\);\s*border-radius: 4px;\s*\}/)
+    expect(index).toMatch(/::-webkit-scrollbar-track \{\s*background: transparent;\s*\}/)
+  })
+
+  it('⑤ view-scroll 挂类：HomeView/ReaderView 滚动容器均挂，MiniView 不在范围（Mini 无橘鸦风格）', () => {
+    const home = readFileSync(join(process.cwd(), 'src/renderer/components/HomeView.tsx'), 'utf-8')
+    const reader = readFileSync(join(process.cwd(), 'src/renderer/components/ReaderView.tsx'), 'utf-8')
+    const mini = readFileSync(join(process.cwd(), 'src/renderer/components/MiniView.tsx'), 'utf-8')
+    expect(home, 'HomeView 滚动容器应挂 view-scroll').toMatch(
+      /<main className="view-scroll flex-1 overflow-y-auto">/
+    )
+    expect(reader, 'ReaderView 滚动容器应挂 view-scroll').toMatch(
+      /<div className="view-scroll flex-1 overflow-y-auto">/
+    )
+    expect(mini, 'MiniView 不应挂 view-scroll').not.toContain('view-scroll')
   })
 })

@@ -2094,3 +2094,101 @@
     margin-left: 24px;
   }
 }
+
+/* ==== 滚动条风格适配（2026-10-11）：橘鸦风格激活时内容区滚动条 thumb 跟随风格色板 ====
+   约束与方案：滚动条伪元素挂在滚动容器（.juya-root 的祖先）上，而 --jy-* 变量定义在
+   .juya-root（后代）——CSS 自定义属性只向下继承，滚动容器读不到任何 var(--jy-*)/var(--t-*)，
+   故只能 :has() 向上匹配 + 每变体字面色（沿用本文件「构成色硬编码必带注释」惯例，每条注明取色来源）。
+   滚动容器统一挂 .view-scroll（HomeView <main> / ReaderView 内容 div；Mini 无橘鸦风格不挂）；
+   keep-alive 多标签：各标签滚动容器只 :has 到自己的后代 juya-root，天然按标签正确。
+   width/track（透明）与默认圆角 4px 继承全局 index.css 滚动条块，不在此重复声明；
+   特异性 (0,2,1) 压过全局 (0,0,1)，仅直角/锐角风格按各自 --jy-radius 覆写圆角。 */
+
+.view-scroll:has([data-juya-variant='folio-light'])::-webkit-scrollbar-thumb {
+  /* folio-light 朱砂 accent #b3452e，对纸色 #f6f2e9 对比 4.94 */
+  background: #b3452e;
+}
+
+.view-scroll:has([data-juya-variant='folio-dark'])::-webkit-scrollbar-thumb {
+  /* folio-dark 朱砂 accent #d0714f，对暗纸 #17140f 对比 5.38 */
+  background: #d0714f;
+}
+
+.view-scroll:has([data-juya-variant='y2k-light'])::-webkit-scrollbar-thumb {
+  /* y2k-light 千禧蓝 accent #2456d6，对天蓝底 #d6e4f8 对比 4.83；圆角随 --jy-radius 2px */
+  background: #2456d6;
+  border-radius: 2px;
+}
+
+.view-scroll:has([data-juya-variant='y2k-dark'])::-webkit-scrollbar-thumb {
+  /* y2k-dark 星空蓝 accent #5b9dff，对夜空 #080d1f 对比 7.09；圆角随 --jy-radius 2px */
+  background: #5b9dff;
+  border-radius: 2px;
+}
+
+.view-scroll:has([data-juya-variant='pop-light'])::-webkit-scrollbar-thumb {
+  /* pop-light 印刷黑（--jy-border/--jy-heading 同值）#141414，对荧光黄 #ffe957 对比 14.95；
+     取描边黑而非 accent 品红（3.72 亦过线），贴合粗轮廓硬阴影语言；直角随 --jy-radius 0 */
+  background: #141414;
+  border-radius: 0;
+}
+
+.view-scroll:has([data-juya-variant='pop-dark'])::-webkit-scrollbar-thumb {
+  /* pop-dark 品红 accent #ff2e74，对暗底 #14141a 对比 5.15；荧光黄留给描边不抢戏；直角随 --jy-radius 0 */
+  background: #ff2e74;
+  border-radius: 0;
+}
+
+.view-scroll:has([data-juya-variant='newsprint90s-light'])::-webkit-scrollbar-thumb {
+  /* newsprint90s-light 报刊红 accent #8b1a1a，对米报底 #f2ecd9 对比 7.86；直角随 --jy-radius 0 */
+  background: #8b1a1a;
+  border-radius: 0;
+}
+
+.view-scroll:has([data-juya-variant='newsprint90s-dark'])::-webkit-scrollbar-thumb {
+  /* newsprint90s-dark 报刊红 accent #d05555，对暗报底 #221f19 对比 4.00；直角随 --jy-radius 0 */
+  background: #d05555;
+  border-radius: 0;
+}
+
+.view-scroll:has([data-juya-variant='dreamcore-light'])::-webkit-scrollbar-thumb {
+  /* dreamcore-light 梦核紫 accent #6d4de0，对淡紫底 #f3ecff 对比 4.82 */
+  background: #6d4de0;
+}
+
+.view-scroll:has([data-juya-variant='dreamcore-dark'])::-webkit-scrollbar-thumb {
+  /* dreamcore-dark 梦核紫 accent #8f63ff，对暗紫夜 #0b0918 对比 5.06 */
+  background: #8f63ff;
+}
+
+.view-scroll:has([data-juya-variant='nocturne-light'])::-webkit-scrollbar-thumb {
+  /* nocturne-light 靛蓝 accent #4f5ed8，对近白 #fbfbfc 对比 5.17 */
+  background: #4f5ed8;
+}
+
+.view-scroll:has([data-juya-variant='nocturne-dark'])::-webkit-scrollbar-thumb {
+  /* nocturne-dark 靛蓝 accent #6e7bff，对近黑 #0a0a0c 对比 5.60 */
+  background: #6e7bff;
+}
+
+.view-scroll:has([data-juya-variant='editorial-light'])::-webkit-scrollbar-thumb {
+  /* editorial-light 砖红 accent #8a2f2b，对米白 #fbf9f4 对比 7.91；圆角随 --jy-radius 2px */
+  background: #8a2f2b;
+  border-radius: 2px;
+}
+
+.view-scroll:has([data-juya-variant='editorial-dark'])::-webkit-scrollbar-thumb {
+  /* editorial-dark 砖红 accent #b3564c，对暗底 #131210 对比 3.88；圆角随 --jy-radius 2px */
+  background: #b3564c;
+  border-radius: 2px;
+}
+
+.view-scroll:has([data-juya-variant='wabi-light'])::-webkit-scrollbar-thumb {
+  /* wabi-light 陶土 accent #a5654a，对米灰 #efede6 对比 3.93 */
+  background: #a5654a;
+}
+
+.view-scroll:has([data-juya-variant='wabi-dark'])::-webkit-scrollbar-thumb {
+  /* wabi-dark 陶土 accent #b37a5e，对暗底 #1e1c18 对比 4.75 */
+  background: #b37a5e;
+}

@@ -34,7 +34,8 @@ export function HomeView({ tab, showFavorites }: Props): JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <main className="flex-1 overflow-y-auto">
+      {/* view-scroll：滚动容器挂类，供 juya.css 以 :has() 向上匹配做滚动条风格适配（Mini 无橘鸦风格不挂） */}
+      <main className="view-scroll flex-1 overflow-y-auto">
         {/* 内容区随 uiZoom 缩放；橘鸦风格页补齐高度链（min-height 100% + flex 列容器，
             配合 .juya-root 的 flex:1），短内容时纸面也铺满视口；通用列表分支保持原样 */}
         <div

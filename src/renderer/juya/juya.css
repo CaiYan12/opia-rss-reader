@@ -8,6 +8,8 @@
 
 .juya-root {
   min-height: 100%;
+  /* 父级为 flex 列容器时（HomeView 订阅页）铺满剩余高度；非 flex 父级（ReaderView 等）该属性惰性 */
+  flex: 1;
   background-color: var(--jy-bg);
   color: var(--jy-text);
   font-family: var(--jy-font-body, 'Segoe UI', 'Noto Sans SC', sans-serif);

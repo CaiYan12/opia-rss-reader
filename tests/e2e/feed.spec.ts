@@ -14,6 +14,18 @@ test('默认（纸感精读式）：橘鸦订阅页渲染风格化期号列表',
   await expect(feed.locator('.juya-feed-cover')).toHaveAttribute('loading', 'lazy')
 })
 
+test('短内容（单篇）：纸面铺满订阅页视口（.juya-root 高度 ≥ 滚动容器）', async ({ page }) => {
+  // default 场景仅 1 篇期号 = 短内容：修复前 zoom div 高度 auto，
+  // .juya-root { min-height: 100% } 百分比解析失败，纸面在内容尽头截断。
+  await loadApp(page, 'default')
+  const main = activeTab(page).locator('main.flex-1.overflow-y-auto')
+  // 用 main 的 boundingRect 高度（浮点）作参照，规避 clientHeight 取整的半像素差
+  const viewportH = await main.evaluate((el) => el.getBoundingClientRect().height)
+  const root = activeTab(page).locator('.juya-root')
+  const h = (await root.boundingBox())?.height ?? 0
+  expect(h).toBeGreaterThanOrEqual(viewportH)
+})
+
 test('风格关闭：订阅页回退通用 ArticleList（卡片网格）', async ({ page }) => {
   await loadApp(page, 'off')
   const tab = activeTab(page)

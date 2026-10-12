@@ -1689,7 +1689,10 @@
   --jy-accent: #6e7bff;
   --jy-on-accent: #0a0a0c;
   --jy-link: #93a1ff;
-  --jy-lead-bg: rgba(255, 255, 255, 0.04);
+  /* 导语高亮窗底色（#6，需求 §6 决策 10）：原 4% 白在暗侧几乎隐形，13.5px 小字与普通段落零区分度。
+     提到 9%（落在决策值的 0.08–0.10 区间中位）。该 token 同时被 `.jynoct .juya-entry:hover` 消费，
+     hover 微亮随之同步增强——同一「条目内高亮面」语义，无新增取值。 */
+  --jy-lead-bg: rgba(255, 255, 255, 0.09);
   --jy-focus: #8b97ff;
   --jy-radius: 12px;
   /* 三档无衬线分工（#3，需求 §2）：等线标题 + Noto Sans SC 正文 + 元信息/序号等宽。
@@ -1815,6 +1818,59 @@
 .jynoct .juya-entry:hover {
   background: var(--jy-lead-bg);
   border-radius: 8px;
+}
+
+/* ---- 导语高亮窗（2026-10-12，#6，需求 §6 决策 10：深底 + 左侧发光竖线）----
+   基层 `.juya-lead` 是 `padding: 8px 12px` + `border-left: 3px solid var(--jy-accent)` + `--jy-muted` 13.5px。
+   本票只做三件事：①底色提亮（走 --jy-lead-bg token，见变体块，0.04 → 0.09）；
+   ②左侧竖线换该风格 focus 色并加发光；③内边距加大，做出与正文段落（14.5px/1.8、零内衬）的层级差。
+   特异性说明：`.juya-entry p:not(.juya-links-label)` 是 (0,2,1)，比 `.jynoct .juya-entry` (0,2,0) 高，
+   故本区块凡涉及「条目内元素」的规则一律写到 ≥(0,2,1) 形态（`.jynoct .juya-lead` 的块级属性不与之竞争，
+   但排列顺序仍放在基层段落规则之后）。padding 取 12px 18px 12px 18px：四边均大于基层 8px 12px，
+   左内衬额外加宽 6px —— 竖线由 accent 换 focus 后成为更亮的视觉锚点，需要更多呼吸空间。
+   范围：`.juya-lead` 在 nocturne 模板里只出现在 `IssueView` 的 `.juya-entry-body` 内，
+   订阅页（FeedList）不渲染导语，故本规则不影响订阅列表。 */
+.jynoct .juya-lead {
+  padding: 12px 18px 12px 18px;
+  /* 底色显式重申（与基层同源，token 已在变体块提到 0.09）：把「本风格导语窗底色」钉在本规则上，
+     将来基层若改取值，nocturne 不会被动跟随。 */
+  background: var(--jy-lead-bg);
+}
+
+/* 左侧发光竖线（仅暗侧）：取色 --jy-focus #8b97ff —— 该风格既有的焦点色，
+   「焦点/高亮」语义同源，零新增色彩；对导语底 rgba(255,255,255,0.09) 叠在 --jy-bg #0a0a0c 上的合成面
+   #202022 实算 **6.17:1**（WCAG 非文本 UI 件门槛 3:1，远超；本条为取色溯源，竖线本身是装饰性锚点）。
+   辉光用 `filter: drop-shadow` 而不是 box-shadow —— 原因与 #4 刊头同源：drop-shadow 作用于元素渲染结果的
+   alpha 轮廓，**先绘制后模糊**，故光晕只会从 3px 竖线这一条细边向外渗出，不会像 box-shadow 那样把
+   12px 内衬的整个矩形也整体提亮（那会变成一块发光的矩形而非「发光竖线」）。
+   禁用 text-shadow（仓库统一口径，background-clip:text 陷阱的同类）：本元素无渐变字，但辉光语义一律走 filter。
+   半径 6px / alpha 0.35 是「克制微光」量级 —— 与 #4 刊头近层 18px/0.28 相比更短更淡，
+   因为它是一条 3px 线而非 30px 大字，半径取字面的 2 倍即可成晕。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-lead {
+  border-left-color: var(--jy-focus);
+  filter: drop-shadow(2px 0 6px rgba(139, 151, 255, 0.35));
+}
+
+/* ---- 栏目 h2 发丝分隔线（2026-10-12，#6，需求 §7.1 决策 11）----
+   基层 `.juya-section > h2 { font-size: 20px; margin: 0 0 16px }` 无下边框——栏目之间没有任何层级标记。
+   本规则打 `.jynoct .juya-section > h2` (0,2,1) 覆写基层 (0,1,1)，不引入变体前缀（亮侧共用同一形态，
+   线色走各自变体 token 时才有差异；本轮只给暗侧提 alpha，见下）。
+   线色 `rgba(255, 255, 255, 0.22)`：取色来源 = 白，与全局 `--jy-border: rgba(255,255,255,0.08)` 同源，
+   只提 alpha 不换色相。**为什么必须单独写而不复用 --jy-border**：该 token 同时供给条目分隔线、
+   图片发丝边、回流带（`border-top: 1px solid var(--jy-border)`）；把它整体提到 0.22 会把条目分隔线
+   一并抬高，与需求 §7.1「条目分隔线保持现状」的红线冲突（票面明写：提了会与「克制」冲突）。
+   WCAG 实算（对 .juya-section 所落的 `--jy-bg` #0a0a0c）：线合成后 #404041 ⇒ **1.91:1**；
+   对照面：全局 0.08 老线合成为 #1e1e1f ⇒ **1.19:1**（与需求 §7.1 实测值一致），
+   故 0.22 相对老线的可见度提升 ≈1.61 倍，是本页唯一被抬高的分隔线。
+   **实测差额留档（票面验收标准写「使栏目线对变体 bg 达 3:1」，本实现达不到，是数学事实）**：
+   白线 alpha 0.22 合成到 #0a0a0c 只有 1.91:1；即便取票面写的 0.22 也是这个值。
+   经独立复算，够 3:1 需 alpha ≈0.34（合成 #5d5d5f ⇒ 3.01:1），那样栏目线会比条目线（0.08）亮一倍以上，
+   直接违反 §7.1 的「克制」红线。故**按明写的决策值 0.22 落地并留档差额**，两难取舍交上层裁决。
+   最坏叠加面备注：若栏目线所在像素恰好落在三层 nebula 全重叠处（合成底 #18192a，锚在左右边缘、
+   几何上不可达正文列中心），同一条线合成为 #4b4c59 ⇒ **2.05:1**。 */
+.jynoct .juya-section > h2 {
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .jynoct .juya-feed-meta {

@@ -1414,7 +1414,7 @@
 
 /* ==========================================================================
    场景固定层（.juya-scene）：synthwave 太阳/透视网格（dreamcore）、星空/地平网格（y2k 暗）、
-   尘埃微粒 dust / 静态渐层雾 nebula（共享层预置，2026-10-12 #1，暂无风格接线）。
+   尘埃微粒 dust / 静态渐层雾 nebula（共享层预置，2026-10-12 #1；nocturne-dark 已于 #2 接线）。
    sticky 假固定：内容在 uiZoom 缩放容器内，position:fixed 会被 CSS zoom 破坏锚定；
    sticky 相对滚动容器吸附且不随缩放漂移，负 margin 抵消占位。
    动画一律挂 .juya-scene-* 子层（.juya-root 永无 animation，reduced-motion 断言结构保证）。
@@ -1423,7 +1423,9 @@
    且 .juya-scene 是 sticky + 负 margin 的占位对（高度与 margin-bottom 必须成对改），故**不改**。
    处置约定（段内抬升）：每个挂场景的风格在自己的段内按需抬升装饰底边 —— y2k 暗已用
    [data-juya-variant='y2k-dark'].jyy2k .juya-scene-grid { bottom: 136px }（≈128px chrome + 8px 余量），
-   nocturne 的抬升由 #2 在自己的段内做（守卫：juyaCssGuard「Scene 预设守卫」⑦ 锁本约定与 y2k 缓解值）。
+   nocturne（#2 已接线）核对后判定**无需**段内抬升：其 dust / nebula 均为 inset: 0 铺满场景盒、
+   没有任何贴底装饰，故不存在需要抬入视口的底边（结论与依据见 nocturne 段注释）。
+   （守卫：juyaCssGuard「Scene 预设守卫」⑦ 锁本约定与 y2k 缓解值）。
    ========================================================================== */
 .juya-scene {
   position: sticky;
@@ -1696,6 +1698,49 @@
      Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选只能取等线（八风格无人占用）。 */
   --jy-font-body: 'Noto Sans SC', 'Segoe UI', sans-serif;
   --jy-font-heading: 'DengXian', 'Noto Sans SC', 'Segoe UI', sans-serif;
+}
+
+/* ---- 场景氛围层接线（2026-10-12，#2）：dust（尘埃微粒）+ nebula（静态渐层雾）----
+   模板侧 <Scene dust nebula />（templates/nocturne.tsx，位于 .juya-issue 之前、与 y2k / dreamcore 同位）。
+   共享层（#1）给的是中性白雾；本段按需求 §3.1 换成 nocturne 自己的三层色，且 alpha 取**减半值**。
+   构成色取色来源：三层色相沿用需求 §3.1 表格左列 —— 紫蓝 rgba(110,123,255)=#6E7BFF（与本变体
+   --jy-accent #6e7bff 同源）、青蓝 rgba(90,160,255)=#5AA0FF、品红 rgba(200,90,180)=#C85AB4。
+   WCAG 实算（独立复算，非引文档数字）：三层在**最坏情况全重叠**下按 CSS 绘制顺序（--jy-nebula-1
+   画在最上层）source-over 合成到 --jy-bg #0a0a0c 得 #18192a，其上 --jy-muted #8a8b94 实算 **5.12:1**
+   ≥ AA 4.5。反证：全强度 0.14/0.08/0.05 同样叠法得 #262845，muted 仅 **4.21:1**（与需求文档实测值一致）
+   → 属禁止取值；守卫「nocturne 场景接线守卫」③ 同时锁这两条上下界，改 alpha 会一起撞红。
+   正文列避让（需求 §3.1「只在页面顶部与两侧边缘，正文列中心区不覆盖」）：三层雾一律锚在水平边缘
+   （x=0% / x=100%），且「水平半径 × transparent 停靠点」≤35%，即场景水平中央带（35%–65%）在任何
+   高度都不可达（椭圆径向距离沿 y 单调不减，峰值行不可达即整条中线全高不可达）—— 守卫④ 独立推导。
+   正文列左右边缘的收尾交给 #5 的阅读窗渐隐遮罩，本段刻意不去争抢左右两侧（窄窗收束见下一条）。
+   128px chrome 抬升判断：dust / nebula 都是 `inset: 0` 铺满整个场景盒（无 bottom 锚定元素）、
+   **没有任何贴底装饰**，故 y2k 那条 `bottom: 136px`（≈128px chrome + 8px 余量）对本变体毫无作用点
+   —— **本变体无贴底装饰，故不需段内抬升**，不引入无意义的偏移量；共享 .juya-scene 的
+   `height: 100vh` / `margin-bottom: -100vh` 占位对亦一字节不动。
+   dust 存在感：直接沿用共享层 `--jy-scene-dust: rgba(255,255,255,0.16)`（#1 已论证其合成值 #313133
+   对近黑底 1.52:1，刻意低于非文本 UI 的 3:1 —— 它是不承载信息的 aria-hidden 装饰层）。本变体
+   不覆写该 token：覆写只会抬高尘埃的存在感，与需求 §3.2「存在感极低、不抢正文」相悖；将来若确需
+   为 nocturne 调色，仍须用复合选择器形态 `[data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust`。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula {
+  --jy-nebula-1: rgba(110, 123, 255, 0.07);
+  --jy-nebula-2: rgba(90, 160, 255, 0.04);
+  --jy-nebula-3: rgba(200, 90, 180, 0.025);
+  background-image:
+    radial-gradient(44% 50% at 0% 0%, var(--jy-nebula-1), transparent 76%),
+    radial-gradient(44% 50% at 100% 0%, var(--jy-nebula-2), transparent 76%),
+    radial-gradient(42% 44% at 0% 100%, var(--jy-nebula-3), transparent 78%);
+}
+
+/* 窄窗（≤520px）退化：该断点下 .juya-issue 撑满全宽（padding 20px 14px 48px）、两侧零空隙，
+   百分比定位的左右边缘雾会直接压在正文上。故收束为**单条顶部窄带**，左右边缘雾全部撤除 ——
+   与 #5 将要加的阅读窗渐隐遮罩「互斥面为零」：后者只作用于正文列左右边缘，本降级态已把雾完全
+   撤出左右两侧，两者不会在同一像素上叠加。纵向半径 26%（800px 视口高约 208px、实际可见约 154px）
+   只覆盖刊头/概览区，正文首条导语（--jy-muted）在 ~250px 之下，不受影响。 */
+@media (max-width: 520px) {
+  [data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula {
+    background-image:
+      radial-gradient(120% 26% at 50% 0%, var(--jy-nebula-1), transparent 74%);
+  }
 }
 
 /* 银灰渐变刊头字（亮暗各一组）；条目去卡片化：发丝线分隔 + hover 抬升；等宽数字元信息 */

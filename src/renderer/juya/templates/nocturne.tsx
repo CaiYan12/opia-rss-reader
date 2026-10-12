@@ -1,5 +1,5 @@
 import { EntryTitle, ImageGrid, Lead, LinksBlock, OverviewItems, Paragraphs } from './shared'
-import { DefaultFeedItem, FeedShell } from './parts'
+import { DefaultFeedItem, FeedShell, Scene } from './parts'
 import type { JuyaEntry } from '../parseJuyaIssue'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
@@ -57,10 +57,13 @@ export function NocturneEntrySplit({
 }
 
 /** 暗夜精修式（第二轮定制排版）：图文并排但图恒在右侧（纪律感不交替），
- *  题注等宽字体；序号退化为灰色 # 前缀小字（发丝线体系的一部分）。 */
+ *  题注等宽字体；序号退化为灰色 # 前缀小字（发丝线体系的一部分）。
+ *  场景层（#2）：dust + nebula 两个纯氛围预设，挂在 .juya-issue 之前（与 y2k / dreamcore 同位，
+ *  场景在内容之下 z-index 0）；色值/避让/降级全部在 juya.css 的 nocturne 段内。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
+      <Scene dust nebula />
       <div className="juya-issue">
         <header className="juya-masthead">
           <h1>{issue.heading || article.title}</h1>

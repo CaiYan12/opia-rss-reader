@@ -1000,6 +1000,264 @@ describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
   })
 })
 
+describe('nocturne 刊头极光带守卫（2026-10-12，用户指令「头部过于朴素、Vista 极光几乎不存在」）', () => {
+  // 本组锁的是**结构安全不变量**，不是观感（观感由 masthead 探针截图人眼判定）。
+  // 核心论证（写在 juya.css 极光带注释里）：极光带取 z-index: -1，按 CSS 2.1 附录 E
+  // 落在最近堆叠上下文的第 2 步，低于全部内容 —— 故**几何上不可能覆盖文字像素**，
+  // 可读性由结构保证而非 alpha 调参。本组即为这条论证的静态闸门。
+  // 已用栅格化差分独立验证（同取景、只切极光一变量）：字形核心像素被改写 **0/4372**（1280 视口）
+  // 与 **0/13783**（560 视口），内部洗涤率 0.00%（对照：AGENTS.md 记录的 drop-shadow 为 74.2%）。
+  const DARK = "\\[data-juya-variant='nocturne-dark'\\]"
+  /** **字面选择器**（用于与 CSS 原文精确比对）。刻意与上面的 DARK 区分开：
+   *  DARK 是正则片段（供 RegExp 使用），字面比对必须用未转义的原文 ——
+   *  否则 `\[data-juya-variant…` 永远匹配不上 CSS 里的 `[data-juya-variant…`。
+   *  第二版守卫即踩此坑（8 条假红），教训记于此。 */
+  const PREFIX = "[data-juya-variant='nocturne-dark'].jynoct"
+  const beforeSel = `${PREFIX} .juya-masthead::before`
+  const afterSel = `${PREFIX} .juya-masthead::after`
+  /** 本组必须**按精确选择器列表**取规则，不能用 `extractBlock` 的首次匹配：
+   *  共用规则的分组头第二行正是 `… ::after {`，行首锚定正则会命中它，
+   *  致使原本想取「后层」的调用返回**共用规则**（连带 z-index / mask 一起误判）。
+   *  第一版守卫即踩此坑：②的「后层不得覆盖 z-index」与 ⑤/⑥/⑦ 的取值断言全部假红。
+   *  教训：像 pop 守卫那样为分组规则单独建精确取用函数，别用「行首锚定 + 首次匹配」偷懒。 */
+  const rules = (): { selectors: string[]; body: string }[] => {
+    const masked = css.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    const out: { selectors: string[]; body: string }[] = []
+    for (let i = 0; i < masked.length; i++) {
+      if (masked[i] !== '{') continue
+      let j = i
+      while (j > 0 && !'{};'.includes(masked[j - 1])) j--
+      const head = masked.slice(j, i).trim()
+      let depth = 0
+      let end = i
+      for (let k = i; k < masked.length; k++) {
+        if (masked[k] === '{') depth++
+        else if (masked[k] === '}') {
+          depth--
+          if (depth === 0) {
+            end = k
+            break
+          }
+        }
+      }
+      out.push({
+        selectors: head.split(',').map((s) => s.trim()).filter(Boolean),
+        body: css.slice(i, end + 1)
+      })
+    }
+    return out
+  }
+  /** 精确匹配「无 @ 前缀的规则、选择器列表恰为 sels」的那条（顺序无关，避免误取分组规则） */
+  const ruleBy = (...sels: string[]): string => {
+    const want = [...sels].sort().join(' || ')
+    const hit = rules().find(
+      (r) =>
+        r.selectors.length === sels.length &&
+        !r.selectors.some((s) => s.startsWith('@')) &&
+        [...r.selectors].sort().join(' || ') === want
+    )
+    return hit?.body ?? ''
+  }
+  const beforeRule = (): string => ruleBy(beforeSel)
+  const afterRule = (): string => ruleBy(afterSel)
+  /** 两条伪元素共用的定位/mask 规则（分组选择器：::before + ::after） */
+  const sharedRule = (): string => ruleBy(beforeSel, afterSel)
+  /** 规则体剥注释：判定「是否真的声明了某属性 / 某字面色」时必须用它 ——
+   *  否则注释里**提到**的色值会被误判成声明里的色值（⑨ 第一版即因此假红：
+   *  h1 规则的注释写了 `--jy-nebula-2 rgba(90,160,255)` 作取色溯源）。
+   *  另一条同源教训：把字面选择器拼进 RegExp 时必须转义，否则 `[data-…]` 被当字符类
+   *  （⑧ 第一版即此坑）。 */
+  const bare = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  it('① 极光带存在且为独立装饰层：两条伪元素规则 + 共用定位/mask 规则', () => {
+    expect(beforeRule(), '极光前层规则应存在').toBeTruthy()
+    expect(afterRule(), '极光后层规则应存在').toBeTruthy()
+    const shared = sharedRule()
+    expect(shared, '两条伪元素应有共用的定位/mask 规则').toBeTruthy()
+    expect(shared, '装饰层须显式声明 content').toContain("content: ''")
+    expect(shared, '装饰层须 absolute 定位').toMatch(/position:\s*absolute/)
+    expect(shared, '装饰层绝不可截获点击').toMatch(/pointer-events:\s*none/)
+    // 定位上下文：刊头自身须建立包含块，否则 left/right:0 会横跨整个 .juya-issue
+    const mast = extractBlock(
+      css,
+      new RegExp(`(?:^|\\n)${DARK}\\.jynoct \\.juya-masthead \\{`)
+    )
+    expect(mast, '刊头须为极光提供定位上下文（position: relative）').toMatch(
+      /position:\s*relative/
+    )
+  })
+
+  it('② 分层不变量：极光 z-index 为负（落在全部内容之下），绝不为 0/正数', () => {
+    // 这是本组的核心断言。为什么 0 也不行：CSS 2.1 附录 E 中 z-index:0 的定位元素绘于第 6 步，
+    // 而**非定位的正文文本**（h1、概览项）在第 5 步 ⇒ z-index:0 的极光会盖在标题字**之上**，
+    // 半透明 + blur 将洗淡文字（AGENTS.md 已记录同类陷阱：drop-shadow 洗涤 74.2% 内部像素）。
+    const shared = sharedRule()
+    const z = decl(bare(shared), 'z-index')
+    expect(z, '极光必须显式声明 z-index').toBeTruthy()
+    expect(z, `极光 z-index 必须为负数（实得 ${z}）；0 或正数会盖在非定位文本之上`).toMatch(/^-\d/)
+    // 反证：极光两条规则自身不得再出现 z-index 覆盖（避免把负值改回去）
+    for (const [name, rule] of [['前层', beforeRule()], ['后层', afterRule()]]) {
+      expect(rule, `${name}不得覆盖共用规则的 z-index`).not.toMatch(/z-index\s*:/)
+    }
+  })
+
+  it('③ 零横向溢出：极光不带任何负向左右越界（.juya-issue 无 overflow:hidden，会被滚成横向滚动条）', () => {
+    // 已实测：1280 与 560 两档 scrollerScrollWidth === clientWidth（溢出 0px）。
+    for (const [name, rule] of [
+      ['前层', beforeRule()],
+      ['后层', afterRule()],
+      ['共用', sharedRule()]
+    ]) {
+      // left/right 必须是 0（收在刊头内容盒内）；不得出现负值或超 100% 的宽度
+      const left = decl(bare(rule), 'left')
+      const right = decl(bare(rule), 'right')
+      if (left) expect(left, `${name} left 须为 0，不得负向越界`).not.toMatch(/^-/)
+      if (right) expect(right, `${name} right 须为 0，不得负向越界`).not.toMatch(/^-/)
+      expect(rule, `${name}不得引入 transform: translateX 之类的横向位移`).not.toMatch(
+        /translate[XY]?\(/
+      )
+    }
+    const sharedLeft = decl(bare(sharedRule()), 'left')
+    const sharedRight = decl(bare(sharedRule()), 'right')
+    expect(sharedLeft, '共用规则 left 应为 0').toBe('0')
+    expect(sharedRight, '共用规则 right 应为 0').toBe('0')
+  })
+
+  it('④ 两端渐隐用 mask（避免弧带被盒边硬切），且停靠点用 black 关键字不引字面色', () => {
+    const shared = sharedRule()
+    expect(shared, '须有 -webkit- 前缀 mask（Chromium 仍需前缀写法并存）').toMatch(
+      /-webkit-mask-image:\s*linear-gradient\(/
+    )
+    expect(shared, '须有标准 mask-image').toMatch(/[^-]mask-image:\s*linear-gradient\(/)
+    expect(shared, '首尾停靠点应为 transparent（两端渐隐）').toMatch(
+      /linear-gradient\(90deg,\s*transparent 0%,\s*black/
+    )
+    // 这条让「共用规则」不进收口守卫组②的构成色登记表：它确实没有字面色值
+    expect(bare(shared), '共用规则的 mask 不得用字面色值').not.toMatch(
+      /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+    )
+  })
+
+  it('⑤ 冷暖谱取自既有色（零新增色相）：青白亮脊 + --jy-nebula-2 青蓝 + --jy-accent 靛蓝 + --jy-nebula-3 品红', () => {
+    const near = beforeRule()
+    const far = afterRule()
+    // 青白亮脊（「被极光照亮的白」，由 h1 顶档 #ffffff 向 nebula-2 色相偏移）
+    expect(near, '前层须有青白亮脊 rgba(214, 236, 255)').toContain('rgba(214, 236, 255')
+    // 青蓝 = 既有 --jy-nebula-2 rgba(90,160,255)（§3.1 表格）
+    expect(near, '前层幕帘须用既有青蓝 rgba(90, 160, 255)').toContain('rgba(90, 160, 255')
+    // 靛蓝 = 本变体 --jy-accent #6e7bff
+    expect(near, '前层底纹须用 accent 靛蓝 rgba(110, 123, 255)').toContain('rgba(110, 123, 255')
+    // 品红 = 既有 --jy-nebula-3 rgba(200,90,180)
+    expect(far, '后层反相幕帘须用既有品红 rgba(200, 90, 180)').toContain('rgba(200, 90, 180')
+    expect(far, '后层须用 accent 靛蓝 rgba(110, 123, 255)').toContain('rgba(110, 123, 255')
+    // 零新增色相的反证：不得出现霓虹青/品红的其他变体（双色霓虹排除项，需求 §4.2）
+    const both = near + far
+    const channels = [...both.matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map(
+      (m) => `${m[1]},${m[2]},${m[3]}`
+    )
+    expect(
+      [...new Set(channels)].sort(),
+      '极光带的色相集合必须恰好是这几个既有色（新增色相即撞红）'
+    ).toEqual(['110,123,255', '200,90,180', '214,236,255', '90,160,255'].sort())
+  })
+
+  it('⑥ 纵深与不对称：两层不同弧心（后层水平偏心）+ 不同模糊半径，避免读作同心圆环', () => {
+    const near = beforeRule()
+    const far = afterRule()
+    const at = (rule: string): string =>
+      rule.match(/radial-gradient\(\s*[\d.]+%\s+[\d.]+%\s+at\s+([\d.]+%)\s+([\d.]+%)/)?.[0] ?? ''
+    expect(at(near), '前层弧心应水平居中（50%）').toContain('at 50%')
+    expect(at(far), '后层弧心应水平偏心（非 50%），制造不对称纵深').toBeTruthy()
+    expect(at(far), '后层弧心不得也是居中（会让两层读作同心圆环）').not.toContain('at 50%')
+    const blurOf = (rule: string): number =>
+      Number.parseFloat(rule.match(/blur\(([\d.]+)px\)/)?.[1] ?? 'NaN')
+    expect(blurOf(near), '前层 blur 可读').not.toBeNaN()
+    expect(blurOf(far), '后层 blur 可读').not.toBeNaN()
+    expect(blurOf(far), '后层应比前层更模糊（更远）').toBeGreaterThan(blurOf(near))
+  })
+
+  it('⑦ 动效：两层交错相位、只动 opacity 不动几何，且各自周期不同', () => {
+    const near = beforeRule()
+    const far = afterRule()
+    const periodOf = (rule: string): number =>
+      Number.parseFloat(rule.match(/animation:\s*jy-noct-aurora-\w+ ([\d.]+)s/)?.[1] ?? 'NaN')
+    expect(periodOf(near), '前层动画周期可读').not.toBeNaN()
+    expect(periodOf(far), '后层动画周期可读').not.toBeNaN()
+    expect(periodOf(near), '两层周期须不同（同步会读作整体闪烁）').not.toBe(periodOf(far))
+    expect(near, '前层动画须用 alternate').toContain('alternate')
+    expect(far, '后层动画须用 alternate').toContain('alternate')
+    // 只动 opacity：关键帧块内不得出现任何几何/颜色属性
+    for (const name of ['jy-noct-aurora-near', 'jy-noct-aurora-far']) {
+      const kf = extractBlock(css, new RegExp(`@keyframes ${name} \\{`))
+      expect(kf, `${name} 关键帧应存在`).toBeTruthy()
+      const body = kf.replace(/\/\*[\s\S]*?\*\//g, ' ')
+      const props = [...body.matchAll(/(?:from|to)\s*\{([^}]*)\}/g)]
+        .map((m) => m[1])
+        .join(';')
+      expect(props, `${name} 只能动 opacity（动几何会带来贴图滑动感，且更贵）`).not.toMatch(
+        /transform|filter|background|top|left|height|width/
+      )
+      expect(props, `${name} 须确实声明 opacity`).toMatch(/opacity\s*:/)
+    }
+    // 交错相位：前层 from 暗 to 亮，后层 from 亮 to 暗
+    const stepAlpha = (kfName: string, step: string): number =>
+      Number.parseFloat(
+        extractBlock(css, new RegExp(`@keyframes ${kfName} \\{`)).match(
+          new RegExp(`(?:^|[\\s{])${step}\\s*\\{[^}]*opacity:\\s*([\\d.]+)`)
+        )?.[1] ?? 'NaN'
+      )
+    expect(
+      stepAlpha('jy-noct-aurora-near', 'from'),
+      '前层 from 应为暗档'
+    ).toBeLessThan(stepAlpha('jy-noct-aurora-near', 'to'))
+    expect(
+      stepAlpha('jy-noct-aurora-far', 'from'),
+      '后层 from 应为亮档（与前层反相才算交错）'
+    ).toBeGreaterThan(stepAlpha('jy-noct-aurora-far', 'to'))
+  })
+
+  it('⑧ reduced-motion：两层都被显式复位为静态中间档（不是「去掉动画就静止」）', () => {
+    const rm = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).join('\n')
+    for (const [name, sel, lo, hi] of [
+      ['前层', beforeSel, 0.62, 1],
+      ['后层', afterSel, 0.52, 1]
+    ] as const) {
+      const block = rm.match(new RegExp(`${esc(sel)} \\{[^}]*\\}`))?.[0] ?? ''
+      expect(block, `RM 块内应有 ${name} 的复位规则（守卫⑤要求选择器级点名）`).toBeTruthy()
+      expect(block, `${name} RM 复位须用 animation: none !important`).toMatch(
+        /animation:\s*none\s*!important/
+      )
+      // 关键：必须显式钉 opacity。关键帧被撤后元素回到「无 opacity 声明」= 1，
+      // 而两层都取 1 是设计上的最亮组合，会比动画平均态更亮 —— 故不能只撤动画。
+      const op = Number.parseFloat(block.match(/opacity:\s*([\d.]+)/)?.[1] ?? 'NaN')
+      expect(op, `${name} RM 须显式声明 opacity（不能只撤动画，否则回到最亮档 1）`).not.toBeNaN()
+      expect(op, `${name} RM 的 opacity 须落在其动画区间内`).toBeGreaterThanOrEqual(lo)
+      expect(op, `${name} RM 的 opacity 须落在其动画区间内`).toBeLessThanOrEqual(hi)
+      expect(op, `${name} RM 的 opacity 不应取区间端点（取中间档，静态观感更接近动画平均态）`).toBeGreaterThan(lo)
+      expect(op, `${name} RM 的 opacity 不应取区间端点`).toBeLessThan(hi)
+    }
+  })
+
+  it('⑨ 取消双色霓虹约束的作用域收窄：h1 辉光仍是单色靛蓝（#4 决策未被本次改动推翻）', () => {
+    // 需求 §4.2 原「排除双色霓虹」针对的是「两个独立光源」的硬色对（dreamcore 语义）。
+    // 本次用户明确要求 Vista 极光，故该排除**仅在极光带上**被取代；
+    // 刊头字自身的辉光必须仍是单色靛蓝 —— 守卫①③ 的既有断言即为这条的闸门，
+    // 此处额外确保极光带没有把色相渗进 h1 规则。
+    // 必须剥注释 + 用精确选择器取规则：h1 规则的说明注释里**提到**了 --jy-nebula-2 的 rgba
+    // 作为取色溯源，不剥会把「注释里提到的色」误判成「声明里的色」（第一版守卫即此假红）。
+    const h1 = bare(ruleBy(`${PREFIX} .juya-masthead h1`))
+    expect(h1, '暗侧 h1 辉光规则应存在').toBeTruthy()
+    const glowColors = [...h1.matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map(
+      (m) => `${m[1]},${m[2]},${m[3]}`
+    )
+    expect(
+      [...new Set(glowColors)],
+      'h1 辉光须仍是单一 accent 靛蓝（不得混入青蓝/品红等极光色相）'
+    ).toEqual(['110,123,255'])
+  })
+})
+
 describe('nocturne 图文回流守卫（2026-10-12，#8：右列限 2 张，其余回流通栏）', () => {
   // **与「排版层级守卫」（#6）的作用域口径差异是有意的，不是不一致**：
   //   #6 把导语/栏目线收窄为 `[data-juya-variant='nocturne-dark'].jynoct …`（§9 把
@@ -2234,6 +2492,12 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     //  · 第二条 .juya-scene-nebula = ≤520px 窄窗退化规则（峰值 alpha 单独收到 0.055 字面值）；
     //  · [data-juya-variant='nocturne-dark'].jynoct .juya-entry:hover = 暗侧撤掉背景微亮、
     //    改走 border-bottom-color rgba(255,255,255,0.22)（发丝线提亮，不参与文字背景合成）。
+    // 刊头极光带（2026-10-12 用户指令「头部过于朴素」）再新增两条，故 15 → 17 条：
+    //  · ::before（前层幕帘）/ ::after（后层反相幕帘）—— 承载多层 radial/linear 渐变的字面 rgba。
+    //    同批新增的另两条**不在表内**，因为确无字面色值（说明见各自注释，避免被误认为登记遗漏）：
+    //      – `.jynoct .juya-masthead { position: relative }`：纯定位；
+    //      – `::before, ::after` 共用的定位/mask 规则：mask 停靠点用 `black` 关键字而非字面色；
+    //      – 两条 @keyframes jy-noct-aurora-*：只动 opacity，无任何色值。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
@@ -2241,6 +2505,8 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       "[data-juya-variant='nocturne-dark'].jynoct .juya-issue::before, [data-juya-variant='nocturne-dark'].jynoct .juya-issue::after",
       '.jynoct .juya-masthead h1',
       "[data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-masthead::before",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after",
       '@keyframes jy-noct-glow',
       "[data-juya-variant='nocturne-dark'].jynoct .juya-entry:hover",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-lead",

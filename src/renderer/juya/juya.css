@@ -1934,9 +1934,167 @@
    对 --jy-bg 为 11.50:1，正文可读性不受辉光影响）；括号内为参照值——accent 对 --jy-bg #0a0a0c
    对比 5.60:1（同滚动条 thumb 注释实算），此处仅作取色溯源，不构成合规判据。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 {
+  /* 冷调刊头字（2026-10-12 用户指令「头部过于朴素」）：把中性银灰 #ffffff→#b9bcc7 换成
+     「被极光照亮」的冷白 #ffffff→#b9c6f0（末档向既有青蓝雾气 --jy-nebula-2 的色相偏移）。
+     必须重声明两条 clip：background 是简写，会把继承自共享规则的 background-clip 重置回
+     border-box（那会让整块标题变成实心色块）—— 亮侧那条规则同样重声明，此处照同一结构写。
+     取色来源：#ffffff 与 --jy-nebula-2 rgba(90,160,255)（本变体既有色，§3.1 表格）。
+     WCAG 对比度（渐变两端对 --jy-bg #0a0a0c）：#ffffff 19.4:1、#b9c6f0 8.9:1 —— 30px 大文本
+     门槛 3:1，两端均远超（渐变字按最暗端判最坏，较原中性灰 #b9bcc7 的 9.65:1 略降但余量充足）。 */
+  background: linear-gradient(180deg, #ffffff, #b9c6f0);
+  -webkit-background-clip: text;
+  background-clip: text;
   filter: drop-shadow(0 0 18px rgba(110, 123, 255, 0.28))
     drop-shadow(0 0 40px rgba(110, 123, 255, 0.12));
   animation: jy-noct-glow 9s ease-in-out infinite alternate;
+}
+
+/* 极光带的定位上下文：`.juya-masthead` 基层为 static，若不建立包含块，两条 absolute 伪元素会
+   以最近的定位祖先 `.juya-issue`（position: relative）为基准 —— `left: 0; right: 0` 就会横跨
+   **整个 issue 盒**而非刊头盒，弧带的宽度与取景全部失真。故此处补 relative。
+   作用域限定暗侧（nocturne-light 不受影响，§9）；不含 z-index，故不新建堆叠上下文，
+   极光带与刊头文字同在 `.juya-issue`（z-index: 1）的堆叠上下文内按 z-index 排序。
+   取色来源 / 对比度：本条无任何色值（纯定位），不涉及构成色注释。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-masthead {
+  position: relative;
+}
+
+/* ---- 刊头极光带（2026-10-12 用户指令：头部过于朴素、Vista 极光几乎不存在）----
+   **问题定位（这是原实现「没有极光」的根因，不是强度不够）**：原实现只有 h1 的
+   `filter: drop-shadow`（18px/40px 靛蓝）。而 `filter` 作用于 `background-clip:text` 的元素时，
+   取的是**字形 alpha 轮廓** —— 它只能描出「字边的模糊光」，几何上不可能形成「一条带、有走向、
+   有冷暖渐变」的极光。所以此前的「极光」实际只是字边辉光，把它调到多亮都不会变成极光。
+   故本段新增**独立于文字**的极光带（两个伪元素 + 弧形径向渐变），h1 保持不变、仍浮在其上。
+   **参考物**：Windows Vista「Aurora」壁纸的冷光幕帘 —— 一条横贯的**弧形亮边**，亮边之下垂落
+   冷色幕帘，后层另有一道更远更淡的反相幕帘形成纵深；整体读作「冷光穿过大气」，不是霓虹灯管。
+   **与 dreamcore 霓虹的区分（本段不构成语义撞车）**：dreamcore 是**两个独立光源**（条纹太阳 +
+   透视网格）的硬色对；本段是**同一条曲线上的连续冷暖谱**（青 → 靛 → 品红），无第二光源、
+   无硬边、无灯管造型。需求 §4.2 原「排除双色霓虹」针对的是前者；本次用户明确要求 Vista 极光，
+   故该排除**仅在极光带上**被取代，h1 自身辉光仍是单色靛蓝（#4 决策未动，守卫①③原样通过）。
+   **几何安全性（为什么不会造出横向滚动条）**：极光带 `left/right: 0` 严格收在 .juya-masthead
+   内容盒内，不使用任何负向左右溢出；`.juya-issue` 无 overflow:hidden（见 #5 段注释排除项 (a)），
+   故横向溢出会直接在 .view-scroll（overflow-x: auto）上生成滚动条 —— 本条以「零横向溢出」规避。
+   **纵向不与正文相撞**：masthead 盒高约 37.5px（30px 字号 × line-height 1.25）；
+   前层 top -26px、高 92px ⇒ 纵向占 [-26, 66]，即最多探到 masthead 底缘下约 28.5px，
+   落在 `.juya-masthead { margin-bottom: 24px }` 的空隙内，未及概览目录；后层 top -40px、
+   高 104px ⇒ 占 [-40, 64]，同理。两端均有明确上界，不依赖「碰巧没重叠」。
+   **分层与安全性**：极光带 z-index **-1**（见上条规则内的完整论证），故恒在刊头文字之下；
+   `pointer-events: none` 保证装饰层绝不截获点击；两端用 mask 渐隐，避免弧带被盒边硬切。
+   取色来源（**零新增色相**，全部取自本变体既有色）：
+     · 冷白亮边 rgba(214,236,255) = 本文件 h1 渐变顶档 #ffffff 向既有青蓝雾气
+       rgba(90,160,255)（--jy-nebula-2，§3.1 表格）偏移所得，即「被极光照亮的白」；
+     · 青蓝 rgba(90,160,255) = 既有 --jy-nebula-2（§3.1 表格）；
+     · 靛蓝 rgba(110,123,255) = 本变体 --jy-accent #6e7bff（与 h1 辉光同源同色）；
+     · 品红 rgba(200,90,180) = 既有 --jy-nebula-3（§3.1 表格）。
+   WCAG 对比度：极光带是**纯装饰**（不承载信息，且由 z-index: -1 结构性地落在全部文字像素
+   之下 —— 见上条分层论证），故不适用文字 4.5 / UI 3 门槛；
+   参照值：其最亮处合成到 --jy-bg #0a0a0c 后约 #26283f，该面上 --jy-text #c4c5cc 仍为 8.6:1、
+   --jy-muted #8a8b94 仍为 4.6:1（两者均 ≥ AA），即极光拉到最亮也不会淹掉正文。
+   动效：前层 24s、后层 31s，**交错相位**（前者变亮时后者变暗）⇒ 只靠 opacity 就得到缓慢起伏，
+   不移动任何几何（避免整体位移带来的「贴图滑动」廉价感），且 opacity 是合成器友好属性。
+   reduced-motion 下两条都显式复位为静态中间档（见本段末的 RM 块）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-masthead::before,
+[data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* z-index **-1**（而不是 0）是这里的关键，不是风格偏好：
+     按 CSS 2.1 附录 E 的绘制顺序，定位元素 z-index:0 落在第 6 步，而**非定位的正文文本**
+     （h1、概览项）在第 5 步 —— 即 z-index:0 的极光会盖在标题文字**之上**，半透明 + blur 会把
+     文字洗淡（这正是 AGENTS.md 记录过的「drop-shadow 洗涤 74.2% 内部像素」同类陷阱）。
+     取负值则整段落到最近堆叠上下文（.juya-issue 的 z-index:1）的第 2 步：在所有内容之下、
+     但在 .juya-scene（另一上下文的 z-index:0）之上。**据此，极光在几何上不可能覆盖任何文字像素**，
+     可读性由结构保证而非靠 alpha 调参；上方的 0.62→1 区间也只需对「装饰亮度」负责。 */
+  z-index: -1;
+  pointer-events: none;
+  /* 两端渐隐（black 为不透明停靠点的关键字写法，避免在此条引入字面色值） */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 16%, black 84%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, black 16%, black 84%, transparent 100%);
+}
+
+/* 前层：青白亮脊 + 垂落的冷色幕帘（极光的主笔）。
+   几何用意（三层的分工，缺一层就不成「幕帘」）：
+     · 亮脊 —— 窄环带（停靠点 86%→100%，仅 14% 带宽 ⇒ 实渲约 12–14px），是极光**唯一的硬信号**。
+       Vista 极光的辨识点就是这条「几乎水平的亮边」，它必须窄、必须亮、必须锐；
+       亮脊落在盒内 y≈37px（盒顶＝刊头坐标 −26px ⇒ 刊头 y≈11px，正压 30px 字号的字冠一带）。
+     · 幕帘 —— 一条横向拉宽的椭圆环带（第二层），自亮脊向下垂落并快速衰减 ⇒「光从亮边往下淌」。
+     · 底纹 —— 靛蓝线性衰减（第三层），把幕帘的收尾拉长、避免出现生硬的截止线。
+   弧的矢高仅约 5px（中心 36.8 / 两端 41.7）⇒ 读作「近乎水平的幕帘上缘」而非「彩虹拱」。
+   取色来源（**零新增色相**，四色全部出自本变体既有色）：
+     亮脊 rgba(214,236,255) —— 由 h1 顶档 #ffffff 向既有青蓝 rgba(90,160,255)=--jy-nebula-2 偏移；
+     幕帘 rgba(90,160,255)  —— 既有 --jy-nebula-2（§3.1 表格）；
+     底纹 rgba(110,123,255) —— 本变体 --jy-accent #6e7bff；后层品红 rgba(200,90,180) = --jy-nebula-3。
+   WCAG 对比度：纯装饰层，由 z-index: -1 结构性落在文字之下、不覆盖任何文字像素，
+   门槛不适用；最亮处合成面对 --jy-text 仍 ≥8.6:1（实算见总注释）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-masthead::before {
+  top: -26px;
+  height: 92px;
+  background-image:
+    radial-gradient(
+      178% 118% at 50% 146%,
+      transparent 86%,
+      rgba(214, 236, 255, 0.92) 90%,
+      transparent 97%
+    ),
+    radial-gradient(
+      196% 152% at 50% 168%,
+      transparent 74%,
+      rgba(90, 160, 255, 0.42) 86%,
+      rgba(110, 123, 255, 0.2) 94%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(110, 123, 255, 0.26) 0%,
+      rgba(110, 123, 255, 0.09) 38%,
+      transparent 72%
+    );
+  background-repeat: no-repeat;
+  filter: blur(4px);
+  animation: jy-noct-aurora-near 24s ease-in-out infinite alternate;
+}
+
+/* 后层：更远、更淡、**水平偏心**的反相幕帘（品红 → 靛蓝），错相位 + 错弧心制造纵深。
+   偏心（at 38%）是刻意的：两道同心弧会读作「同心圆环」而非极光层积；真实极光从不对称。
+   品红是 Vista 极光的标志性下缘晕色，此处取自既有 --jy-nebula-3，非新增色相。
+   取色来源：rgba(200,90,180) = 既有 --jy-nebula-3（§3.1 表格）、rgba(110,123,255) = --jy-accent。
+   WCAG 对比度：纯装饰层，由 z-index: -1 结构性落在文字之下，门槛不适用（同前层）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after {
+  top: -40px;
+  height: 104px;
+  background-image: radial-gradient(
+    205% 140% at 38% 172%,
+    transparent 76%,
+    rgba(200, 90, 180, 0.36) 88%,
+    rgba(110, 123, 255, 0.18) 95%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  filter: blur(13px);
+  animation: jy-noct-aurora-far 31s ease-in-out infinite alternate;
+}
+
+/* 极光起伏（2026-10-12）：两层**交错相位** —— 前层 0.62→1 变亮时后层 1→0.52 变暗，
+   合起来是「幕帘缓慢翻卷」而非「整体忽明忽暗」。只动 opacity，不动几何。
+   静态/冻结态（如归档与审计脚本的 animation:none）落在两层各自的 1 档，是最亮组合，
+   故下方 alpha 取值按「两层都满档」调校，动画只会把它压暗、不会超出。 */
+@keyframes jy-noct-aurora-near {
+  from {
+    opacity: 0.62;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes jy-noct-aurora-far {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.52;
+  }
 }
 
 /* 呼吸（决策 7）：近层 alpha 在 .22 ↔ .32 间往返（from 下界更暗、to 上界更亮），幅度 0.1
@@ -1958,10 +2116,24 @@
 }
 
 /* 红线 4：reduced-motion 下取消呼吸动画，静态微光（基础规则里的 filter）原样保留。
-   基础过滤值本就写在动画之外，故此处只需撤掉动画，无需补回 filter。 */
+   基础过滤值本就写在动画之外，故此处只需撤掉动画，无需补回 filter。
+   极光两层同样在此**显式复位**（守卫⑤要求每个动画承载选择器都在 RM 块内被点名）：
+   不是「去掉动画就自然静止」—— 关键帧被撤后元素会回到**无 opacity 声明**的档位即 1，
+   而两层都取 1 是设计上的最亮组合，会比动画中的平均态更亮、也更可能压过正文。
+   故此处显式钉死为各自区间的中间档（前层 0.81 / 后层 0.76），静态下即「半开的幕帘」。 */
 @media (prefers-reduced-motion: reduce) {
   [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 {
     animation: none !important;
+  }
+
+  [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::before {
+    animation: none !important;
+    opacity: 0.81;
+  }
+
+  [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after {
+    animation: none !important;
+    opacity: 0.76;
   }
 }
 

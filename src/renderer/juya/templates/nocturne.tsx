@@ -6,8 +6,9 @@ import { useAppStore } from '../../stores/useAppStore'
 
 const VARIANT_CLASS = 'jynoct'
 
-/** 右列最多容纳的图片张数；第 3 张及以后回流为正文下方通栏（#8 决策 13）。 */
-export const NOCTURNE_FIGURE_LIMIT = 2
+/** 右列最多容纳的图片张数；第 3 张及以后回流为正文下方通栏（#8 决策 13）。
+ *  仅本文件消费（`NocturneEntrySplit` 内切片），故不导出 —— 导出会误导为公共契约。 */
+const NOCTURNE_FIGURE_LIMIT = 2
 
 /** nocturne 专属图文并排骨架（#8）：在模板内组合 shared.tsx 原子层，**零共享层改动**
  *  （共享 EntrySplit 无「右列限 N 张」参数，改它会波及 y2k / editorial）。

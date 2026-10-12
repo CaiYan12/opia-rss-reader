@@ -2110,7 +2110,19 @@
 
 /* 图文回流带（#8，2026-10-12）：右列限 2 张（模板见 templates/nocturne.tsx），
    第 3 张及以后回流到正文下方通栏。发丝上边线沿用条目分隔语言，标识「这些图仍属本条」；
-   padding-top 阻断与内层 .juya-media 的 12px 外边距合并，使带与右列间距稳定为 18px。 */
+   padding-top 阻断与内层 .juya-media 的 12px 外边距合并，使带与右列间距稳定为 18px。
+
+   **作用域为什么是共享 `.jynoct`（有意例外，与 #6 的收窄形态并存）**：
+   #6 把导语/栏目线收窄为 `[data-juya-variant='nocturne-dark'].jynoct …`，依据是需求 §9
+   把「nocturne-light 任何改动」列为不做。本条的形态不同 —— 它是**模板结构**变化而非样式取值
+   变化：`NocturneEntrySplit`（templates/nocturne.tsx）由 `IssueView` 渲染，而 `IssueView`
+   **没有 variantId 分支**，故两个变体共用同一骨架、右列同样只取前 2 张、第 3 张起同样回流到
+   本容器。若把它也收窄到暗侧前缀，`nocturne-light` 会渲染出一个**没有任何样式**的
+   `.jynoct-overflow-media`（裸 div 里的图），反而制造亮侧布局破损 —— 那才是对亮侧的真实改动。
+   故此处保持共享作用域：亮侧回流带的几何与暗侧一致，仅颜色随各自 `--jy-border` 取值
+   （§9 的「不做」指样式取值，不指结构）。守卫交叉引用见
+   `tests/unit/juyaCssGuard.test.ts` 的「图文回流守卫 ①」（要求共享形态）与
+   「排版层级守卫」（要求暗侧复合形态）—— 两者约束的是不同对象，不冲突。 */
 .jynoct .jynoct-overflow-media {
   margin-top: 18px;
   padding-top: 14px;

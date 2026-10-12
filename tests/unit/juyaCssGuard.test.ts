@@ -46,6 +46,10 @@ const y2kRule = (rest: string): string =>
 const popRule = (rest: string): string =>
   css.match(new RegExp(`(?:^|\\n)\\.jypop ${rest} \\{[^}]*\\}`))?.[0] ?? ''
 
+/** 首条形如 `.jynoct <rest> { … }` 的规则块（行首锚定，同 y2kRule） */
+const noctRule = (rest: string): string =>
+  css.match(new RegExp(`(?:^|\\n)\\.jynoct ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
 /** 取首个匹配 opener 的完整块（花括号配平，可正确处理嵌套规则的媒体查询/支持查询块） */
 const extractBlock = (src: string, opener: RegExp): string => {
   const m = src.match(opener)
@@ -473,5 +477,55 @@ describe('滚动条风格适配守卫（2026-10-11 用户指令：橘鸦风格�
       /<div className="view-scroll flex-1 overflow-y-auto">/
     )
     expect(mini, 'MiniView 不应挂 view-scroll').not.toContain('view-scroll')
+  })
+})
+
+describe('nocturne 图文回流守卫（2026-10-12，#8：右列限 2 张，其余回流通栏）', () => {
+  const TSX = () => readFileSync(join(process.cwd(), 'src/renderer/juya/templates/nocturne.tsx'), 'utf-8')
+  const overflowRules = () => css.match(/^[^\n]*jynoct-overflow-media[^\n]*\{/gm) ?? []
+
+  it('① 新增通栏容器的样式只写在 jynoct 作用域内（不新增基层/其他变体规则）', () => {
+    const rules = overflowRules()
+    expect(rules.length, '通栏容器应有基础规则 + 窄窗降级各一条').toBe(2)
+    for (const rule of rules) {
+      expect(rule, `通栏容器规则必须挂 .jynoct 作用域：${rule.trim()}`).toMatch(/^\s*\.jynoct \.jynoct-overflow-media \{/)
+    }
+    expect(css, '新类名不得出现在变体前缀复合选择器之外的作用域').not.toMatch(
+      /\[data-juya-variant='[^']+'\]\s*\.jynoct-overflow-media/
+    )
+  })
+
+  it('② 通栏带基础规则：发丝上边线（var(--jy-border)）+ 与右列稳定间距，零动效', () => {
+    const rule = noctRule('\\.jynoct-overflow-media')
+    expect(rule, '通栏带基础规则应存在').toBeTruthy()
+    expect(rule).toContain('border-top: 1px solid var(--jy-border)')
+    expect(rule).toContain('margin-top: 18px')
+    expect(rule, 'padding-top 用于阻断与内层 .juya-media 外边距的合并').toContain('padding-top: 14px')
+    expect(rule, '回流带不引入动效').not.toMatch(/animation|transition/)
+  })
+
+  it('③ 窄窗降级：≤640px 时去掉发丝线与内衬（此时右列已回落纵排，无左右并置语义）', () => {
+    const narrow = extractBlocks(css, /@media \(max-width: 640px\) \{/).find((b) =>
+      b.includes('jynoct-overflow-media')
+    )
+    expect(narrow, '应存在含通栏容器的窄窗降级媒体块').toBeTruthy()
+    expect(narrow).toContain('border-top: none')
+    expect(narrow).toContain('padding-top: 0')
+  })
+
+  it('④ 模板接线：nocturne.tsx 自写骨架（不再引用共享 EntrySplit），保留既有基类与新类名', () => {
+    const tsx = TSX()
+    expect(tsx, '零共享层改动：不得从 parts 导入共享 EntrySplit').not.toMatch(
+      /import \{[^}]*\bEntrySplit\b[^}]*\} from '\.\/parts'/
+    )
+    expect(tsx, '零共享层改动：不得渲染共享 EntrySplit').not.toContain('<EntrySplit')
+    for (const cls of ['juya-entry juya-entry-split', 'juya-entry-row', 'juya-entry-body', 'juya-entry-figure']) {
+      expect(tsx, `应保留既有基类 ${cls}`).toContain(cls)
+    }
+    expect(tsx, '通栏容器类名应与 CSS 同步').toContain('jynoct-overflow-media')
+    // 只断言类名字符串形态（注释里可以提到该基类名，那不影响渲染）
+    expect(tsx, '纪律签名：永不把 juya-entry-alt 挂上 className（图恒在右不交替）').not.toMatch(
+      /className=[^\n]*juya-entry-alt/
+    )
   })
 })

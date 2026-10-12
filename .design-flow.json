@@ -43,7 +43,10 @@
         "极光带分层硬约束（本次最重要教训）：必须 z-index:-1 而非 0 —— 按 CSS 2.1 附录 E，z-index:0 的定位元素绘于第 6 步，而**非定位正文文本**在第 5 步，故 0 会盖在标题字之上被半透明+blur 洗淡。取负值后落在内容之下、.juya-scene 之上。栅格化差分实测：字形核心被改写 0/4372（1280）/ 0/13783（560），内部洗涤率 0.00%（对照既有 drop-shadow 陷阱的 74.2%）。**字形掩码必须取自「去了极光」的对照图并腐蚀**，否则亮脊会被误判成字形（首版判据即因此误报 FAIL）",
         "极光带守卫组 9 项（juyaCssGuard）：分层不变量/零横向溢出/两端 mask/零新增色相集合/不对称纵深/只动 opacity 交错相位/RM 显式钉 opacity/双色霓虹排除仅收窄至极光带（h1 辉光仍单色靛蓝）。守卫自身踩过三个坑并已在注释留痕：①分组选择器被行首锚定误取（须按精确选择器列表取规则）②正则转义的 DARK 片段不能用于字面比对 ③注释里提到的色值须剥注释后才判定",
         "RM 下两层必须显式钉 opacity（0.81/0.76）而非只撤动画：关键帧撤掉后元素回到「无 opacity 声明」=最亮档 1，比动画平均态更亮",
-        "改 juya.css 的渲染取值后必须重跑归档生成（写入模式）再 --verify；且 HMR 送达验证不能用 fetch 读 CSS（返回 772B index.html 回退页，假阴性），须转储 document.styleSheets + 读计算样式"
+        "改 juya.css 的渲染取值后必须重跑归档生成（写入模式）再 --verify；且 HMR 送达验证不能用 fetch 读 CSS（返回 772B index.html 回退页，假阴性），须转储 document.styleSheets + 读计算样式",
+        "nocturne 封版（2026-10-12，用户确认「现状正常，可封版 nocturne 风格」；先例同 folio 的 2026-10-11）。封版覆盖：九票 #1–#9（merge 83a70d9）+ 归档图重生 c79ae16 + 刊头极光带 75dee1f；此后该风格冻结，未获用户明确授权不得再改其样式取值",
+        "start.bat 语义收敛（2026-10-12 用户指令）：pause 由无条件改为仅在退出码非 0 时触发 —— 关窗（app.quit ⇒ 退出码 0，electron-vite 经 ps.on('close', process.exit) 透传）时 cmd 自行结束、不再残留「按任意键继续」；失败时保留暂停以便看报错。两条路径均实测（关窗后承载批处理的 cmd 自行退出 / 假 npm exit 37 正确进入暂停分支且退出码透传）",
+        "用户明确表示不再追究 --no-sandbox 来源问题（2026-10-12「不管 sandbox 了」），该悬案就此关闭，不再主动跟进"
       ]
     }
   ],
@@ -81,5 +84,5 @@
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
     "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
   ],
-  "next": "polish: 滚动条适配完成；继续其余五风格体检（newsprint90s/dreamcore/nocturne/editorial/wabi）"
+  "next": "polish: nocturne 已封版（2026-10-12）；继续其余五风格体检（newsprint90s/dreamcore/editorial/wabi）"
 }

@@ -126,16 +126,19 @@ const NEBULA_BASE = must(
   block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula\s*\{[^}]*\}/),
   'nocturne-dark 的 .juya-scene-nebula 覆写规则'
 )
-/** 从一条规则里抠出 radial-gradient 层（半径/中心/停靠点 + 引用哪条 --jy-nebula-N） */
+/** 从一条规则里抠出 radial-gradient 层（半径/中心/停靠点 + 引用哪条 --jy-nebula-N）。
+ *  y 中心支持两种写法：百分比（`0%`）或**贴底像素锚** `calc(100% - 136px)`（2026-10-12 Spec 轴
+ *  修正后 n3 用后者按 y2k 约定抬升，避免设计峰值落进被裁的 128px chrome）。`cyPx` 缺省为 undefined。 */
 const gradientLayers = (src) =>
-  [...src.matchAll(/radial-gradient\(\s*([\d.]+)%\s+([\d.]+)%\s+at\s+([\d.]+)%\s+([\d.]+)%\s*,\s*var\((--jy-nebula-\d)\)\s*,\s*transparent\s+([\d.]+)%\s*\)/g)].map(
+  [...src.matchAll(/radial-gradient\(\s*([\d.]+)%\s+([\d.]+)%\s+at\s+([\d.]+)%\s+(?:([\d.]+)%|calc\(100%\s*-\s*([\d.]+)px\))\s*,\s*var\((--jy-nebula-\d)\)\s*,\s*transparent\s+([\d.]+)%\s*\)/g)].map(
     (m) => ({
       rx: Number(m[1]) / 100,
       ry: Number(m[2]) / 100,
       cx: Number(m[3]) / 100,
-      cy: Number(m[4]) / 100,
-      token: m[5],
-      stop: Number(m[6]) / 100
+      cy: m[4] === undefined ? undefined : Number(m[4]) / 100,
+      ...(m[5] === undefined ? {} : { cyPx: Number(m[5]) }),
+      token: m[6],
+      stop: Number(m[7]) / 100
     })
   )
 const withColor = (layer, src) => {
@@ -280,12 +283,15 @@ const f1 = (n) => n.toFixed(4)
 
 // ---------------------------------------------------------------- 场景雾模型
 const layersFor = (vw) => (vw <= 520 ? NEBULA_NARROW : NEBULA_MAIN)
-/** 某像素上的场景雾合成底（viewport 锚定：场景盒 = 滚动口，故 y 就是视口内相对滚动口顶端的像素行） */
+/** 某像素上的场景雾合成底（viewport 锚定：场景盒 = 滚动口，故 y 就是视口内相对滚动口顶端的像素行）。
+ *  y 锚点两种写法：百分比 ⇒ 相对场景盒高 vh；像素锚 cyPx ⇒ 相对场景盒**底边**上移 cyPx
+ *  （CSS `calc(100% - Npx)` 在 `at` 位置里就是「底边上 Npx」，与 y2k 的 `bottom: Npx` 同约定）。 */
 const fogAt = (x, y, vw, vh) => {
   let acc = TOKEN.bg
   for (const l of [...layersFor(vw)].reverse()) {
+    const dyCenter = l.cyPx === undefined ? l.cy * vh : vh - l.cyPx
     const dx = (x / vw - l.cx) / l.rx
-    const dy = (y / vh - l.cy) / l.ry
+    const dy = (y - dyCenter) / (l.ry * vh)
     const t = Math.hypot(dx, dy)
     const a = t >= l.stop ? 0 : l.a * (1 - t / l.stop)
     if (a > 0) acc = over(l.rgb, a, acc)
@@ -445,20 +451,28 @@ if (!QUIET) {
   // ---- 支撑域证明（为什么「三层全重叠」不可达）----
   line('【A】三层 nebula 的支撑域（alpha > 0 的像素集合）与两两相交性')
   const layers = NEBULA_MAIN
+  /** 圆心 y 的**分数**表示（百分比写法直接用；像素锚 calc(100% - Npx) ⇒ (vh − N)/vh）。
+   *  支撑域分析是纯几何，必须与 fogAt 用同一套锚点换算，否则 n3 会退化成 NaN。 */
+  const cyFrac = (l, vh) => (l.cyPx === undefined ? l.cy : (vh - l.cyPx) / vh)
   const support = layers.map((l) => {
     const xr = l.stop * l.rx
     const yr = l.stop * l.ry
+    const cy = cyFrac(l, VH)
     return {
       x0: Math.max(0, l.cx - xr) * 100,
       x1: Math.min(1, l.cx + xr) * 100,
-      y0: Math.max(0, l.cy - yr) * 100,
-      y1: Math.min(1, l.cy + yr) * 100
+      y0: Math.max(0, cy - yr) * 100,
+      y1: Math.min(1, cy + yr) * 100
     }
   })
   layers.forEach((l, i) => {
     const s = support[i]
+    const cyLabel =
+      l.cyPx === undefined
+        ? `${l.cy * 100}%`
+        : `calc(100% - ${l.cyPx}px)（= ${(cyFrac(l, VH) * 100).toFixed(2)}% @VH=${VH}，按 y2k 约定抬升）`
     line(
-      `  n${i + 1} ${l.token}: x∈[${f1(s.x0)}%, ${f1(s.x1)}%] y∈[${f1(s.y0)}%, ${f1(s.y1)}%]（圆心 ${l.cx * 100}%/${l.cy * 100}%，半径 ${l.rx * 100}%/${l.ry * 100}%，transparent 停靠 ${l.stop * 100}%）`
+      `  n${i + 1} ${l.token}: x∈[${f1(s.x0)}%, ${f1(s.x1)}%] y∈[${f1(s.y0)}%, ${f1(s.y1)}%]（圆心 ${l.cx * 100}%/${cyLabel}，半径 ${l.rx * 100}%/${l.ry * 100}%，transparent 停靠 ${l.stop * 100}%）`
     )
   })
   const overlap = (a, b) =>

@@ -1552,21 +1552,25 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
       )
       return { r: Number(m?.[1]), g: Number(m?.[2]), b: Number(m?.[3]), a: Number(m?.[4]) }
     })
-  /** 三层雾的定位参数（椭圆半径 / 中心 / transparent 停靠点，单位 %） */
+  /** 三层雾的定位参数（椭圆半径 / 中心 / transparent 停靠点）。
+   *  y 中心有两种写法：百分比（`0%`）或**贴底像素锚**（`calc(100% - 136px)`，2026-10-12 Spec 轴
+   *  修正后 n3 用后者按 y2k 约定抬升）。此处两种都解析：`cy` 仅在百分比写法下有值，
+   *  `cyPx` 仅在像素锚写法下有值（缺省为 undefined），调用方按需选用。 */
   const nebulaEllipses = (
     rule: string
-  ): { rx: number; ry: number; cx: number; cy: number; stop: number; token: string }[] =>
+  ): { rx: number; ry: number; cx: number; cy: number; cyPx?: number; stop: number; token: string }[] =>
     [
       ...rule.matchAll(
-        /radial-gradient\(\s*([\d.]+)%\s+([\d.]+)%\s+at\s+([\d.]+)%\s+([\d.]+)%\s*,\s*var\((--jy-nebula-\d)\)\s*,\s*transparent\s+([\d.]+)%\s*\)/g
+        /radial-gradient\(\s*([\d.]+)%\s+([\d.]+)%\s+at\s+([\d.]+)%\s+(?:([\d.]+)%|calc\(100%\s*-\s*([\d.]+)px\))\s*,\s*var\((--jy-nebula-\d)\)\s*,\s*transparent\s+([\d.]+)%\s*\)/g
       )
     ].map((m) => ({
       rx: Number(m[1]),
       ry: Number(m[2]),
       cx: Number(m[3]),
-      cy: Number(m[4]),
-      token: m[5],
-      stop: Number(m[6])
+      cy: m[4] === undefined ? Number.NaN : Number(m[4]),
+      ...(m[5] === undefined ? {} : { cyPx: Number(m[5]) }),
+      token: m[6],
+      stop: Number(m[7])
     }))
   /** 把 rgba 层按自下而上顺序 source-over 合成到纯色底上（返回 0xRRGGBB）
    *  逐层调用模块级 alphaOver，与各守卫组同一套取整口径 */
@@ -1675,23 +1679,39 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
     expect(rule, '不得引入贴底偏移').not.toMatch(/(?:^|[;\s])bottom\s*:/)
   })
 
-  it('⑥ 128px chrome：本变体无贴底装饰故不需段内抬升（判断显式记录，共享高度与 y2k 缓解均不动）', () => {
-    const scopedSceneRules = [
-      ...css.matchAll(/\[data-juya-variant='nocturne-dark'\][^{}]*\.juya-scene[\w-]*[^{}]*\{[^{}]*\}/g)
-    ].map((m) => m[0])
+  it('⑥ 128px chrome：n3 已按约定抬升 136px（正向断言），共享高度与 y2k 缓解均不动', () => {
+    // 2026-10-12 Spec 轴修正：原断言是「变体场景规则里不存在 bottom: 声明」—— 那是在**锁一个假前提**
+    // （「nebula 无贴底装饰 ⇒ 无需抬升」）。事实上 n3 锚在 0% 100%，是贴底装饰，不抬升时其设计峰值
+    // 全落在被裁的 128px 里（可见区仅 53.4% 强度）。故改为**正向断言 n3 已抬升**。
+    const neb = nebulaOverride()
+    expect(neb, 'nocturne-dark 的 nebula 覆盖规则应存在').toBeTruthy()
+    const ellipses = nebulaEllipses(neb)
+    expect(ellipses, '三层雾应各为一条定位 radial-gradient').toHaveLength(3)
+    const n3 = ellipses[2]
+    expect(n3.token, '第三层应为 --jy-nebula-3').toBe('--jy-nebula-3')
+    // 正向断言：n3 的 y 锚点必须写成贴底像素锚 calc(100% - 136px)（≈128px chrome + 8px 余量，同 y2k 约定）
+    expect(n3.cyPx, 'n3 须按 y2k 约定抬升 136px（at 0% calc(100% - 136px)）').toBe(136)
+    expect(Number.isNaN(n3.cy), 'n3 的 y 锚点不应再是裸百分比（裸 100% 即未抬升的旧形态）').toBe(true)
+    // 抬升只改这一个位置值：半径 / 停靠点 / alpha 一律不动（改任一项都要撞本组 ②/③）
+    expect([n3.rx, n3.ry, n3.stop], 'n3 的半径与 transparent 停靠点不得随抬升改动').toEqual([42, 44, 78])
     expect(
-      scopedSceneRules.length,
-      'nocturne-dark 应有场景层专属规则（nebula 覆写 + 窄窗退化）'
-    ).toBeGreaterThanOrEqual(1)
-    for (const rule of scopedSceneRules) {
-      expect(rule, '无贴底装饰 ⇒ 不得引入无意义的 bottom 偏移量').not.toMatch(
-        /(?:^|[;\s])bottom\s*:/
-      )
-    }
+      nebulaLayers(neb)[2].a,
+      'n3 的 alpha 不得随抬升改动（仍为设计峰值 0.025）'
+    ).toBe(0.025)
+    // 另两层仍是顶部锚（未被误改）
+    expect(
+      ellipses.slice(0, 2).map((e) => [e.cx, e.cy]),
+      'n1/n2 仍锚在左右上角（本次只改 n3）'
+    ).toEqual([
+      [0, 0],
+      [100, 0]
+    ])
     const section = noctSection()
-    expect(section, '抬升判断须写在 nocturne 段内').toContain('本变体无贴底装饰，故不需段内抬升')
-    expect(section, '须给出被免除的 128px chrome 依据').toContain('128px')
-    expect(section, '须记录两层均 inset:0 铺满场景盒').toContain('inset: 0')
+    expect(section, '修正后的抬升判断须写在 nocturne 段内').toContain('原判断建立在假前提上')
+    expect(section, '须给出 128px chrome 依据').toContain('128px')
+    expect(section, '须记录实测量化：可见区峰值仅设计峰值的 53.4%').toContain('53.4%')
+    expect(section, '须记录上抬后恢复 100%').toContain('100%')
+    expect(section, '须记录上抬对导语对比度零影响（逐档相同）').toContain('逐档相同')
     expect(extractBlock(css, /(?:^|\n)\.juya-scene \{/), '共享场景高度不改').toContain(
       'height: 100vh'
     )

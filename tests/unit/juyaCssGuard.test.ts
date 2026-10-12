@@ -476,6 +476,169 @@ describe('滚动条风格适配守卫（2026-10-11 用户指令：橘鸦风格�
   })
 })
 
+describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
+  // 需求：docs/juyathemesworks/nocturne-dark.md §4.2（静态辉光近层 .28 / 远层 .12；呼吸 9s alternate，
+  // 近层 alpha .22 ↔ .32 摆动；alpha 沿用 --jy-accent #6e7bff）。区间两端以关键帧声明为真值断言。
+  // 硬约束（AGENTS.md / §10 红线 2）：background-clip:text 上禁用 text-shadow——它会盖住渐变填充
+  // （Chromium 绘制顺序，y2k 已踩坑），辉光只能用 filter: drop-shadow。
+  // 结构约束（红线 3）：动画只挂刊头子层，.juya-root 永无 animation。
+  const DARK = "\\[data-juya-variant='nocturne-dark'\\]"
+  const masthead = `${DARK}\\.jynoct \\.juya-masthead h1`
+  /** 基础刊头规则 `.jynoct .juya-masthead h1 { … }`（行首锚定：暗侧变体前缀规则不始于行首故不误命中） */
+  const mastheadRule = (): string =>
+    extractBlock(css, /(?:^|\n)\.jynoct \.juya-masthead h1 \{/).replace(/^\n/, '')
+  /** 决定本条票的暗侧复合选择器规则（辉光 + 呼吸挂载点） */
+  const darkRule = (): string =>
+    extractBlock(css, new RegExp(`(?:^|\\n)${masthead} \\{`)).replace(/^\n/, '')
+  /** 首条形如 `<selector> { … }` 的规则块（行首锚定，避免被变体前缀复合选择器规则包含匹配） */
+  const ruleOf = (selector: string): string =>
+    extractBlock(css, new RegExp(`(?:^|\\n)${selector} \\{`)).replace(/^\n/, '')
+  /** 全部 drop-shadow 的 (半径, alpha) 对 */
+  const shadows = (block: string): { radius: number; alpha: number }[] =>
+    [...block.matchAll(/drop-shadow\(0 0 ([\d.]+)px rgba\([^)]*?([\d.]+)\)\)/g)].map((m) => ({
+      radius: Number.parseFloat(m[1]),
+      alpha: Number.parseFloat(m[2])
+    }))
+  /** 块内是否真有 text-shadow 声明（`text-shadow: none` 是显式解除，不算） */
+  const hasTextShadow = (block: string): boolean => /text-shadow:\s*[^n\s]/.test(block)
+  const nocturneKeyframes = (): string => extractBlock(css, /@keyframes jy-noct-glow \{/)
+  /** 暗侧刊头区块（含前置说明注释 + 规则 + 关键帧及其注释）：供「取色来源 / 摆动区间注释可追溯」断言 */
+  const darkArea = (): string => {
+    const rule = css.indexOf("\n[data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 {")
+    const from = css.lastIndexOf('/*', rule)
+    const keyframes = nocturneKeyframes()
+    const to = keyframes ? css.indexOf(keyframes) + keyframes.length : css.length
+    return rule < 0 ? '' : css.slice(from, to)
+  }
+  /** 呼吸关键帧内的数值字面量（用于双色霓虹排除项扫描） */
+  const keyframeNumbers = (): number[] => (nocturneKeyframes().match(/[\d.]+/g) ?? []).map(Number)
+  /** 单个关键帧声明块（`from` / `to` / `0%` / `100%`） */
+  const keyframeStep = (block: string, step: string): string =>
+    block.match(new RegExp(`(?:^|[\\s{])${step}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
+  /** 声明块内 drop-shadow 的 (半径, alpha) 对（顺序即声明顺序：近层在前、远层在后） */
+  const stepGlow = (block: string): { radius: number; alpha: number }[] =>
+    [...block.matchAll(/drop-shadow\(0 0 ([\d.]+)px rgba\([^)]*?([\d.]+)\)\)/g)].map((m) => ({
+      radius: Number.parseFloat(m[1]),
+      alpha: Number.parseFloat(m[2])
+    }))
+  const rmBlock = (): string =>
+    extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).join('\n')
+  const supportsFallbackBlock = (): string =>
+    extractBlocks(css, /@supports not \(background-clip: text\) \{/).join('\n')
+
+  it('① 复合选择器规则存在：双层 drop-shadow，半径 18px/40px，alpha .28/.12（accent #6e7bff 同源）', () => {
+    const rule = darkRule()
+    expect(
+      rule,
+      "规则 [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 应存在（复合选择器形态）"
+    ).toBeTruthy()
+    const glow = shadows(rule)
+    expect(glow.map((s) => s.radius), '辉光应为两层：近层 18px + 远层 40px').toEqual([18, 40])
+    expect(glow[0].alpha, '近层 alpha .28').toBeCloseTo(0.28, 5)
+    expect(glow[1].alpha, '远层 alpha .12').toBeCloseTo(0.12, 5)
+    expect(darkArea(), 'accent 取色来源须可追溯（中文注释 #6e7bff 与 rgba 110,123,255 同值）').toMatch(
+      /#6e7bff/
+    )
+    expect(rule, 'rgba 通道须与 #6e7bff 同值').toContain('rgba(110, 123, 255')
+  })
+
+  it('② 禁用 text-shadow：刊头规则与 nocturne 呼吸关键帧均不得出现 text-shadow 声明', () => {
+    expect(hasTextShadow(darkRule()), 'background-clip:text 上 text-shadow 会盖住渐变填充').toBe(false)
+    expect(nocturneKeyframes(), '呼吸关键帧应存在（@keyframes jy-noct-glow）').toBeTruthy()
+    expect(hasTextShadow(nocturneKeyframes()), '关键帧内同样禁用 text-shadow').toBe(false)
+  })
+
+  it('③ 呼吸：9s 周期 + alternate，关键帧 from/to 近层 alpha 实测 .22 / .32（下界真值，非注释自证）', () => {
+    const rule = darkRule()
+    const kf = nocturneKeyframes()
+    expect(rule, 'animation 简写应含 9s 周期与 alternate 方向').toMatch(
+      /animation:\s*jy-noct-glow 9s[^;]*alternate/
+    )
+    expect(kf, '呼吸关键帧应存在（@keyframes jy-noct-glow）').toBeTruthy()
+    // 从关键帧声明里抠出数值断言，而不是断言「注释里写了 .22↔.32」——注释可自证，关键帧才是被浏览器插值的真值。
+    const from = stepGlow(keyframeStep(kf, 'from'))
+    const to = stepGlow(keyframeStep(kf, 'to'))
+    expect(from.map((s) => s.radius), 'from 两层几何应保持 18px 近层 + 40px 远层').toEqual([18, 40])
+    expect(to.map((s) => s.radius), 'to 两层几何应保持 18px 近层 + 40px 远层').toEqual([18, 40])
+    // 近层（glow[0]）：区间下界 .22 出在 from、上界 .32 出在 to —— 两端都在声明里、运行期可达
+    expect(from[0]?.alpha, 'from 近层 alpha 实测应为下界 .22').toBeCloseTo(0.22, 5)
+    expect(to[0]?.alpha, 'to 近层 alpha 实测应为上界 .32').toBeCloseTo(0.32, 5)
+    // 远层（glow[1]）：保持 .12 恒定（本区块注释写明不随近层缩放的理由），两端同值
+    expect(from[1]?.alpha, 'from 远层 alpha 应恒为 .12').toBeCloseTo(0.12, 5)
+    expect(to[1]?.alpha, 'to 远层 alpha 应恒为 .12').toBeCloseTo(0.12, 5)
+    // 静态 / 降级态辉光（基础规则的 filter）是与关键帧不同的值：近层 .28（决策 5 原文）
+    const stat = shadows(darkRule())
+    expect(stat[0]?.alpha, '静态近层 alpha 应为 .28').toBeCloseTo(0.28, 5)
+    expect(stat[1]?.alpha, '静态远层 alpha 应为 .12').toBeCloseTo(0.12, 5)
+    // 区间语义可追溯（辅助）：注释说明近层 .22↔.32 呼吸、静态 .28；真值断言以上面关键帧为准
+    expect(darkArea(), '区块注释应说明近层 .22 ↔ .32 呼吸').toMatch(/\.22\s*↔\s*\.32/)
+    // 单色微光排除项：双色霓虹 = 青 rgba(90,160,255) + 品红 rgba(200,90,180)，其一即可判否
+    const nums = keyframeNumbers()
+    expect(nums, '不得出现双色霓虹青通道 160').not.toContain(160)
+    expect(nums, '不得出现双色霓虹品红 R 200').not.toContain(200)
+  })
+
+  it('④ reduced-motion：取消动画（animation: none !important）且保留静态辉光', () => {
+    const rm = rmBlock()
+    expect(rm, 'RM 块应存在').toBeTruthy()
+    const cancel = rm.match(new RegExp(`${masthead} \\{[^}]*\\}`))?.[0] ?? ''
+    expect(cancel, 'RM 块内应有取消该动画的规则').toBeTruthy()
+    expect(cancel, '取消动画用 animation: none !important').toMatch(/animation:\s*none\s*!important/)
+    expect(cancel, 'RM 下不得改动 filter（静态辉光须保留）').not.toMatch(/\bfilter\s*:/)
+    expect(cancel, 'RM 下不得改动 filter（静态辉光须保留）').not.toMatch(/\bfilter\s*:/)
+  })
+
+  it('⑤ @supports not (background-clip: text)：nocturne 刊头退回实色 var(--jy-heading)，无透明字', () => {
+    const fallback = supportsFallbackBlock()
+    expect(fallback, '@supports not (background-clip: text) 块应存在（审计 F-11）').toBeTruthy()
+    const rule =
+      fallback.match(/(?:^|\n)[ \t]*\.jynoct \.juya-masthead h1 \{[^}]*\}/)?.[0] ?? ''
+    expect(rule, '回退块内应命中 nocturne 刊头（覆盖亮暗两变体）.juya-masthead h1').toBeTruthy()
+    expect(rule, '回退用实色标题色').toContain('color: var(--jy-heading)')
+    expect(rule, '回退须清掉被裁剪的渐变背景，不得残留 color: transparent').toMatch(
+      /background:\s*none/
+    )
+    expect(rule, '回退块内不得残留 color: transparent').not.toContain('color: transparent')
+  })
+
+  it('⑥ .juya-root 全份 css 内无 animation（动画只挂刊头子层，reduced-motion E2E 断言依赖）', () => {
+    const start = css.indexOf('.juya-root {')
+    expect(start, '.juya-root 规则应存在').toBeGreaterThanOrEqual(0)
+    const end = css.indexOf('}', start)
+    const root = css.slice(start, end)
+    expect(root, '.juya-root 不得出现 animation（含 -webkit- 前缀）').not.toMatch(
+      /-?webkit-?animation|animation\s*:/
+    )
+    expect(darkRule(), '动画确实挂在刊头子层而非 .juya-root').toMatch(/animation:\s*jy-noct-glow/)
+  })
+
+  it('⑦ nocturne-light 刊头规则字节不变（本轮仅暗侧）', () => {
+    const base = mastheadRule()
+    expect(
+      base,
+      "base 规则原文（暗侧辉光挂在此条；亮侧仅覆盖渐变，不重复 background-clip/color）"
+    ).toContain(`.jynoct .juya-masthead h1 {
+  letter-spacing: -0.02em;
+  font-size: 30px;
+  background: linear-gradient(180deg, #ffffff, #b9bcc7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;`)
+    const light = ruleOf(`\\[data-juya-variant='nocturne-light'\\]\\.jynoct \\.juya-masthead h1`)
+    expect(light, '亮侧刊头覆盖规则应存在').toBeTruthy()
+    expect(light, 'nocturne-light 刊头规则须逐字节不变').toBe(
+      `[data-juya-variant='nocturne-light'].jynoct .juya-masthead h1 {
+  background: linear-gradient(180deg, #17181d, #3a3b44);
+  -webkit-background-clip: text;
+  background-clip: text;
+}`
+    )
+    expect(light, '亮侧规则不得继承暗侧辉光/动画').not.toMatch(/drop-shadow|animation/)
+    // 亮侧原有字面首帧不得被暗侧文案改动
+    expect(css, '亮侧 token 块不得改动').toContain("--jy-accent: #4f5ed8;")
+  })
+})
+
 describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
   // 需求：docs/juyathemesworks/nocturne-dark.md §2 —— 三档无衬线分工（零衬线），仅暗侧。
   // 本机实测（Fonts 注册表 596 条）：Inter / SF Pro Text / SF Pro Display 均未安装，

@@ -1714,6 +1714,54 @@
   background-clip: text;
 }
 
+/* 刊头 neon 微光（2026-10-12，#4）：在银灰渐变字外叠两层同源辉光——近层 18px 定轮廓、远层 40px 铺晕，
+   做出「克制微光」而非霓虹；呼吸关键帧只挂本层（刊头子层，.juya-root 永无 animation）。
+   此处是静态辉光，也是 reduced-motion / 不支持动画时的降级外观：近层 .28（决策 5 原文值）。
+   为什么不用 text-shadow：本元素是 background-clip:text 的渐变字，text-shadow 按 Chromium 绘制顺序
+   会盖住渐变填充（y2k 已踩坑，AGENTS.md 硬约束），辉光只能用 filter: drop-shadow。
+   构成色：rgba(110, 123, 255, α) 取色自本变体 --jy-accent #6e7bff（同值，零新增颜色）；
+   适用门槛说明：辉光是装饰性光晕、既非文本也非 UI 控件，WCAG 对比度门槛不适用（本变体 --jy-text
+   对 --jy-bg 为 11.50:1，正文可读性不受辉光影响）；括号内为参照值——accent 对 --jy-bg #0a0a0c
+   对比 5.60:1（同滚动条 thumb 注释实算），此处仅作取色溯源，不构成合规判据。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 {
+  filter: drop-shadow(0 0 18px rgba(110, 123, 255, 0.28))
+    drop-shadow(0 0 40px rgba(110, 123, 255, 0.12));
+  animation: jy-noct-glow 9s ease-in-out infinite alternate;
+}
+
+/* 呼吸（决策 7）：近层 alpha 在 .22 ↔ .32 间往返（from 下界更暗、to 上界更亮），幅度 0.1
+   ＝「极慢呼吸」，杜绝霓虹脉动的强对比；静态/降级态仍取上面的 .28，落在区间内偏亮侧。
+   远层恒为 .12：它比近层下界 .22 更弱是**分层定位**（远层只在 40px 半径外铺极淡晕），
+   不是近层的下限；若按近层同比例缩放，.28 基准会变成 .094/.137，晕圈会随呼吸在近层之下
+   忽浓忽淡、反而放大脉动感——故远层不参与缩放，也不存在「与注释不一致的比例值」。 */
+@keyframes jy-noct-glow {
+  from {
+    filter: drop-shadow(0 0 18px rgba(110, 123, 255, 0.22))
+      drop-shadow(0 0 40px rgba(110, 123, 255, 0.12));
+  }
+  to {
+    filter: drop-shadow(0 0 18px rgba(110, 123, 255, 0.32))
+      drop-shadow(0 0 40px rgba(110, 123, 255, 0.12));
+  }
+}
+
+/* 红线 4：reduced-motion 下取消呼吸动画，静态微光（基础规则里的 filter）原样保留。
+   基础过滤值本就写在动画之外，故此处只需撤掉动画，无需补回 filter。 */
+@media (prefers-reduced-motion: reduce) {
+  [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 {
+    animation: none !important;
+  }
+}
+
+/* 审计 F-11 回退：不支持 background-clip:text 的引擎上渐变被裁掉、color: transparent 会让标题整条隐形，
+   退回实色 --jy-heading（白灰实字仍带上面的 drop-shadow 微光）。 */
+@supports not (background-clip: text) {
+  .jynoct .juya-masthead h1 {
+    background: none;
+    color: var(--jy-heading);
+  }
+}
+
 .jynoct .juya-entry {
   border-bottom: 1px solid var(--jy-border);
   padding: 4px 2px 18px;

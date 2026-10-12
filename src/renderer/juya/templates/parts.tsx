@@ -9,19 +9,29 @@ import { useAppStore } from '../../stores/useAppStore'
  *  与 shared.tsx 原子层的约定一致：文本 React 转义、链接 onOpenLink 拦截、图片懒加载。 */
 
 /** 场景固定层：挂在 .juya-root 内、内容之下（z-index 0），不随正文滚动。
- *  动画一律挂 .juya-scene-* 子层（.juya-root 永无 animation，reduced-motion 断言结构保证）。 */
+ *  动画一律挂 .juya-scene-* 子层（.juya-root 永无 animation，reduced-motion 断言结构保证）。
+ *  预设：sun/grid/stars 为具象景物；dust（尘埃微粒）/ nebula（静态渐层雾）为纯氛围件
+ *  （2026-10-12 #1 共享层预置，无具象语义故对任何风格都不构成语义撞车；本票不做风格接线）。
+ *  DOM 顺序即绘制顺序（同级 absolute 无 z-index）：nebula 在最下、dust 覆于雾上，
+ *  具象景物（stars/sun/grid）画在氛围层之上。 */
 export function Scene({
   sun = false,
   grid,
-  stars = false
+  stars = false,
+  dust = false,
+  nebula = false
 }: {
   sun?: boolean
   grid?: 'persp' | 'horizon'
   stars?: boolean
+  dust?: boolean
+  nebula?: boolean
 }): JSX.Element | null {
-  if (!sun && !grid && !stars) return null
+  if (!sun && !grid && !stars && !dust && !nebula) return null
   return (
     <div className="juya-scene" aria-hidden="true">
+      {nebula && <div className="juya-scene-nebula" />}
+      {dust && <div className="juya-scene-dust" />}
       {stars && <div className="juya-scene-stars" />}
       {sun && <div className="juya-scene-sun" />}
       {grid && <div className={`juya-scene-grid${grid === 'persp' ? ' juya-scene-grid-persp' : ''}`} />}

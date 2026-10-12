@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { JUYA_STYLES } from '../../src/renderer/juya/juyaStyles'
 
@@ -603,5 +603,200 @@ describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
     expect(layers.length, '至少应有 --jy-lead-bg 一层可实算环境层').toBeGreaterThan(0)
     const stacked = layers.reduce((acc, layer) => over(layer, acc), bg)
     expect(contrast(text, stacked), 'text/环境层全叠加（最坏情形）').toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe('Scene 预设守卫（2026-10-12，#1）', () => {
+  // 共享层预置票：Scene 新增 dust（尘埃级微粒）/ nebula（静态渐层雾）两个氛围预设，
+  // 但本票**不做任何风格接线**（隔离爆炸半径：#2 才把 Scene 挂到 nocturne-dark）。
+  const templatesDir = join(process.cwd(), 'src/renderer/juya/templates')
+  const partsTsx = readFileSync(join(templatesDir, 'parts.tsx'), 'utf-8')
+  // 不用花括号配平取 Scene（`({ … }: { … })` 的解构 `}` 先于类型 `{` 闭合，配平会截断）：
+  // 以组件起点到下一个顶层导出的区间为准，同样不依赖行号
+  const sceneSrc = (): string => {
+    const start = partsTsx.indexOf('export function Scene(')
+    const end = partsTsx.indexOf('export interface FeedGates')
+    return start >= 0 && end > start ? partsTsx.slice(start, end) : ''
+  }
+  const dustRule = (): string => extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
+  const nebulaRule = (): string => extractBlock(css, /(?:^|\n)\.juya-scene-nebula \{/)
+  /** 场景固定层区块（「场景固定层」段头 → 下一段「暗夜精修式」段头）：新规则必须落在此区间 */
+  const sceneSection = (): string =>
+    css.slice(css.indexOf('场景固定层（.juya-scene）'), css.indexOf('暗夜精修式'))
+  /** 选择器所在的规则头文本（精确选择器比行号抗漂移；先剥注释，注释里的示例选择器不参与判定） */
+  const selectorHeaders = (keyword: RegExp): string[] =>
+    [...css.matchAll(/([^{}]+)\{/g)]
+      .map((m) => m[1].replace(/\/\*[\s\S]*?\*\//g, '').trim())
+      .filter((sel) => keyword.test(sel))
+
+  it('① dust / nebula 为可选预设（同 sun/grid/stars 机制），四者全假仍返回 null', () => {
+    const scene = sceneSrc()
+    expect(scene, 'Scene 组件应可提取').toBeTruthy()
+    expect(scene, 'dust 应为可选 boolean 预设').toMatch(/dust\?:\s*boolean/)
+    expect(scene, 'nebula 应为可选 boolean 预设').toMatch(/nebula\?:\s*boolean/)
+    expect(scene, 'dust 默认关闭').toMatch(/dust = false/)
+    expect(scene, 'nebula 默认关闭').toMatch(/nebula = false/)
+    // falsy 门槛必须把既有三个与新增两个 prop 全部纳入（漏一个就会渲染空的场景容器）
+    const gate = scene.match(/if \([^\n]*\) return null/)?.[0] ?? ''
+    expect(gate, 'Scene 应有 falsy 门槛行').toBeTruthy()
+    for (const prop of ['!sun', '!grid', '!stars', '!dust', '!nebula']) {
+      expect(gate, `falsy 门槛应含 ${prop}`).toContain(prop)
+    }
+    // 各渲染一个 .juya-scene-* 子层（不是根层）
+    expect(scene, 'dust 应渲染 .juya-scene-dust 子层').toMatch(
+      /<div className="juya-scene-dust"[^>]*\/>/
+    )
+    expect(scene, 'nebula 应渲染 .juya-scene-nebula 子层').toMatch(
+      /<div className="juya-scene-nebula"[^>]*\/>/
+    )
+  })
+
+  it('② 两条新子层规则存在且落在场景层区块内；选择器一律场景层限定（不新增命中既有风格的通用选择器）', () => {
+    expect(dustRule(), '.juya-scene-dust 规则应存在').toBeTruthy()
+    expect(nebulaRule(), '.juya-scene-nebula 规则应存在').toBeTruthy()
+    const section = sceneSection()
+    expect(section, '场景固定层区块应可定位').toBeTruthy()
+    expect(section, 'dust 基础规则应落在场景层区块内').toContain(dustRule())
+    expect(section, 'nebula 基础规则应落在场景层区块内').toContain(nebulaRule())
+    // 选择器白名单：只允许 .juya-scene-dust/nebula 本体 + 变体复合前缀（[data-juya-variant='…'] / .jy<abbr>）+
+    // 组合子；其余任何东西（.juya-entry/.juya-feed/.jyxxx 裸类等通用选择器）都视为越界
+    const headers = selectorHeaders(/juya-scene-(?:dust|nebula)/)
+    expect(headers.length, '应至少两条新规则头').toBeGreaterThanOrEqual(2)
+    for (const header of headers) {
+      // 只校验确实涉及新子层的选择器分片（同一选择器列表里的既有 sun/stars 等不重判）
+      const parts = header
+        .split(',')
+        .map((s) => s.trim())
+        .filter((p) => /juya-scene-(?:dust|nebula)/.test(p))
+      for (const part of parts) {
+        const remainder = part
+          .replace(/\.juya-scene-(?:dust|nebula)/g, '')
+          .replace(/\[data-juya-variant='[^']*'\]/g, '')
+          .replace(/\.jy[\w-]*/g, '')
+          .replace(/[\s>+~]/g, '')
+        expect(remainder, `「${part}」不得引入场景层以外的选择器`).toBe('')
+      }
+    }
+  })
+
+  it('③ dust：平铺 radial-gradient 点阵达一两千点量级（非 DOM 节点）+ 极低透明度 + 极慢漂浮/呼吸', () => {
+    const rule = dustRule()
+    expect(rule, '点阵应为平铺 radial-gradient').toContain('radial-gradient')
+    expect(rule, '点数量级靠 background-size 平铺').toContain('background-size')
+    // 点数量级实算（独立几何，不依赖实现）：1280×800 参考视口下 Σ 瓦片数 × 每瓦片停靠点
+    const sizes = (rule.match(/background-size:\s*([^;]+);/)?.[1] ?? '')
+      .split(',')
+      .map((s) => s.trim().split(/\s+/).map((v) => Number.parseFloat(v)))
+    const stops = [...rule.matchAll(/radial-gradient\(/g)].length
+    expect(stops, '应有多层点阵').toBeGreaterThanOrEqual(2)
+    expect(sizes, '每个 radial-gradient 停靠点应有对应 background-size').toHaveLength(stops)
+    const points = sizes.reduce((sum, [w, h]) => sum + (1280 / w) * (800 / h), 0)
+    expect(points, '1280×800 下尘埃点数应为一两千点量级').toBeGreaterThanOrEqual(1000)
+    expect(points, '不得堆到万点量级（会抢正文）').toBeLessThanOrEqual(2500)
+    // 极低透明度：点色 alpha ≤ 0.2
+    const alpha = Number.parseFloat(rule.match(/rgba\([^)]*?,\s*([\d.]+)\)/)?.[1] ?? 'NaN')
+    expect(alpha, '尘埃点色应为极低 alpha').toBeLessThanOrEqual(0.2)
+    // 极慢漂浮/呼吸，动画挂子层自身
+    const anim = rule.match(/animation:\s*([^;]+);/)?.[1] ?? ''
+    expect(anim, 'dust 动画应挂 .juya-scene-dust 子层').toContain('jy-dust')
+    expect(anim, '极慢：单周期 ≥ 60s').toContain('96s')
+    expect(Number.parseFloat(anim.match(/([\d.]+)s/)?.[1] ?? 'NaN')).toBeGreaterThanOrEqual(60)
+    expect(anim, '应为往复呼吸（alternate + infinite）').toContain('infinite')
+    expect(extractBlock(css, /@keyframes jy-dust[\w-]* \{/), 'dust 关键帧应存在').toBeTruthy()
+    // 不造 DOM 节点：模板只有一个空子层 div，且无数量类 prop（点数量级由 CSS 平铺承担）
+    expect(sceneSrc(), 'dust 子层应为单个空 div').toMatch(/<div className="juya-scene-dust"\s*\/>/)
+    expect(sceneSrc(), 'dust 不应引入数量/节点类 prop').not.toMatch(/dustCount|dustNodes|dustQuantity/)
+  })
+
+  it('④ prefers-reduced-motion: reduce 下 dust 动画完全停止（并入既有场景 RM 块），nebula 不受影响', () => {
+    const rmBlocks = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/)
+    const sceneRm = rmBlocks.find((b) => b.includes('.juya-scene-sun')) ?? ''
+    expect(sceneRm, '既有场景 RM 块（sun/grid-persp/stars）应存在').toBeTruthy()
+    expect(sceneRm, 'dust 应并入既有场景 RM 块').toContain('.juya-scene-dust')
+    expect(sceneRm, 'dust 在 RM 下须完全停动画').toContain('animation: none')
+    // nebula 本无动画，且不得被 RM 隐藏/改写（视觉不受影响）
+    expect(css, 'nebula 不得声明 animation').not.toMatch(/\.juya-scene-nebula[^{}]*\{[^{}]*animation/)
+    expect(css, 'nebula 不得声明 transition').not.toMatch(/\.juya-scene-nebula[^{}]*\{[^{}]*transition/)
+    for (const block of rmBlocks) {
+      expect(block, 'nebula 不应出现在任何 reduce 媒体块内（视觉不受影响）').not.toContain(
+        '.juya-scene-nebula'
+      )
+    }
+  })
+
+  it('⑤ 动画只挂场景子层：整份 css 中 .juya-root 自身选择器无 animation 声明', () => {
+    // 排除 `.juya-root *`（既有 reduce 块的全局动画时长压制，通配符不是 root 自身）
+    const offenders = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, sel]) => /\.juya-root(?![\w-])/.test(sel) && !sel.includes('*'))
+      .filter(([, body]) => /(?:^|[\s;])animation(?:-[\w]+)?\s*:/.test(body))
+      .map(([, sel]) => sel.trim())
+    expect(offenders, '.juya-root 永无 animation（reduced-motion 断言的结构保证）').toEqual([])
+    expect(dustRule(), 'dust 动画须确实挂在子层').toMatch(/animation:\s*jy-dust/)
+  })
+
+  it('⑥ 五风格回归（静态面）：模板目录内除 parts.tsx 外零 dust/nebula 引用（#1 只预置不接线）', () => {
+    const files = readdirSync(templatesDir).filter((f) => f.endsWith('.tsx'))
+    expect(files.length, '模板目录应含全部风格模板').toBeGreaterThanOrEqual(10)
+    for (const f of files) {
+      if (f === 'parts.tsx') continue
+      const src = readFileSync(join(templatesDir, f), 'utf-8')
+      expect(src, `${f} 不应引用 dust/nebula（接线属 #2）`).not.toMatch(/\b(dust|nebula)\b/)
+    }
+  })
+
+  it('⑦ 128px chrome 抬升：共享 .juya-scene 高度不改，根因与「段内抬升」约定显式记录，y2k 缓解保留', () => {
+    expect(
+      extractBlock(css, /(?:^|\n)\.juya-scene \{/),
+      '共享 .juya-scene 高度不得改动（会波及 dreamcore/y2k 的既有观感）'
+    ).toContain('height: 100vh')
+    const section = sceneSection()
+    expect(section, '须显式记录 128px chrome 未扣的根因').toContain('128px')
+    expect(section, '须记录「各风格段内抬升」的处置约定').toContain('段内抬升')
+    expect(section, 'y2k 既有段内缓解须保留').toContain('bottom: 136px')
+    expect(
+      css,
+      '变体专属覆盖不得用带空格的后代形式（永不匹配）'
+    ).not.toMatch(/\[data-juya-variant='[^']+'\]\s+\.juya-scene-/)
+  })
+
+  it('⑧ nebula 三层为 CSS 自定义属性（中性默认）；叠加到 nocturne-dark bg 后 muted 仍 ≥ 4.5（WCAG 实算）', () => {
+    const rule = nebulaRule()
+    const layers = [1, 2, 3].map((n) => {
+      const m = rule.match(
+        new RegExp(`--jy-nebula-${n}:\\s*rgba\\(\\s*(\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\s*\\)`)
+      )
+      expect(m, `--jy-nebula-${n} 应为 rgba 字面值（供变体覆盖的单一入口）`).toBeTruthy()
+      return { r: Number(m?.[1]), g: Number(m?.[2]), b: Number(m?.[3]), a: Number(m?.[4]) }
+    })
+    layers.forEach((l, i) => {
+      expect(l.r, `--jy-nebula-${i + 1} 应为中性灰（不预设任何变体色相，避免与其余五风格撞色）`).toBe(l.g)
+      expect(l.g, `--jy-nebula-${i + 1} 应为中性灰`).toBe(l.b)
+      expect(l.a, `--jy-nebula-${i + 1} 中性默认 alpha 应浅（≤0.1）`).toBeLessThanOrEqual(0.1)
+    })
+    // 独立实算：三层按 CSS 绘制顺序（下层→上层）source-over 合成到 nocturne-dark bg 上
+    const dark = variantBlock('nocturne-dark')
+    const bg = tokenHex(dark, '--jy-bg')
+    const muted = tokenHex(dark, '--jy-muted')
+    expect(bg, 'nocturne-dark --jy-bg 应为 6 位 hex').not.toBeNaN()
+    expect(muted, 'nocturne-dark --jy-muted 应为 6 位 hex').not.toBeNaN()
+    let channels = [(bg >> 16) & 0xff, (bg >> 8) & 0xff, bg & 0xff]
+    for (const l of [...layers].reverse()) {
+      channels = channels.map((c, i) => Math.round(c * (1 - l.a) + [l.r, l.g, l.b][i] * l.a))
+    }
+    const composited = (channels[0] << 16) | (channels[1] << 8) | channels[2]
+    expect(contrast(muted, composited), 'nebula 叠加后 muted/合成底 ≥ AA 4.5').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('⑨ 新增构成色硬编码带注释：dust / nebula 规则前须注明取色来源与对比度', () => {
+    for (const [name, rule] of [
+      ['dust', dustRule()],
+      ['nebula', nebulaRule()]
+    ] as const) {
+      const idx = css.indexOf(rule)
+      expect(idx, `${name} 规则应存在`).toBeGreaterThanOrEqual(0)
+      const preceding = css.slice(Math.max(0, idx - 1200), idx)
+      expect(preceding, `${name} 硬编码色须注明取色来源与 WCAG 对比度`).toMatch(/WCAG/)
+      expect(preceding, `${name} 硬编码色须给出对比度数值`).toMatch(/对比度|:1/)
+    }
   })
 })

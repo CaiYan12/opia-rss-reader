@@ -1815,6 +1815,25 @@
   letter-spacing: 0.04em;
 }
 
+/* 图文回流带（#8，2026-10-12）：右列限 2 张（模板见 templates/nocturne.tsx），
+   第 3 张及以后回流到正文下方通栏。发丝上边线沿用条目分隔语言，标识「这些图仍属本条」；
+   padding-top 阻断与内层 .juya-media 的 12px 外边距合并，使带与右列间距稳定为 18px。 */
+.jynoct .jynoct-overflow-media {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--jy-border);
+}
+
+@media (max-width: 640px) {
+  /* ≤640px 时基层已把 .juya-entry-row 回落为纵排，右列与通栏带不再有左右并置的区分意义，
+     去掉发丝线只留垂直呼吸 */
+  .jynoct .jynoct-overflow-media {
+    margin-top: 14px;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
 .jynoct .juya-index {
   background: transparent;
   color: var(--jy-muted);

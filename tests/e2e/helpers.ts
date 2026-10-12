@@ -15,6 +15,51 @@ const fixtureHtml = existsSync(FIXTURE_PATH) ? readFileSync(FIXTURE_PATH, 'utf-8
 const SVG_COVER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='180'%3E%3Crect width='100%25' height='100%25' fill='%23c1502e'/%3E%3C/svg%3E"
 
+/** 自带内联 SVG 图源的图片（2026-10-12，#9）：`data:` URI 带固有 width/height，
+ *  渲染高度真实且离线可用。夹具 tests/fixtures/juya-content.html 的 6 张图全指向
+ *  `https://assets.example.com/…`（不可达 ⇒ 高度塌陷），且该目录被 .gitignore 排除
+ *  （新克隆没有它）⇒ 视觉走查与图文几何断言必须改用本图源。 */
+const svgImage = (w: number, h: number, fill: string, label: string): string =>
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+      `<rect width="100%" height="100%" fill="#${fill}"/>` +
+      `<text x="16" y="34" font-family="sans-serif" font-size="22" fill="#f2f2f5">${label}</text>` +
+      '</svg>'
+  )
+
+/** 「内联图源橘鸦期」contentHtml（2026-10-12，#9）：结构对照夹具（h1 期头 + 概览 + 两个栏目），
+ *  但**图片全部换成可渲染的内联 SVG**。首条 4 张图（3:2 固有比）用于 #8「右列限 2 张、
+ *  其余回流通栏」的真实几何验证；第二条 1 张图作对照。 */
+const SVG_ISSUE_HTML = `<div style="max-width:760px">
+<h1>AI 早报 2026-10-12</h1>
+<h2>概览</h2>
+<h3>要闻</h3>
+<ul><li>内联图源要闻一 <a href="https://example.com/n/1" rel="noopener noreferrer">↗</a> <code>#1</code></li><li>内联图源要闻二 <a href="https://example.com/n/2" rel="noopener noreferrer">↗</a> <code>#2</code></li></ul>
+<h3>产品应用</h3>
+<ul><li>内联图源产品一 <code>#3</code></li></ul>
+<hr>
+<h2>要闻</h2>
+<h3><a href="https://example.com/n/1" rel="noopener noreferrer">内联图源要闻一</a> <code>#1</code></h3>
+<blockquote>导语占位：一行摘要文本，用于量取「导语滚到滚动口顶端」时的真实合成底色。</blockquote>
+<p>正文段落一占位文本，说明该要闻的详细内容与背景。</p>
+<p>正文段落二占位文本，补充说明与后续影响。</p>
+<p><img src="${svgImage(480, 320, '3b4a8f', 'plate-1')}" alt="图版一"></p>
+<p><img src="${svgImage(480, 320, '2f6f6a', 'plate-2')}" alt="图版二"></p>
+<p><img src="${svgImage(480, 320, '7a3f6b', 'plate-3')}" alt="图版三"></p>
+<p><img src="${svgImage(480, 320, '8a5a2f', 'plate-4')}" alt="图版四"></p>
+<p>相关链接：</p>
+<ul><li><a href="https://example.com/n/1" rel="noopener noreferrer">https://example.com/n/1</a></li></ul>
+<hr>
+<h2>模型发布</h2>
+<h3><a href="https://example.com/m/1" rel="noopener noreferrer">内联图源模型一</a> <code>#2</code></h3>
+<blockquote>导语占位二。</blockquote>
+<p>正文占位文本。</p>
+<p><img src="${svgImage(480, 320, '4a4a52', 'plate-5')}" alt="图版五"></p>
+<p>相关链接：</p>
+<ul><li><a href="https://example.com/m/1" rel="noopener noreferrer">https://example.com/m/1</a></li></ul>
+</div>`
+
 export function juyaArticle(overrides: Partial<Article> = {}): Article {
   return {
     guid: 'https://daily.juya.uk/issues/2026-08-28/',
@@ -49,6 +94,7 @@ export type Scenario =
   | 'newsprint'
   | 'y2k'
   | 'nocturne'
+  | 'nocturneSvg'
   | 'editorial'
   | 'wabi'
   | 'system'
@@ -95,6 +141,11 @@ export function makeStubScript(scenario: Scenario): string {
   } else if (scenario === 'nocturne') {
     settings.themeMode = 'dark'
     settings.juyaDarkStyleId = 'nocturne'
+  } else if (scenario === 'nocturneSvg') {
+    // 视觉走查 / 图文几何专用（#9）：nocturne 暗侧 + 自带内联 SVG 图源的正文
+    settings.themeMode = 'dark'
+    settings.juyaDarkStyleId = 'nocturne'
+    articles = [juyaArticle({ contentHtml: SVG_ISSUE_HTML })]
   } else if (scenario === 'editorial') {
     settings.juyaLightStyleId = 'editorial'
   } else if (scenario === 'wabi') {

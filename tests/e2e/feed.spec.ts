@@ -101,7 +101,9 @@ test('八风格逐一断言阅读页根节点结构类', async ({ page }) => {
   }
 })
 
-test('场景层：梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、暗夜不挂场景', async ({ page }) => {
+test('场景层：梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、暗夜暗侧挂 dust + nebula 氛围层', async ({
+  page
+}) => {
   await loadApp(page, 'dark')
   await openFirstArticle(page)
   const dreamRoot = activeTab(page).locator('.juya-root.jydream')
@@ -112,9 +114,14 @@ test('场景层：梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、
   await openFirstArticle(page)
   await expect(activeTab(page).locator('.juya-root .juya-scene')).toBeHidden()
 
+  // #2 起 nocturne-dark 挂载 dust + nebula（旧断言「计数为 0」锁的是改造前状态，非回归）
   await loadApp(page, 'nocturne')
   await openFirstArticle(page)
-  await expect(activeTab(page).locator('.juya-root .juya-scene')).toHaveCount(0)
+  const noctScene = activeTab(page).locator('.juya-root .juya-scene')
+  await expect(noctScene).toHaveCount(1)
+  await expect(noctScene).toBeVisible()
+  await expect(noctScene.locator('.juya-scene-dust')).toHaveCount(1)
+  await expect(noctScene.locator('.juya-scene-nebula')).toHaveCount(1)
 })
 
 test('橘鸦订阅页遵循「布局」预设 grid 的列数（gridColumns=4）', async ({ page }) => {

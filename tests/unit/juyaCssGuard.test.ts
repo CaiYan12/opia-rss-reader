@@ -948,13 +948,18 @@ describe('Scene 预设守卫（2026-10-12，#1）', () => {
     expect(dustRule(), 'dust 动画须确实挂在子层').toMatch(/animation:\s*jy-dust/)
   })
 
-  it('⑥ 五风格回归（静态面）：模板目录内除 parts.tsx 外零 dust/nebula 引用（#1 只预置不接线）', () => {
+  it('⑥ 其余风格回归（静态面）：模板目录内除 parts.tsx 与 nocturne.tsx（#2 接线）外零 dust/nebula 引用', () => {
+    // #1 时本守卫锁的是「除定义处外零引用」（预置不接线）；#2 把 nocturne-dark 接上后必然变红，
+    // 故按票面收窄为「除 parts.tsx / nocturne.tsx 外零引用」—— 守卫的价值是「其余六风格零影响」。
     const files = readdirSync(templatesDir).filter((f) => f.endsWith('.tsx'))
     expect(files.length, '模板目录应含全部风格模板').toBeGreaterThanOrEqual(10)
+    const wired = new Set(['parts.tsx', 'nocturne.tsx'])
     for (const f of files) {
-      if (f === 'parts.tsx') continue
+      if (wired.has(f)) continue
       const src = readFileSync(join(templatesDir, f), 'utf-8')
-      expect(src, `${f} 不应引用 dust/nebula（接线属 #2）`).not.toMatch(/\b(dust|nebula)\b/)
+      expect(src, `${f} 不应引用 dust/nebula（接线仅限 nocturne-dark）`).not.toMatch(
+        /\b(dust|nebula)\b/
+      )
     }
   })
 
@@ -1012,5 +1017,210 @@ describe('Scene 预设守卫（2026-10-12，#1）', () => {
       expect(preceding, `${name} 硬编码色须注明取色来源与 WCAG 对比度`).toMatch(/WCAG/)
       expect(preceding, `${name} 硬编码色须给出对比度数值`).toMatch(/对比度|:1/)
     }
+  })
+})
+
+describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
+  // #2 把 #1 预置的 dust（尘埃微粒）/ nebula（静态渐层雾）接到 nocturne-dark 阅读页。
+  // 断言面全部是独立可复算的量：源码顺序、规则实值（regex 抠取，不读注释文字）、
+  // 中心区零覆盖的椭圆几何推导、叠加态 WCAG 实算、窄窗退化、reduced-motion 分流。
+  const templatesDir = join(process.cwd(), 'src/renderer/juya/templates')
+  const nocturneTsx = readFileSync(join(templatesDir, 'nocturne.tsx'), 'utf-8')
+  /** nocturne 段（「暗夜精修式」段头 → 「杂志编辑式」段头） */
+  const noctSection = (): string => css.slice(css.indexOf('暗夜精修式'), css.indexOf('杂志编辑式'))
+  /** nocturne-dark 的变体作用域 nebula 覆盖（复合选择器形态；首个匹配即基础规则，窄窗规则在其后） */
+  const nebulaOverride = (): string =>
+    extractBlock(css, /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{/)
+  /** 抠出覆盖规则里 --jy-nebula-N 的 rgba 实值（断言实现值，不读注释） */
+  const nebulaLayers = (rule: string): { r: number; g: number; b: number; a: number }[] =>
+    [1, 2, 3].map((n) => {
+      const m = rule.match(
+        new RegExp(`--jy-nebula-${n}:\\s*rgba\\(\\s*(\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\s*\\)`)
+      )
+      return { r: Number(m?.[1]), g: Number(m?.[2]), b: Number(m?.[3]), a: Number(m?.[4]) }
+    })
+  /** 三层雾的定位参数（椭圆半径 / 中心 / transparent 停靠点，单位 %） */
+  const nebulaEllipses = (
+    rule: string
+  ): { rx: number; ry: number; cx: number; cy: number; stop: number; token: string }[] =>
+    [
+      ...rule.matchAll(
+        /radial-gradient\(\s*([\d.]+)%\s+([\d.]+)%\s+at\s+([\d.]+)%\s+([\d.]+)%\s*,\s*var\((--jy-nebula-\d)\)\s*,\s*transparent\s+([\d.]+)%\s*\)/g
+      )
+    ].map((m) => ({
+      rx: Number(m[1]),
+      ry: Number(m[2]),
+      cx: Number(m[3]),
+      cy: Number(m[4]),
+      token: m[5],
+      stop: Number(m[6])
+    }))
+  /** 把 rgba 层按自下而上顺序 source-over 合成到纯色底上（返回 0xRRGGBB） */
+  const over = (bg: number, layers: { r: number; g: number; b: number; a: number }[]): number => {
+    let ch = [(bg >> 16) & 0xff, (bg >> 8) & 0xff, bg & 0xff]
+    for (const l of layers) {
+      ch = ch.map((c, i) => Math.round(c * (1 - l.a) + [l.r, l.g, l.b][i] * l.a))
+    }
+    return (ch[0] << 16) | (ch[1] << 8) | ch[2]
+  }
+
+  it('① 模板接线：IssueView 挂 <Scene dust nebula />，源码顺序在 .juya-issue 之前（与 y2k/dreamcore 同位）', () => {
+    const partsImport = nocturneTsx.match(/^import \{([^}]*)\} from '\.\/parts'$/m)?.[1] ?? ''
+    expect(partsImport, 'Scene 须从共享层 ./parts 引入').toMatch(/\bScene\b/)
+    const tag = nocturneTsx.match(/<Scene\b[^>]*\/>/)?.[0] ?? ''
+    expect(tag, 'IssueView 须挂载 Scene').toBeTruthy()
+    expect(tag, 'dust 预设须开启').toMatch(/\bdust\b/)
+    expect(tag, 'nebula 预设须开启').toMatch(/\bnebula\b/)
+    const issueView = nocturneTsx.slice(
+      nocturneTsx.indexOf('function IssueView'),
+      nocturneTsx.indexOf('function FeedList')
+    )
+    expect(issueView, 'Scene 须落在 IssueView 内（订阅页不挂场景）').toContain('<Scene')
+    const sceneIdx = nocturneTsx.indexOf('<Scene')
+    const issueIdx = nocturneTsx.indexOf('className="juya-issue"')
+    expect(issueIdx, '.juya-issue 容器须存在').toBeGreaterThan(-1)
+    expect(sceneIdx, 'Scene 须在 .juya-issue 之前（场景在内容之下，z-index 0）').toBeLessThan(issueIdx)
+  })
+
+  it('② 三层 alpha 取减半值 0.07 / 0.04 / 0.025、色相沿用需求 §3.1 左列，且覆盖写复合选择器', () => {
+    const rule = nebulaOverride()
+    expect(
+      rule,
+      "须有 [data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula 覆盖规则"
+    ).toBeTruthy()
+    // 死形态（变体前缀 + 空格 + 风格类）永不匹配：nocturne-dark 覆盖不得依赖它
+    expect(css, 'nocturne-dark 覆盖不得写带空格的后代形态').not.toMatch(
+      /\[data-juya-variant='nocturne-dark'\]\s+\.jynoct/
+    )
+    const layers = nebulaLayers(rule)
+    expect(layers.map((l) => [l.r, l.g, l.b]), '色相沿用需求 §3.1 左列').toEqual([
+      [110, 123, 255],
+      [90, 160, 255],
+      [200, 90, 180]
+    ])
+    expect(layers.map((l) => l.a), '三层 alpha 须为全强度的一半').toEqual([0.07, 0.04, 0.025])
+  })
+
+  it('③ 叠加态实算：减半三层叠加后 --jy-muted ≥ 4.5；全强度跌破 4.5（锁死禁用取值）', () => {
+    const dark = variantBlock('nocturne-dark')
+    const bg = tokenHex(dark, '--jy-bg')
+    const muted = tokenHex(dark, '--jy-muted')
+    expect(bg, 'nocturne-dark --jy-bg 应为 6 位 hex').not.toBeNaN()
+    expect(muted, 'nocturne-dark --jy-muted 应为 6 位 hex').not.toBeNaN()
+    const half = nebulaLayers(nebulaOverride())
+    // CSS 首个 background-image 画在最上层 ⇒ 自下而上合成时 --jy-nebula-1 最后叠（同 #1 守卫⑧实算）
+    const composited = over(bg, [...half].reverse())
+    expect(
+      contrast(muted, composited),
+      '减半叠加（最坏情况三层全重叠）后 muted/合成底'
+    ).toBeGreaterThanOrEqual(4.5)
+    const full = half.map((l, i) => ({ ...l, a: [0.14, 0.08, 0.05][i] }))
+    expect(
+      contrast(muted, over(bg, [...full].reverse())),
+      '全强度必须跌破 AA —— 该取值禁止'
+    ).toBeLessThan(4.5)
+  })
+
+  it('④ 正文列中心区零覆盖：三层雾锚在水平边缘，椭圆可见范围不得伸入中央带 35%–65%', () => {
+    const ellipses = nebulaEllipses(nebulaOverride())
+    expect(ellipses, '三层雾应各为一条定位 radial-gradient').toHaveLength(3)
+    expect(ellipses.map((e) => e.token)).toEqual([
+      '--jy-nebula-1',
+      '--jy-nebula-2',
+      '--jy-nebula-3'
+    ])
+    expect(
+      ellipses.filter((e) => e.cy <= 5).length,
+      '至少两层贴着页面顶部（需求「顶部与两侧边缘」）'
+    ).toBeGreaterThanOrEqual(2)
+    const CENTER_LO = 35
+    const CENTER_HI = 65
+    for (const e of ellipses) {
+      expect(Math.min(e.cx, 100 - e.cx), `${e.token} 须锚在左右边缘`).toBeLessThanOrEqual(15)
+      // 可见水平半幅 = 水平半径 × transparent 停靠点（alpha 在该停靠点归零）
+      const reach = e.rx * (e.stop / 100)
+      const inner = e.cx <= 50 ? e.cx + reach : e.cx - reach
+      // 椭圆径向距离沿 y 单调不减 ⇒ 峰值行不可达即整条水平线全高不可达
+      const ok = e.cx <= 50 ? inner <= CENTER_LO : inner >= CENTER_HI
+      expect(ok, `${e.token} 可见内缘 ${inner.toFixed(1)}% 侵入了中央带 ${CENTER_LO}–${CENTER_HI}%`).toBe(
+        true
+      )
+    }
+  })
+
+  it('⑤ 窄窗（≤520px）退化：正文列撑满全宽时 nebula 收束为顶部窄带（不占左右边缘，与 #5 遮罩互斥面为零）', () => {
+    const blocks = extractBlocks(css, /@media \(max-width: 520px\) \{/)
+    const scoped = blocks.filter((b) =>
+      b.includes("[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula")
+    )
+    expect(scoped, '≤520px 须有 nocturne-dark 专属的 nebula 退化规则').toHaveLength(1)
+    const rule = extractBlock(
+      scoped[0],
+      /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{/
+    )
+    expect(rule, '退化规则体应可提取').toBeTruthy()
+    const ellipses = nebulaEllipses(rule)
+    expect(ellipses, '收束为单条顶带（左右边缘雾全部撤除）').toHaveLength(1)
+    expect(ellipses[0].cy, '只贴页面顶部').toBeLessThanOrEqual(5)
+    expect(ellipses[0].ry, '纵向只覆盖刊头区（≤30% 场景高）').toBeLessThanOrEqual(30)
+    expect(rule, '不得引入贴底偏移').not.toMatch(/(?:^|[;\s])bottom\s*:/)
+  })
+
+  it('⑥ 128px chrome：本变体无贴底装饰故不需段内抬升（判断显式记录，共享高度与 y2k 缓解均不动）', () => {
+    const scopedSceneRules = [
+      ...css.matchAll(/\[data-juya-variant='nocturne-dark'\][^{}]*\.juya-scene[\w-]*[^{}]*\{[^{}]*\}/g)
+    ].map((m) => m[0])
+    expect(
+      scopedSceneRules.length,
+      'nocturne-dark 应有场景层专属规则（nebula 覆写 + 窄窗退化）'
+    ).toBeGreaterThanOrEqual(1)
+    for (const rule of scopedSceneRules) {
+      expect(rule, '无贴底装饰 ⇒ 不得引入无意义的 bottom 偏移量').not.toMatch(
+        /(?:^|[;\s])bottom\s*:/
+      )
+    }
+    const section = noctSection()
+    expect(section, '抬升判断须写在 nocturne 段内').toContain('本变体无贴底装饰，故不需段内抬升')
+    expect(section, '须给出被免除的 128px chrome 依据').toContain('128px')
+    expect(section, '须记录两层均 inset:0 铺满场景盒').toContain('inset: 0')
+    expect(extractBlock(css, /(?:^|\n)\.juya-scene \{/), '共享场景高度不改').toContain(
+      'height: 100vh'
+    )
+    expect(extractBlock(css, /(?:^|\n)\.juya-scene-nebula \{/), 'nebula 铺满场景盒').toContain(
+      'inset: 0'
+    )
+    expect(extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/), 'dust 铺满场景盒').toContain('inset: 0')
+    expect(css, 'y2k 段内缓解须保留').toContain('bottom: 136px')
+  })
+
+  it('⑦ RM 分流：dust 在 reduce 块内 animation:none，nebula 保留（本无动画，不得被一并取消）', () => {
+    const rmBlocks = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/)
+    const sceneRm = rmBlocks.find((b) => b.includes('.juya-scene-dust')) ?? ''
+    expect(sceneRm, 'dust 须并入既有场景 RM 块').toBeTruthy()
+    const dustRuleRm = sceneRm.match(/\{[^{}]*\.juya-scene-dust[^{}]*\{[^{}]*\}/)?.[0] ?? ''
+    expect(dustRuleRm, 'dust 在 RM 下须整条 animation 关闭（含 animation-name）').toContain(
+      'animation: none'
+    )
+    for (const block of rmBlocks) {
+      expect(block, 'nebula 本无动画 ⇒ 不得出现在任何 reduce 块内（静态雾保留）').not.toContain(
+        '.juya-scene-nebula'
+      )
+    }
+    expect(nebulaOverride(), 'nebula 覆盖规则不得引入动画/过渡').not.toMatch(
+      /\b(?:animation|transition)\s*:/
+    )
+  })
+
+  it('⑧ dust 沿用共享层中性默认：本变体不覆写 --jy-scene-dust（覆写只会抬高存在感）', () => {
+    // 剥注释后判定：注释里引用选择器形态（写作规范示例）不算实现
+    const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    const overrides = cssCode.match(/\[data-juya-variant='nocturne-dark'\][^{}]*\.juya-scene-dust/g) ?? []
+    expect(overrides, 'nocturne-dark 不覆写 dust token（需求 §3.2「不抢正文」）').toEqual([])
+    const rule = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
+    const alpha = Number.parseFloat(
+      rule.match(/--jy-scene-dust:\s*rgba\([^)]*?,\s*([\d.]+)\)/)?.[1] ?? 'NaN'
+    )
+    expect(alpha, '尘埃点色 alpha 应极低（≤0.2）').toBeLessThanOrEqual(0.2)
+    expect(noctSection(), '沿用判断须在 nocturne 段内留痕').toContain('--jy-scene-dust')
   })
 })

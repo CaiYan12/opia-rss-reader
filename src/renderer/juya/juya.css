@@ -1891,6 +1891,82 @@
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
 }
 
+/* ---- 概览目录（2026-10-12，#7）：序号 accent 微光 + 条目间极淡发丝线 + hover 整行微亮 ----
+   **作用域为什么收窄到 .juya-overview**：.juya-index 是同一个类名的两种上下文 —— 概览条目
+   （shared.tsx `OverviewItems` 渲染裸序号 `{o.index}`，无 # 前缀）与条目标题徽章
+   （shared.tsx `EntryTitle` 渲染 `#{entry.index}`）。若写 `.jynoct .juya-index`，会把条目标题
+   里的序号徽章一起点亮；本票只要求概览目录发光，故中间加一层 `.juya-overview` 收窄
+   （复合特异性 (0,4,0)，也顺带压过既有 `.jynoct .juya-index` (0,2,0)）。
+   （概览序号无 # 而条目序号有 # 的共享层不一致，需求 §9 明确本轮不做，此处不碰。） */
+
+/* ① 序号微光：色改本变体 --jy-accent #6e7bff（与刊头 neon 同源，零新增颜色）。
+   辉光用 filter: drop-shadow —— 全仓口径禁用 text-shadow（background-clip:text 绘制顺序陷阱，
+   y2k 已踩坑，见 AGENTS.md 硬约束）。「克制」标定：单层 6px 半径 —— 明显弱于刊头近层
+   （18px/.28）；序号是 12px 小字，等强度会糊成一团、抢正文注意力。静态微光（无 animation /
+   transition），故本规则不产生 reduced-motion 义务。
+   WCAG：accent #6e7bff 对**叠加 nebula 后**的最坏合成底 #18192a（三层雾全重叠，实算见本段
+   nebula 注释）为 4.90:1 ≥ AA 4.5 —— 序号承载目录序号信息，按文本门槛（非装饰件）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index {
+  color: var(--jy-accent);
+  filter: drop-shadow(0 0 6px rgba(110, 123, 255, 0.32));
+}
+
+/* 概览条目行：加行内衬（hover 底色/发丝线才有呼吸感，不让高亮块贴着字边），
+   并作下面绝对定位发丝线的定位上下文。横向用等量负外边距抵消内衬，
+   行宽不变 → 不产生横向溢出（480px 视口的 scrollWidth 红线不受影响）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview li {
+  position: relative;
+  padding: 2px 8px;
+  margin: 0 -8px;
+  border-radius: 6px;
+  /* 行高约 23px，半径比条目 hover 的 8px 更收，避免小行读成胶囊 */
+}
+
+/* ② 条目间极淡发丝线：基层 .juya-overview 是 flex column + gap: 6px（不是普通列表流），
+   所以**不用** border-bottom —— 那样线会顶在 gap 边缘，读成「上下各半格」的双倍间距错觉。
+   改用零占位的绝对定位伪元素，落在现有 6px 间隙正中（top = -(6px/2) - 1px/2 = -3.5px），
+   不参与 flex 布局、不改任何间距。边缘用 `li + li` 相邻兄弟：首条无上线，且没有「末条下线」
+   这条规则，首尾天然干净；相对顺序而非序号判断，flex 重排下也不会漏（不用 :first/:last-child）。
+   线色 rgba(255,255,255,0.05)：取色自本变体 --jy-border rgba(255,255,255,0.08) 的**更弱一档**
+   —— 需求要「极淡」，且 #6 已把栏目线单独提到 0.22 做非文本 UI 的 3:1，概览条目线刻意更低，
+   两张票的线值不互相打架。合成到 #18192a 上为 #242535，对比 1.15:1：装饰性分隔线、
+   不承载信息、不适用 3:1 门槛（同 dust 的处理口径）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -3.5px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ③ hover 整行微亮：底层 `.juya-overview a:hover`（(0,2,1)）已给下划线，本票只补整行底色，
+   基层一字未动。描在 li 上而非 a 上 —— a 只覆盖标题文字，li 才是一整行（序号 + 标题 + 行内衬）。
+   底色 rgba(110, 123, 255, 0.06)：取色自本变体 --jy-accent #6e7bff（零新增颜色），
+   叠在 nebula 最坏合成底 #18192a 上得 #1d1f37，其上目录正文 --jy-text #c4c5cc 实算 9.36:1
+   ≥ 4.5（hover 态不得降低可读性）。alpha 压在 0.06 是「微亮」标定——再亮就成色块。
+   不加 transition：不引入动效即无 reduced-motion 义务。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover {
+  background: rgba(110, 123, 255, 0.06);
+}
+
+/* ④ 窄窗（≤520px）退化：该断点基层把 .juya-issue 内边距收到 `20px 14px 48px`，行内 8px 的
+   负向外扩只剩 6px 余量，发丝线与 hover 高亮块看上去像贴屏边的表格框线 → 撤掉横向外扩
+   （只留纵向内衬、margin 归零），线仍落在文字列内。序号微光同步收一档（6px→4px、.32→.28）：
+   窄列里同样的半径在 12px 小字周围占更大视觉比重，收一档才维持「克制」标定。
+   与 #5 的阅读窗渐隐遮罩无叠加面（那只作用于正文列左右边缘，本区块在概览区）。 */
+@media (max-width: 520px) {
+  [data-juya-variant='nocturne-dark'].jynoct .juya-overview li {
+    padding: 2px 0;
+    margin: 0;
+  }
+
+  [data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index {
+    filter: drop-shadow(0 0 4px rgba(110, 123, 255, 0.28));
+  }
+}
+
 /* 订阅封面 16/9 发丝边；featured 顶部渐变高光线 */
 .jynoct .juya-feed-cover {
   aspect-ratio: 16 / 9;

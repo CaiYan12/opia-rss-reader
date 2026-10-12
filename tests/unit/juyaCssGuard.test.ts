@@ -638,3 +638,133 @@ describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
     expect(css, '亮侧 token 块不得改动').toContain("--jy-accent: #4f5ed8;")
   })
 })
+
+describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
+  // 需求：docs/juyathemesworks/nocturne-dark.md §2 —— 三档无衬线分工（零衬线），仅暗侧。
+  // 本机实测（Fonts 注册表 596 条）：Inter / SF Pro Text / SF Pro Display 均未安装，
+  // 原栈整体落回 Segoe UI + Noto Sans SC = 与应用 UI 字体无差别，风格识别度归零。
+  // 可用中文黑体只有 Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选必须在其中。
+  const NIGHT = 'nocturne-dark'
+
+  /** 首条形如 `.jynoct <rest> { … }` 的规则块（行首锚定，排除变体前缀复合选择器同名规则） */
+  const noctRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jynoct ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  /** 去掉 CSS 注释：注释里可以提到被淘汰的字体名，断言只应针对声明本身 */
+  const noComments = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  /** 取 token 块内 rgba() 颜色（alpha 合成实算用） */
+  const tokenRgba = (block: string, name: string): { rgb: number; alpha: number } => {
+    const m = block.match(
+      new RegExp(`${name.replace(/-/g, '\\-')}:\\s*rgba\\(\\s*(\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\s*\\)`)
+    )
+    if (!m) return { rgb: Number.NaN, alpha: Number.NaN }
+    return { rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]), alpha: Number(m[4]) }
+  }
+
+  /** 半透明前景按 alpha 合成到不透明底色之上（WCAG 不定义半透明，必须先合成再算） */
+  const over = (fg: { rgb: number; alpha: number }, bg: number): number => {
+    const mix = (shift: number): number => {
+      const f = (fg.rgb >> shift) & 0xff
+      const b = (bg >> shift) & 0xff
+      return Math.round(fg.alpha * f + (1 - fg.alpha) * b)
+    }
+    return (mix(16) << 16) | (mix(8) << 8) | mix(0)
+  }
+
+  /** 正文可能落在其上的半透明环境层：变体 background-image 全部 rgba + --jy-lead-bg */
+  const ambientLayers = (block: string): Array<{ rgb: number; alpha: number }> => {
+    const decl = block.match(/background-image:[^;]*/)?.[0] ?? ''
+    const layers = [...decl.matchAll(/rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/g)].map((m) => ({
+      rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+      alpha: Number(m[4])
+    }))
+    const lead = tokenRgba(block, '--jy-lead-bg')
+    if (!Number.isNaN(lead.alpha)) layers.push(lead)
+    return layers
+  }
+
+  it('① 标题（h1/h2/h3）栈以 DengXian 起，正文栈以 Noto Sans SC 起', () => {
+    const block = variantBlock(NIGHT)
+    expect(block, `${NIGHT} --jy-font-heading 应为等线起始的三档无衬线栈`).toMatch(
+      /--jy-font-heading:\s*'DengXian',\s*'Noto Sans SC',\s*'Segoe UI',\s*sans-serif/
+    )
+    expect(block, `${NIGHT} --jy-font-body 应为 Noto Sans SC 起始的正文栈`).toMatch(
+      /--jy-font-body:\s*'Noto Sans SC',\s*'Segoe UI',\s*sans-serif/
+    )
+  })
+
+  it('② 不引入本机未安装字体作首选：块内无 Inter / SF Pro，且两栈均以通用族 sans-serif 收尾（零衬线）', () => {
+    const block = noComments(variantBlock(NIGHT))
+    expect(block, `${NIGHT} 不应残留未安装的 Inter`).not.toContain('Inter')
+    expect(block, `${NIGHT} 不应残留未安装的 SF Pro`).not.toContain('SF Pro')
+    for (const decl of ['--jy-font-heading', '--jy-font-body']) {
+      const declText = block.match(new RegExp(`${decl}:[^;]*`))?.[0] ?? ''
+      expect(declText, `${decl} 须以通用族 sans-serif 收尾`).toMatch(/sans-serif$/)
+      expect(declText.replace(/sans-serif/g, ''), `${decl} 不得含衬线族（零衬线）`).not.toContain('serif')
+    }
+  })
+
+  it('③ 元信息/序号维持既有等宽栈（JetBrains Mono 首选），未被标题/正文档次污染', () => {
+    for (const rest of ['\\.juya-feed-meta', '\\.juya-plate figcaption', '\\.juya-index']) {
+      const rule = noctRule(rest)
+      expect(rule, `.jynoct ${rest} 规则应存在`).toBeTruthy()
+      expect(rule, `.jynoct ${rest} 应维持 JetBrains Mono 首选等宽栈`).toContain(
+        "font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace"
+      )
+    }
+  })
+
+  it('④ 变量被真实消费：h1/h2/h3 走 --jy-font-heading，正文根走 --jy-font-body', () => {
+    expect(css, '.juya-root 正文应消费 --jy-font-body').toMatch(
+      /\.juya-root \{[^}]*font-family: var\(--jy-font-body/
+    )
+    expect(css, 'h1 应消费 --jy-font-heading').toMatch(
+      /\.juya-masthead h1 \{[^}]*font-family: var\(--jy-font-heading/
+    )
+    expect(css, 'h2 应消费 --jy-font-heading').toMatch(
+      /\.juya-section > h2 \{[^}]*font-family: var\(--jy-font-heading/
+    )
+    expect(css, 'h3 应消费 --jy-font-heading').toMatch(
+      /\.juya-entry h3 \{[^}]*font-family: var\(--jy-font-heading/
+    )
+  })
+
+  it('⑤ 范围未越界：nocturne-light 字体栈字节不变（本轮仅暗侧）', () => {
+    const light = variantBlock('nocturne-light')
+    expect(light, `${'nocturne-light'} --jy-font-body 应保持原 Inter 栈`).toMatch(
+      /--jy-font-body:\s*Inter,\s*'SF Pro Text',\s*'Segoe UI',\s*'Noto Sans SC',\s*sans-serif/
+    )
+    expect(light, `${'nocturne-light'} --jy-font-heading 应保持原 Inter 栈`).toMatch(
+      /--jy-font-heading:\s*Inter,\s*'SF Pro Display',\s*'Segoe UI',\s*'Noto Sans SC',\s*sans-serif/
+    )
+  })
+
+  it('⑥ 正文色对正文底 / 导语底 / 条目 hover 底（alpha 合成实算）均 ≥ 4.5', () => {
+    const block = variantBlock(NIGHT)
+    const text = tokenHex(block, '--jy-text')
+    const bg = tokenHex(block, '--jy-bg')
+    const lead = tokenRgba(block, '--jy-lead-bg')
+    expect(text, `${NIGHT} --jy-text 应为 6 位 hex`).not.toBeNaN()
+    expect(bg, `${NIGHT} --jy-bg 应为 6 位 hex`).not.toBeNaN()
+    expect(lead.alpha, `${NIGHT} --jy-lead-bg 应为 rgba`).not.toBeNaN()
+    expect(contrast(text, bg), 'text/bg').toBeGreaterThanOrEqual(4.5)
+    const leadOverBg = over(lead, bg)
+    expect(contrast(text, leadOverBg), 'text/lead-bg（合成到底色之上）').toBeGreaterThanOrEqual(4.5)
+    // 条目 hover 底色即 --jy-lead-bg：先锁规则形态，再断言同一合成底色
+    expect(noctRule('\\.juya-entry:hover'), '条目 hover 底色应走 --jy-lead-bg').toContain(
+      'background: var(--jy-lead-bg)'
+    )
+    expect(contrast(text, leadOverBg), 'text/条目 hover 底（合成）').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('⑦ 叠加态：全部半透明环境层（background-image rgba + 导语底）全强度叠加后正文仍 ≥ 4.5', () => {
+    const block = variantBlock(NIGHT)
+    const text = tokenHex(block, '--jy-text')
+    const bg = tokenHex(block, '--jy-bg')
+    const layers = ambientLayers(block)
+    expect(layers.length, '至少应有 --jy-lead-bg 一层可实算环境层').toBeGreaterThan(0)
+    const stacked = layers.reduce((acc, layer) => over(layer, acc), bg)
+    expect(contrast(text, stacked), 'text/环境层全叠加（最坏情形）').toBeGreaterThanOrEqual(4.5)
+  })
+})

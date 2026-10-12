@@ -477,7 +477,8 @@ describe('滚动条风格适配守卫（2026-10-11 用户指令：橘鸦风格�
 })
 
 describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
-  // 需求：docs/juyathemesworks/nocturne-dark.md §4（微光 + 极慢呼吸，alpha 沿用 --jy-accent）。
+  // 需求：docs/juyathemesworks/nocturne-dark.md §4.2（静态辉光近层 .28 / 远层 .12；呼吸 9s alternate，
+  // 近层 alpha .22 ↔ .32 摆动；alpha 沿用 --jy-accent #6e7bff）。区间两端以关键帧声明为真值断言。
   // 硬约束（AGENTS.md / §10 红线 2）：background-clip:text 上禁用 text-shadow——它会盖住渐变填充
   // （Chromium 绘制顺序，y2k 已踩坑），辉光只能用 filter: drop-shadow。
   // 结构约束（红线 3）：动画只挂刊头子层，.juya-root 永无 animation。
@@ -509,8 +510,17 @@ describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
     const to = keyframes ? css.indexOf(keyframes) + keyframes.length : css.length
     return rule < 0 ? '' : css.slice(from, to)
   }
-  /** 呼吸关键帧内的数值字面量（含 0.22 下限 / 0.32 上限） */
+  /** 呼吸关键帧内的数值字面量（用于双色霓虹排除项扫描） */
   const keyframeNumbers = (): number[] => (nocturneKeyframes().match(/[\d.]+/g) ?? []).map(Number)
+  /** 单个关键帧声明块（`from` / `to` / `0%` / `100%`） */
+  const keyframeStep = (block: string, step: string): string =>
+    block.match(new RegExp(`(?:^|[\\s{])${step}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
+  /** 声明块内 drop-shadow 的 (半径, alpha) 对（顺序即声明顺序：近层在前、远层在后） */
+  const stepGlow = (block: string): { radius: number; alpha: number }[] =>
+    [...block.matchAll(/drop-shadow\(0 0 ([\d.]+)px rgba\([^)]*?([\d.]+)\)\)/g)].map((m) => ({
+      radius: Number.parseFloat(m[1]),
+      alpha: Number.parseFloat(m[2])
+    }))
   const rmBlock = (): string =>
     extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).join('\n')
   const supportsFallbackBlock = (): string =>
@@ -538,22 +548,32 @@ describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
     expect(hasTextShadow(nocturneKeyframes()), '关键帧内同样禁用 text-shadow').toBe(false)
   })
 
-  it('③ 呼吸：9s 周期 + alternate + 强度在 .22 ↔ .32 间摆动（远层按比例给 .094/.137）', () => {
+  it('③ 呼吸：9s 周期 + alternate，关键帧 from/to 近层 alpha 实测 .22 / .32（下界真值，非注释自证）', () => {
     const rule = darkRule()
     const kf = nocturneKeyframes()
     expect(rule, 'animation 简写应含 9s 周期与 alternate 方向').toMatch(
       /animation:\s*jy-noct-glow 9s[^;]*alternate/
     )
-    expect(kf, '关键帧 from 近层 .28').toContain('rgba(110, 123, 255, 0.28)')
-    expect(kf, '关键帧 from 远层 .12').toContain('rgba(110, 123, 255, 0.12)')
-    expect(kf, '关键帧 to 近层 .32').toContain('rgba(110, 123, 255, 0.32)')
-    expect(kf, '关键帧 to 远层按比例 .137').toContain('rgba(110, 123, 255, 0.137)')
-    const nums = keyframeNumbers()
-    expect(nums, '近层峰值 .32（to 端点即摆动上限）').toContain(0.32)
-    expect(kf, '近层起点 .28 与峰值 .32 = 摆动区间两端').toContain('0.28)')
-    // 关键帧两端是插值端点，区间下界由需求决策值给出（.22↔.32），须在实现注释里可追溯
-    expect(darkArea(), '摆动区间 .22 ↔ .32 须在区块注释中可追溯').toMatch(/\.22\s*↔\s*\.32/)
+    expect(kf, '呼吸关键帧应存在（@keyframes jy-noct-glow）').toBeTruthy()
+    // 从关键帧声明里抠出数值断言，而不是断言「注释里写了 .22↔.32」——注释可自证，关键帧才是被浏览器插值的真值。
+    const from = stepGlow(keyframeStep(kf, 'from'))
+    const to = stepGlow(keyframeStep(kf, 'to'))
+    expect(from.map((s) => s.radius), 'from 两层几何应保持 18px 近层 + 40px 远层').toEqual([18, 40])
+    expect(to.map((s) => s.radius), 'to 两层几何应保持 18px 近层 + 40px 远层').toEqual([18, 40])
+    // 近层（glow[0]）：区间下界 .22 出在 from、上界 .32 出在 to —— 两端都在声明里、运行期可达
+    expect(from[0]?.alpha, 'from 近层 alpha 实测应为下界 .22').toBeCloseTo(0.22, 5)
+    expect(to[0]?.alpha, 'to 近层 alpha 实测应为上界 .32').toBeCloseTo(0.32, 5)
+    // 远层（glow[1]）：保持 .12 恒定（本区块注释写明不随近层缩放的理由），两端同值
+    expect(from[1]?.alpha, 'from 远层 alpha 应恒为 .12').toBeCloseTo(0.12, 5)
+    expect(to[1]?.alpha, 'to 远层 alpha 应恒为 .12').toBeCloseTo(0.12, 5)
+    // 静态 / 降级态辉光（基础规则的 filter）是与关键帧不同的值：近层 .28（决策 5 原文）
+    const stat = shadows(darkRule())
+    expect(stat[0]?.alpha, '静态近层 alpha 应为 .28').toBeCloseTo(0.28, 5)
+    expect(stat[1]?.alpha, '静态远层 alpha 应为 .12').toBeCloseTo(0.12, 5)
+    // 区间语义可追溯（辅助）：注释说明近层 .22↔.32 呼吸、静态 .28；真值断言以上面关键帧为准
+    expect(darkArea(), '区块注释应说明近层 .22 ↔ .32 呼吸').toMatch(/\.22\s*↔\s*\.32/)
     // 单色微光排除项：双色霓虹 = 青 rgba(90,160,255) + 品红 rgba(200,90,180)，其一即可判否
+    const nums = keyframeNumbers()
     expect(nums, '不得出现双色霓虹青通道 160').not.toContain(160)
     expect(nums, '不得出现双色霓虹品红 R 200').not.toContain(200)
   })

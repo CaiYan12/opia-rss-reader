@@ -440,7 +440,7 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
   //      的**不可达面**。`.juya-scene` 是 `position: sticky; top: 0`（**视口锚定**，不是文档锚定），
   //      滚动时导语会移到滚动口顶端，正落在顶部锚定的雾层最强处 ⇒ 最坏面出现在「滚动到顶端的窄窗」。
   //      本组⑥ 改为锁**可达最坏面**（真实浏览器实测 + 静态模型复算）。旧 4.80 面不再作为断言面（只在
-  //      注释里留作对照：它比可达最坏面高 ≈0.55，正是「用错可达性模型」的量化后果）。
+  //      注释里留作对照：它比可达最坏面高 ≈0.5，正是「用错可达性模型」的量化后果）。
   //   B) 本票两条规则原写作**共享** `.jynoct`，把 nocturne-light 也改了（需求 §0 声明范围仅暗侧、
   //      §9 把「nocturne-light 任何改动」列为不做）。现收窄为
   //      `[data-juya-variant='nocturne-dark'].jynoct …`；本组新增静态守卫锁死该形态。
@@ -449,6 +449,9 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
   /** 暗侧变体专属复合规则块（缺陷 B 修正后的正确形态）：`[data-juya-variant='nocturne-dark'].jynoct <rest> { … }` */
   const darkRule = (rest: string): string =>
     extractBlock(css, new RegExp(`\\[data-juya-variant='nocturne-dark'\\]\\.jynoct ${rest} \\{`))
+
+  /** 剥掉 CSS 注释（注释里可以自由解释「曾经怎么写、为什么不能那样写」，规则体才是被消费的东西） */
+  const stripComments = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, '')
 
   /** 暗侧 `.juya-lead` 的两个复合规则块：[0] 底色/内衬、[1] 左侧发光（同选择器两块，按出现顺序） */
   const leadDarkBlocks = (): string[] =>
@@ -514,7 +517,7 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
       '导语底色对 --jy-bg 应可分辨（>1）').toBeGreaterThan(1)
   })
 
-  it('② 导语左侧发光竖线：颜色取该风格 --jy-focus，辉光只用 drop-shadow（禁用 text-shadow）', () => {
+  it('② 导语左侧发光竖线：颜色取该风格 --jy-focus，辉光走外阴影（禁 text-shadow / 禁块级 drop-shadow）', () => {
     const rule = darkRule('\\.juya-lead')
     const focusRule = leadDarkBlocks()[1] ?? ''
     const left = decl(rule, 'border-left') || decl(focusRule, 'border-left-color')
@@ -523,19 +526,25 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     // 竖线宽度以基层声明为真值（3px）：本票允许「只覆写 color」的写法，故宽度从基层读
     const baseLeft = decl(css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? '', 'border-left')
     expect(px(baseLeft)[0] || px(left)[0], '竖线宽度应保持基层 3px').toBe(3)
-    // 发光：只认 filter: drop-shadow（background-clip:text 陷阱的同类口径，仓库统一禁 text-shadow）
+    // 辉光形态：外阴影 box-shadow（裁决 2026-10-12）—— 只画在边框盒之外，不洗涤矩形内部
     expect(leadArea(), '导语区（暗侧两个复合规则块）应可提取').toBeTruthy()
-    expect(leadArea(), '导语区须有 drop-shadow 发光').toContain('drop-shadow')
-    expect(leadArea(), '导语区禁用 text-shadow').not.toMatch(/text-shadow\s*:\s*[^n\s]/)
+    const body = stripComments(leadArea())
+    expect(body, '导语区须有外阴影辉光（box-shadow）').toContain('box-shadow')
+    // 块级 drop-shadow 会按元素 alpha 轮廓（含导语 0.08 半透明底）整片垫在矩形底下 ——
+    // 既是「整框泛光」而非票面要的「竖线发光」，也是把 muted 压到 4.4744（<AA 4.5）的唯一分量。
+    expect(body, '导语规则体内不得出现 filter: drop-shadow').not.toMatch(/filter\s*:\s*drop-shadow/)
+    expect(body, '导语规则体内不得出现 drop-shadow() 调用').not.toMatch(/drop-shadow\(/)
+    expect(body, '导语区禁用 text-shadow').not.toMatch(/text-shadow\s*:\s*[^n\s]/)
     // 发光强度克制：模糊半径 ≤ 8px，且 alpha ≤ 0.6（不得抢正文）
-    // 只认真正的函数调用 `drop-shadow(` —— 区块注释里用反引号提到 `filter: drop-shadow`，不带左括号，天然不命中
-    const glow = leadArea().match(/drop-shadow\(([^)]*)\)/)?.[1] ?? ''
-    expect(glow, '导语区应有 drop-shadow 函数调用').toBeTruthy()
-    expect(glow, 'drop-shadow 应带取色来源（focus 色通道 139,151,255）').toContain('139, 151, 255')
-    expect(px(glow)[1], '发光模糊半径应克制（≤8px）').toBeLessThanOrEqual(8)
+    const glow = decl(body, 'box-shadow')
+    expect(glow, '导语区应有 box-shadow 声明').toBeTruthy()
+    expect(glow, '辉光应带取色来源（focus 色通道 139,151,255）').toContain('139, 151, 255')
+    const glowLen = glow.replace(/rgba\([^)]*\)/, '').trim()
+    const blur = px(glowLen)
+    expect(blur[blur.length - 1], '发光模糊半径应克制（≤8px）').toBeLessThanOrEqual(8)
     // alpha 值从 rgba 的参数里按逗号切出（不用嵌套正则：`[^)]*?` 在 `[^)]*` 已吃掉右括号的场景下语义绕）
     const glowAlpha = Number.parseFloat(glow.split(',').pop()?.trim() ?? 'NaN')
-    expect(Number.isNaN(glowAlpha), `drop-shadow 末位参数应为 alpha（实测 ${glowAlpha}）`).toBe(false)
+    expect(Number.isNaN(glowAlpha), `box-shadow 末位参数应为 alpha（实测 ${glowAlpha}）`).toBe(false)
     expect(glowAlpha, '发光 alpha 应克制（≤0.6）').toBeLessThanOrEqual(0.6)
     // 文字色（危险组合的来源）：本票不改，须仍是基层的 --jy-muted —— 只在有人覆写时才校验覆写值
     const leadColor = decl(rule, 'color') || decl(css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? '', 'color')
@@ -637,7 +646,7 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     )
   })
 
-  it('⑥ 可达最坏面：导语滚到滚动口顶端时 --jy-muted 对真实合成底 ≥ 实测下界（票面目标 4.5，缺口留档）', () => {
+  it('⑥ 可达最坏面：导语滚到滚动口顶端时 --jy-muted 对真实合成底 ≥ 4.5（且留 ≥0.05 余量）', () => {
     const block = variantBlock(NIGHT)
     const bg = tokenHex(block, '--jy-bg')
     const muted = tokenHex(block, '--jy-muted')
@@ -673,39 +682,39 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     const n1 = tokenRgba(neb, '--jy-nebula-1')
     expect(n1.alpha, '--jy-nebula-1 应为 rgba').not.toBeNaN()
 
-    // ---- 前提 3：导语自身的 drop-shadow 垫在**半透明**导语矩形底下，属于文字背景的一部分 ----
-    const glowRule = leadDarkBlocks()[1] ?? ''
-    const glow = glowRule.match(
-      /drop-shadow\(\s*[\d.]+px\s+[\d.]+(?:px)?\s+[\d.]+px\s+rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)\s*\)/
+    // ---- 前提 3（裁决 2026-10-12 新增的防回退断言）：导语规则体内不得出现块级 `filter: drop-shadow`。
+    //      它按元素渲染结果的 alpha 轮廓取形状，而 `.juya-lead` 带 0.08 半透明底 ⇒ 阴影以
+    //      0.35×0.08 的 alpha **整片垫在矩形底下**被透出：既是「整框泛光」而非票面要的「左侧竖线发光」，
+    //      也把导语 muted 压到 4.4744（< AA）。改回该写法必须同时撞红本断言与⑥的对比度断言。 ----
+    const leadBody = stripComments(leadArea())
+    expect(leadBody, '导语规则体内不得出现 filter: drop-shadow（须走外阴影/伪元素竖线局部发光）').not.toMatch(
+      /filter\s*:\s*drop-shadow/
     )
-    expect(glow, '发光规则应为 filter: drop-shadow(… rgba(…)）').toBeTruthy()
-    const glowColor = {
-      rgb: (Number(glow![1]) << 16) | (Number(glow![2]) << 8) | Number(glow![3]),
-      alpha: Number(glow![4])
-    }
-    expect(glowColor.rgb, '发光取色应为该变体 --jy-focus #8b97ff').toBe(tokenHex(block, '--jy-focus'))
+    expect(leadBody, '导语规则体内不得出现 drop-shadow() 调用').not.toMatch(/drop-shadow\(/)
+    // 外阴影只画在边框盒之外 ⇒ 不在文字所落的背景里 → 静态模型里**没有**辉光层
+    expect(leadBody, '局部发光应为 box-shadow（外阴影）').toContain('box-shadow')
 
     // ---- 可达最坏面几何（浏览器实测口径：六档视口里 vw=700 最坏；导语文字左缘 = 47px，
-    //      由 .juya-issue(760px 居中/24px 内衬) + .juya-entry(2px) + 3px 竖线 + 18px 左内衬 推出）----
+    //      由 .juya-issue(≤700px 居中 / 24px 内衬) + .juya-entry(2px) + 3px 竖线 + 18px 左内衬 推出）----
     const VW = 700
     const VH = 800
     const TEXT_LEFT = 47
     const r = Math.hypot(TEXT_LEFT / ((rxPct / 100) * VW), 0 / ((ryPct / 100) * VH))
     const cover = Math.max(0, 1 - r / (stopPct / 100))
     const fog = { rgb: n1.rgb, alpha: n1.alpha * cover }
-    // 导语底 → 发光垫底 → 场景雾 → 底色（source-over 逐层合成，顺序即 CSS 绘制顺序的逆）
-    const shadow = { rgb: glowColor.rgb, alpha: glowColor.alpha * leadBg.alpha }
-    const surface = over(leadBg, over(shadow, over(fog, bg)))
+    // 场景雾 → 底色，再叠导语底（source-over 逐层合成，顺序即 CSS 绘制顺序的逆）
+    const surface = over(leadBg, over(fog, bg))
     const model = contrast(muted, surface)
 
     // 六档视口真实浏览器实测（Playwright，独立端口 4198，deviceScaleFactor=1；把带导语的条目滚到
     // 滚动口顶端、导语文字贴顶；dust 为 1~1.6px 装饰微粒，中性化后取背景梯度真值；鼠标移出条目以免
     // `.juya-entry:hover` 的**同色第二层**底叠加 —— 那是独立交互态，不计入本守卫最坏面）。
-    // 下表为**合入 #5（正文列收窄到 700px）之后**的复测值（#5 之前 vw≥800 各档略低；最坏档两次都是 vw=700）：
-    //   --jy-lead-bg 0.09（修前）560/700/800/900/1024/1280 = 4.2731 / 4.2563 / 4.3357 / 4.3984 / 4.4609 / 4.5642
-    //   --jy-lead-bg 0.08（现值）                            = 4.4915 / 4.4744 / 4.5541 / 4.6164 / 4.6735 / 4.7801
-    // 旧守卫断言的 4.80 面（首层雾覆盖为 0、且不含发光垫底贡献）比可达最坏面高 ≈0.55，是**不可达面**。
-    const MEASURED_WORST = 4.4744
+    // 修正轨迹（合 #5 收窄列 700px 后的同一口径复测；最坏档三次都是 vw=700）：
+    //   0.09 + 块级 drop-shadow（修前）4.2731 / 4.2563 / 4.3357 / 4.3984 / 4.4609 / 4.5642 ⇒ 4.2563
+    //   0.08 + 块级 drop-shadow         4.4915 / 4.4744 / 4.5541 / 4.6164 / 4.6735 / 4.7801 ⇒ 4.4744
+    //   0.08 + 外阴影竖线发光（现值）   4.6735 / 4.6567 / 4.7353 / 4.7966 / 4.8458 / 4.9105 ⇒ 4.6567
+    // 旧守卫断言的 4.80 面（首层雾覆盖为 0、且不含发光垫底贡献）比可达最坏面高 ≈0.5，是**不可达面**。
+    const MEASURED_WORST = 4.6567
     expect(model, `静态模型复算 ${model.toFixed(3)} 不得高于实测（模型应保守）`).toBeLessThanOrEqual(
       MEASURED_WORST + 0.02
     )
@@ -713,20 +722,12 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
       MEASURED_WORST - model,
       `静态模型与实测差 ${(MEASURED_WORST - model).toFixed(3)} 应在保守带内（≤0.15）`
     ).toBeLessThan(0.15)
-    expect(model, `可达最坏面静态复算 ${model.toFixed(3)} ≥ 锁定下界 4.30`).toBeGreaterThanOrEqual(4.30)
+    // 票面 §6 / 需求 §3.1 的 AA 目标：可达最坏面 ≥ 4.5
+    expect(model, `可达最坏面静态复算 ${model.toFixed(3)} 须 ≥ AA 4.5`).toBeGreaterThanOrEqual(4.5)
     expect(
       MEASURED_WORST,
-      '可达最坏面实测下界（改 --jy-lead-bg alpha 或发光 alpha 会撞这条，须同步复测）'
-    ).toBeGreaterThanOrEqual(4.47)
-    // 已知缺口如实留档（不是笔误）：票面 AA 目标 4.5 **当前未达成**，差 0.0256。
-    // 唯一剩余分量是导语自身 `filter: drop-shadow` 以 0.35×leadBgAlpha 整片垫在矩形底下（实测去掉
-    // filter：0.08→4.6567、0.09→4.4899）。修它要动发光 alpha 或把发光挪到只承载 3px 竖线的伪元素，
-    // 两者都超出「把 --jy-lead-bg 降到 0.08」这一预授权候选 —— 实测数字已上报待裁决；
-    // 裁决落地后把上面 MEASURED_WORST 与本条断言一起抬到 4.5，并删除本条。
-    expect(
-      MEASURED_WORST,
-      '票面 AA 目标 4.5 当前**未达成**（缺口 0.0256）——根因与备选见 CSS 注释与回报'
-    ).toBeLessThan(4.5)
+      '可达最坏面实测值（改 --jy-lead-bg alpha 或发光实现会撞这条，须同步复测）须 ≥ 4.5 且留 ≥0.05 余量'
+    ).toBeGreaterThanOrEqual(4.55)
   })
 
   it('⑦ 范围未越界：nocturne-light 的导语/栏目线相关取值与形态字节不变（本轮仅暗侧）', () => {

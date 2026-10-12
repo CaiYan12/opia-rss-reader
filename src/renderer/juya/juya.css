@@ -1627,8 +1627,12 @@
   --jy-lead-bg: rgba(255, 255, 255, 0.04);
   --jy-focus: #8b97ff;
   --jy-radius: 12px;
-  --jy-font-body: Inter, 'SF Pro Text', 'Segoe UI', 'Noto Sans SC', sans-serif;
-  --jy-font-heading: Inter, 'SF Pro Display', 'Segoe UI', 'Noto Sans SC', sans-serif;
+  /* 三档无衬线分工（#3，需求 §2）：等线标题 + Noto Sans SC 正文 + 元信息/序号等宽。
+     原栈首选 Inter / SF Pro * 在本机均未安装（Fonts 注册表 596 条实测），整体落回
+     Segoe UI + Noto Sans SC —— 与应用 UI 字体无差别，风格识别度归零。可用中文黑体只有
+     Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选只能取等线（八风格无人占用）。 */
+  --jy-font-body: 'Noto Sans SC', 'Segoe UI', sans-serif;
+  --jy-font-heading: 'DengXian', 'Noto Sans SC', 'Segoe UI', sans-serif;
 }
 
 /* 银灰渐变刊头字（亮暗各一组）；条目去卡片化：发丝线分隔 + hover 抬升；等宽数字元信息 */

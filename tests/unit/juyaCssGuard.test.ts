@@ -1306,8 +1306,10 @@ describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
     expect(contrast(text, bg), 'text/bg').toBeGreaterThanOrEqual(4.5)
     const leadOverBg = over(lead, bg)
     expect(contrast(text, leadOverBg), 'text/lead-bg（合成到底色之上）').toBeGreaterThanOrEqual(4.5)
-    // 条目 hover 底色即 --jy-lead-bg：先锁规则形态，再断言同一合成底色
-    expect(noctRule('\\.juya-entry:hover'), '条目 hover 底色应走 --jy-lead-bg').toContain(
+    // 条目 hover 底色（共享规则走 --jy-lead-bg，亮侧在用）：
+    // 注意 #9 G-1 修复后**暗侧由变体专属规则覆写为 background: none**（见收口守卫组 G-1 断言），
+    // 故此处的共享形态断言只覆盖亮侧路径；正文对「单层导语底」的对比度仍须达标。
+    expect(noctRule('\\.juya-entry:hover'), '条目 hover 共享规则底色应走 --jy-lead-bg（亮侧）').toContain(
       'background: var(--jy-lead-bg)'
     )
     expect(contrast(text, leadOverBg), 'text/条目 hover 底（合成）').toBeGreaterThanOrEqual(4.5)
@@ -2209,14 +2211,20 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     ).toEqual([])
 
     // 逐条登记（改色/加色会让本表变化 ⇒ 必须同步补注释并更新登记，属预期）。
-    // 不含字面色值的规则（如 .juya-lead 的 padding/底色规则、窄窗 nebula —— 全走 var()）不在表内。
+    // 不含字面色值的规则（如 .juya-lead 的 padding/底色规则 —— 全走 var()）不在表内。
+    // #9 G-1/G-2 修复新增两条字面色规则，故本表由 13 → 15 条：
+    //  · 第二条 .juya-scene-nebula = ≤520px 窄窗退化规则（峰值 alpha 单独收到 0.055 字面值）；
+    //  · [data-juya-variant='nocturne-dark'].jynoct .juya-entry:hover = 暗侧撤掉背景微亮、
+    //    改走 border-bottom-color rgba(255,255,255,0.22)（发丝线提亮，不参与文字背景合成）。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-issue::before, [data-juya-variant='nocturne-dark'].jynoct .juya-issue::after",
       '.jynoct .juya-masthead h1',
       "[data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1",
       '@keyframes jy-noct-glow',
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-entry:hover",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-lead",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-section > h2",
       '.jynoct .juya-feed-item:hover',
@@ -2362,6 +2370,76 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
         `RM 下必须显式复位：${sel}（只靠 duration 兜底不算）`
       ).toBe(true)
     }
+  })
+
+  // ---- G-1 / G-2 回归锁（2026-10-12 收口审计量出的两个可达 AA 缺口，已修）----
+  it('⑥ G-1 防耦合回归：暗侧条目 hover 不得再叠背景微亮（与导语底共用 --jy-lead-bg 会叠两层）', () => {
+    // 病根：`.juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg ⇒ 悬停时导语像素叠两层 0.08 白，
+    // --jy-muted 掉到 3.53–3.82（8/8 视口档 < AA 4.5）。实测**任何正 alpha 都不可行**（底色近黑时
+    // 微亮成比例放大对比度分母，连 0.005 都把 vw=480 压到 4.4967），故暗侧撤掉背景、改走发丝线提亮。
+    const darkHover = css.match(
+      /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-entry:hover\s*\{[^}]*\}/
+    )?.[0] ?? ''
+    expect(darkHover, '暗侧条目 hover 覆盖规则应存在（G-1 修复的落点）').toBeTruthy()
+    expect(decl(strip(darkHover), 'background'), '暗侧 hover 背景必须为 none').toMatch(/^none$/)
+    expect(darkHover, '不得引用 --jy-lead-bg（耦合回归即撞红）').not.toContain('var(--jy-lead-bg)')
+    // 替代线索：边框提亮（不参与文字的背景合成，故与文字对比度无关）
+    expect(decl(strip(darkHover), 'border-bottom-color'), '改用边框提亮作为 hover 线索').toBeTruthy()
+    // 亮侧不受影响（§9：nocturne-light 本轮不动）——共享规则仍保留原背景
+    const shared = css.match(/(?:^|\n)\.jynoct \.juya-entry:hover\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(shared, '共享规则（亮侧路径）仍走 --jy-lead-bg').toContain('background: var(--jy-lead-bg)')
+  })
+
+  it('⑦ G-2 回归锁：≤520px 窄窗雾峰值 alpha 单独收紧（视口锚定 ⇒ 导语滚顶会落进峰值）', () => {
+    // 窄窗退化带同样 sticky 视口锚定；原 0.07 时 vw=480 导语 --jy-muted 只有 4.4915 < 4.5。
+    const narrowNeb = (() => {
+      let rest = css
+      for (;;) {
+        const b = extractBlock(rest, /@media \(max-width: 520px\) \{/)
+        if (!b) return ''
+        if (b.includes('.juya-scene-nebula')) {
+          return b.match(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula\s*\{[^}]*\}/)?.[0] ?? ''
+        }
+        rest = rest.replace(b, '')
+      }
+    })()
+    expect(narrowNeb, '窄窗 nebula 退化规则应存在').toBeTruthy()
+    /** 就地抠 rgba（本组无 tokenRgba，自备） */
+    const rgbaAt = (src: string, name: string): { rgb: number; alpha: number } => {
+      const m = decl(strip(src), name).match(
+        /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/
+      )
+      return m
+        ? { rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]), alpha: Number(m[4]) }
+        : { rgb: NaN, alpha: NaN }
+    }
+    const narrowN1 = rgbaAt(narrowNeb, '--jy-nebula-1')
+    // 主规则（>520px 的三层雾覆写）里才有 --jy-nebula-1 的峰值，**不在 token 块**里
+    const mainNeb = css.match(
+      /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula\s*\{[^}]*\}/
+    )?.[0] ?? ''
+    expect(mainNeb, '主规则 .juya-scene-nebula 覆写应存在').toBeTruthy()
+    const mainN1 = rgbaAt(mainNeb, '--jy-nebula-1')
+    expect(narrowN1.alpha, '窄窗须单独覆写 --jy-nebula-1 峰值').not.toBeNaN()
+    expect(mainN1.alpha, '主规则 --jy-nebula-1 应为 rgba').not.toBeNaN()
+    expect(narrowN1.alpha, '窄窗峰值必须低于主规则峰值（收一档）').toBeLessThan(mainN1.alpha)
+    // 实算：窄窗峰值叠 --jy-bg 后，导语 muted 须 ≥4.5 且留 ≥0.05 余量（与审计脚本同口径）
+    const bg = tokenHex(variantBlock('nocturne-dark'), '--jy-bg')
+    const mix = (fg: number, alpha: number, base: number): number =>
+      [16, 8, 0].reduce(
+        (acc, s) =>
+          acc |
+          (Math.round(((fg >> s) & 0xff) * alpha + ((base >> s) & 0xff) * (1 - alpha)) << s),
+        0
+      )
+    const fog = mix(narrowN1.rgb, narrowN1.alpha, bg)
+    const leadA = rgbaAt(variantBlock('nocturne-dark'), '--jy-lead-bg').alpha
+    const leadOver = mix(0xffffff, leadA, fog)
+    const muted = tokenHex(variantBlock('nocturne-dark'), '--jy-muted')
+    expect(
+      contrast(muted, leadOver),
+      '窄窗峰值下导语 muted 对合成底须 ≥4.5 且留 ≥0.05 余量'
+    ).toBeGreaterThanOrEqual(4.55)
   })
 })
 

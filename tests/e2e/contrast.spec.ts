@@ -111,15 +111,15 @@ const MUTED_LUM = lum(MUTED)
 const FREEZE =
   '*, *::before, *::after { animation: none !important; transition: none !important; }'
 
-for (const vw of [700, 800]) {
-  test(`叠加态可达最坏面（${vw}px 视口，滚到滚动口顶端）：导语 muted 对比度 ≥ 4.5，且 hover 缺口已知（#9）`, async ({
+for (const vw of [480, 700, 800]) {
+  test(`叠加态可达最坏面（${vw}px 视口，滚到滚动口顶端）：导语 muted 对比度 ≥ 4.5（含 hover 态）`, async ({
     page
   }) => {
     await page.setViewportSize({ width: vw, height: 800 })
     await loadApp(page, 'nocturneSvg')
     await openFirstArticle(page)
     await page.addStyleTag({ content: FREEZE })
-    await page.mouse.move(0, 0) // 默认态：不含 .juya-entry:hover 的第二层同源底色
+    await page.mouse.move(0, 0) // 默认态：鼠标不在条目上
 
     const tab = activeTab(page)
     const lead = tab.locator('.juya-lead').first()
@@ -165,18 +165,22 @@ for (const vw of [700, 800]) {
       `红线 7：导语 --jy-muted 对「雾 + 导语底」的合成底须 ≥ 4.5（实测 ${defaultWorst.toFixed(4)}）`
     ).toBeGreaterThanOrEqual(4.5)
 
-    // 已知缺口留痕（issue #9 报告 F-1）：鼠标悬停在条目上时，.juya-entry:hover 与 .juya-lead
-    // **同用 --jy-lead-bg**（#6 决策：该 token 是导语底色的单一真源），于是导语像素叠两层 0.08 白
-    // ⇒ muted 掉到 ~3.6–4.0，低于 AA 4.5。本断言把当前值锁住：#6 的方法论当时把鼠标移出条目避开了
-    // 这一层，本票如实量出来并留痕（修复需动 #6 的决策值或给 hover 单独取值，属上层裁决）。
+    // hover 态（#9 G-1 修复后应达标）：鼠标悬停在条目上时，暗侧已**不再叠背景微亮**
+    // （原 `.jynoct .juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg ⇒ 叠两层 0.08 白，
+    //  muted 掉到 ~3.6–4.0 < AA 4.5）。修复：暗侧撤掉背景微亮、改走 border-bottom-color 提亮
+    //  （边框不参与文字的背景合成）。实测任何正 alpha 都不可行 —— 底色近黑时微亮成比例放大
+    //  对比度分母，连 0.005 都把 vw=480 压到 4.4967。
+    // 故本断言现要求 hover 态**同样 ≥ 4.5**（不再是「已知缺口」留痕）。
     const entry = tab.locator('article.juya-entry').first()
     const eb = await entry.boundingBox()
     expect(eb, '条目几何可取').toBeTruthy()
     await page.mouse.move(eb!.x + eb!.width / 2, eb!.y + Math.min(60, eb!.height / 2))
     const hoverWorst = await measure()
     // eslint-disable-next-line no-console
-    console.log(`[对比度实测] vw=${vw} 条目 hover ∩ 导语（叠两层 0.08）= ${hoverWorst.toFixed(4)}:1 ← 已知 AA 缺口`)
-    expect(hoverWorst, 'hover 叠加面确实比默认态更差（缺口成因锁定）').toBeLessThan(defaultWorst)
-    expect(hoverWorst, '已知缺口当前量级（修复后本断言会撞红 ⇒ 请同步更新报告与守卫）').toBeLessThan(4.5)
+    console.log(`[对比度实测] vw=${vw} 条目 hover ∩ 导语 = ${hoverWorst.toFixed(4)}:1`)
+    expect(
+      hoverWorst,
+      `红线 7（hover 态）：悬停条目时导语 --jy-muted 仍须 ≥ 4.5（实测 ${hoverWorst.toFixed(4)}）`
+    ).toBeGreaterThanOrEqual(4.5)
   })
 }

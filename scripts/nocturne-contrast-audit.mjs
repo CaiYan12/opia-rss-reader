@@ -28,14 +28,15 @@
  * 解析式**高 0.05~0.12**（本脚本取雾峰像素并逐层取整 ⇒ 偏保守）：
  *   vw=700 默认态：解析式 4.5995 / 实测 **4.6567**；vw=800：4.6617 / 4.7303；
  *   vw=1280：4.8504 / 4.9105（与 #6 票面记录的 4.6567 / 4.9105 独立吻合）。
- * 已知缺口（本脚本会判 FAIL，属**如实上报**，非误报）：
- *   ① 「条目 hover ∩ 导语」：`.juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg ⇒ 叠两层 0.08
- *      白（解析式 3.53~3.82 / 实测 3.60~4.00 < 4.5）。#6 的实测方法论当时把鼠标移出条目以避开
- *      这一层，本脚本把它量出来（修复需动 #6 决策值或给 hover 单独取值，属上层裁决）。
- *   ② vw≤520px 窄窗：该分支的 nebula 退化为单条顶部窄带（`120% 26% at 50% 0%`），而它是
- *      **视口锚定**的 —— 导语滚到滚动口顶端时正好落进窄带峰值（解析式 4.4915 / 实测 4.5489），
- *      处在 4.5 的临界带、无余量（#2 的窄窗注释按「导语在文档 ~250px 之下」推断，隐含了
- *      文档锚定前提）。窄窗档不属票面点名的 560–800px 区间，故单列一行以便上层裁决。
+ * 已修缺口（2026-10-12，本脚本现判 PASS，退出码 0）：
+ *   ① 「条目 hover ∩ 导语」：原 `.jynoct .juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg
+ *      ⇒ 悬停时导语像素叠两层 0.08 白，muted 掉到 3.53~3.82（8/8 档 < 4.5）。
+ *      实测**任何正 alpha 都不可行**（底色近黑 ⇒ 微亮成比例放大分母，连 0.005 都把 vw=480 压到
+ *      4.4967），故暗侧撤掉 hover 背景微亮、改走 `border-bottom-color` 提亮（边框不参与文字背景合成）。
+ *      本脚本改为**实读 hover 背景层 alpha**：`background: none` ⇒ 0 层。
+ *   ② vw≤520px 窄窗：该分支 nebula 退化为单条顶部窄带，而它同样**视口锚定**（sticky）——
+ *      导语滚到滚动口顶端即落进窄带峰值，原 0.07 只有 4.4915 < 4.5。已把窄窗峰值 alpha 单独
+ *      收到 **0.055**（vw=480 → 4.6046，余量 0.1046）。本脚本从窄窗规则**自身的 token 覆写**读取该值。
  */
 
 import { readFileSync } from 'node:fs'
@@ -150,7 +151,12 @@ const NEBULA_NARROW_RAW = must(
   ) ?? [''])[0],
   '窄窗 nebula 退化规则'
 )
-const NEBULA_NARROW = gradientLayers(NEBULA_NARROW_RAW).map((l) => withColor(l, NEBULA_BASE))
+const NEBULA_NARROW = gradientLayers(NEBULA_NARROW_RAW).map((l) => {
+  // #9 G-2 修复：窄窗规则自身会覆写 --jy-nebula-1（单独收峰值 alpha）⇒ 颜色优先取本规则的 token，
+  // 未覆写的层回退主规则取值。这样「窄窗峰值」始终跟随 CSS 真值，不会因主规则改动而失真。
+  const c = rgba(NEBULA_NARROW_RAW, l.token) ?? rgba(NEBULA_BASE, l.token)
+  return { ...l, r: (c.rgb >> 16) & 0xff, g: (c.rgb >> 8) & 0xff, b: c.rgb & 0xff, a: c.a, rgb: c.rgb }
+})
 
 const ISSUE_RULE = must(
   block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-issue\s*\{[^}]*\}/),
@@ -224,10 +230,25 @@ const OVERVIEW_SEP = must(
   ),
   '概览发丝线色'
 )
-const ENTRY_HOVER_USES_LEAD = must(
-  block(/\.jynoct \.juya-entry:hover\s*\{[^}]*\}/),
-  '.jynoct .juya-entry:hover 规则'
-).includes('var(--jy-lead-bg)')
+/** 暗侧条目 hover 的**有效背景层 alpha**（#9 G-1 修复后应为 0）。
+ *  注意：共享规则 `.jynoct .juya-entry:hover` 仍写 `background: var(--jy-lead-bg)`（亮侧在用），
+ *  暗侧由变体专属规则覆写为 `background: none` ⇒ 有效层数为 0。故这里必须读**变体专属覆盖**，
+ *  不能读共享规则（否则会误判成仍在叠层）。 */
+const ENTRY_HOVER_DARK = (() => {
+  const override = block(
+    /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-entry:hover\s*\{[^}]*\}/
+  )
+  if (!override) {
+    // 无变体覆盖 ⇒ 沿用共享规则的 token
+    const shared = must(block(/\.jynoct \.juya-entry:hover\s*\{[^}]*\}/), '.jynoct .juya-entry:hover 规则')
+    return shared.includes('var(--jy-lead-bg)') ? TOKEN.leadBg.a : 0
+  }
+  const bg = decl(override, 'background')
+  if (bg === 'none' || bg === 'transparent') return 0
+  if (bg.includes('var(--jy-lead-bg)')) return TOKEN.leadBg.a
+  const c = rgba(override, 'background')
+  return c ? c.a : 0
+})()
 const DUST = must(rgba(block(/\.juya-scene-dust\s*\{[^}]*\}/), '--jy-scene-dust'), '--jy-scene-dust')
 const FEED_HOVER_BORDER = must(
   rgba(block(/(?:^|\n)\.jynoct \.juya-feed-item:hover\s*\{[^}]*\}/), 'border-color'),
@@ -314,17 +335,17 @@ const ITEMS = [
     box: 'content'
   },
   {
-    id: '条目 hover：--jy-text（单层 0.08）',
+    id: `条目 hover：--jy-text（hover 层 ${ENTRY_HOVER_DARK}）`,
     kind: 'text',
     color: 'text',
-    surface: 'lead',
+    surface: 'hover',
     box: 'content'
   },
   {
-    id: '条目 hover ∩ 导语：--jy-muted（叠两层 0.08）',
+    id: `条目 hover ∩ 导语：--jy-muted（导语底 0.08 + hover ${ENTRY_HOVER_DARK}）`,
     kind: 'text',
     color: 'muted',
-    surface: 'leadX2',
+    surface: 'leadHover',
     box: 'leadInk'
   },
   { id: '导语左侧发光竖线 --jy-focus（非文本 UI）', kind: 'ui', color: 'focus', surface: 'lead', box: 'leadBar' },
@@ -372,9 +393,14 @@ const surfaceOf = (name, base) => {
       return base
     case 'lead':
       return over(0xffffff, TOKEN.leadBg.a, base)
-    case 'leadX2':
-      // .juya-entry:hover 与 .juya-lead 同用 --jy-lead-bg ⇒ 导语落在 hover 条目上时叠两层
-      return over(0xffffff, TOKEN.leadBg.a, over(0xffffff, TOKEN.leadBg.a, base))
+    case 'hover':
+      // 条目 hover：背景微亮层叠在雾底之上（暗侧修复后为 0 层）
+      return ENTRY_HOVER_DARK > 0 ? over(0xffffff, ENTRY_HOVER_DARK, base) : base
+    case 'leadHover':
+      // 悬停在条目上时：导语自身底 0.08 + 条目 hover 层（暗侧修复后 hover 为 0 ⇒ 回到单层）
+      return ENTRY_HOVER_DARK > 0
+        ? over(0xffffff, ENTRY_HOVER_DARK, over(0xffffff, TOKEN.leadBg.a, base))
+        : over(0xffffff, TOKEN.leadBg.a, base)
     case 'overviewHover':
       return over(OVERVIEW_HOVER.rgb, OVERVIEW_HOVER.a, base)
     default:
@@ -457,7 +483,7 @@ if (!QUIET) {
   const refFaces = [
     { name: '裸 --jy-bg（无雾）', base: () => TOKEN.bg, reachable: true },
     {
-      name: '+ n1 单层（取 alpha 峰值 .07）',
+      name: `+ n1 单层（取 alpha 峰值 ${NEBULA_MAIN[0].a}）`,
       base: () => over(NEBULA_MAIN[0].rgb, NEBULA_MAIN[0].a, TOKEN.bg),
       reachable: true
     },
@@ -532,10 +558,10 @@ if (fails.length === 0) {
   }
 }
 line()
-line('参考（默认态、鼠标不在条目上）的可达最坏面即上表「导语 --jy-muted（导语底 0.08）」行的最小值；')
-line('「条目 hover ∩ 导语」行是**鼠标悬停在条目上**时 .juya-entry:hover 与 .juya-lead 同用 --jy-lead-bg')
-line('造成的两层同源底色叠加（0.08 + 0.08），同样可达 —— 分类为 text 项，按 4.5:1 判定。')
-line('vw≤520 行的「导语」项走#2 的窄窗 nebula 退化分支（单条顶部窄带，同样视口锚定）：')
-line('  解析式 4.4915 < 4.5；栅格化实测 4.5489 ≥ 4.5 —— 处于临界带、无余量（本脚本取保守侧判 FAIL）。')
+line('参考：上表「导语 --jy-muted（导语底 0.08）」行是**默认态**（鼠标不在条目上）的可达最坏面。')
+line('「条目 hover ∩ 导语」行是鼠标悬停在条目上时的同一像素面 —— 经 #9 G-1 修复后，暗侧 hover')
+line('不再叠背景微亮（改走 border-bottom-color 提亮，边框不参与文字背景合成），故两行取值一致。')
+line('vw≤520 行的「导语」项走 #2 的窄窗 nebula 退化分支（单条顶部窄带，同样视口锚定）：')
+line('  经 #9 G-2 修复后窄窗峰值 alpha 单独收到 0.055（vw=480 → 4.6046，余量 0.1046 ≥ 0.05）。')
 line('栅格化交叉验证：tests/e2e/contrast.spec.ts（可复现，实测 4.6567 @700 / 4.7303 @800）。')
 process.exit(fails.length === 0 ? 0 : 1)

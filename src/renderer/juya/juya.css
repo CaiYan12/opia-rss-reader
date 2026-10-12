@@ -1413,10 +1413,17 @@
 }
 
 /* ==========================================================================
-   场景固定层（.juya-scene）：synthwave 太阳/透视网格（dreamcore）、星空/地平网格（y2k 暗）。
+   场景固定层（.juya-scene）：synthwave 太阳/透视网格（dreamcore）、星空/地平网格（y2k 暗）、
+   尘埃微粒 dust / 静态渐层雾 nebula（共享层预置，2026-10-12 #1，暂无风格接线）。
    sticky 假固定：内容在 uiZoom 缩放容器内，position:fixed 会被 CSS zoom 破坏锚定；
    sticky 相对滚动容器吸附且不随缩放漂移，负 margin 抵消占位。
    动画一律挂 .juya-scene-* 子层（.juya-root 永无 animation，reduced-motion 断言结构保证）。
+   【已知根因 · 共享层不改高度】height: 100vh 未扣应用 chrome 高度 128px（标题栏 + 标签栏）：
+   改共享高度会同时波及 dreamcore（太阳/透视网格）与 y2k（星空/地平网格）的既有观感，
+   且 .juya-scene 是 sticky + 负 margin 的占位对（高度与 margin-bottom 必须成对改），故**不改**。
+   处置约定（段内抬升）：每个挂场景的风格在自己的段内按需抬升装饰底边 —— y2k 暗已用
+   [data-juya-variant='y2k-dark'].jyy2k .juya-scene-grid { bottom: 136px }（≈128px chrome + 8px 余量），
+   nocturne 的抬升由 #2 在自己的段内做（守卫：juyaCssGuard「Scene 预设守卫」⑦ 锁本约定与 y2k 缓解值）。
    ========================================================================== */
 .juya-scene {
   position: sticky;
@@ -1436,6 +1443,61 @@
 .juya-feed {
   position: relative;
   z-index: 1;
+}
+
+/* 尘埃级微粒（dust）——共享层预置氛围件（2026-10-12，#1，本票不接线：现有风格模板零引用）。
+   点数量级：**不造 DOM 节点**，靠平铺 radial-gradient + background-size 得到 ——
+   1280×800 参考视口下 3×(1280/44)×(800/44) + 3×(1280/132)×(800/132) ≈ 1587 + 177 ≈ 1764 点（一两千点量级）。
+   取色来源与 WCAG 对比度：点色取中性白（不预设任何变体色相，避免与 pop/y2k 的强色板撞色），
+   alpha 0.16；合成到首个消费方 nocturne-dark 的 --jy-bg #0a0a0c 上为 #313133，对 bg 实算 **1.52:1**。
+   该值刻意低于非文本 UI 件 3:1：dust 是 aria-hidden + pointer-events:none 的纯装饰层（不承载信息），
+   需求 §3.2 明确要求「存在感极低、不抢正文」；页面内容的对比度由正文/元信息 token 承担，dust 不参与。
+   变体如需调色/调 alph，用复合选择器覆盖 --jy-scene-dust（如 [data-juya-variant='x'].jyx .juya-scene-dust）。 */
+.juya-scene-dust {
+  inset: 0;
+  --jy-scene-dust: rgba(255, 255, 255, 0.16);
+  background-image:
+    radial-gradient(1.2px 1.2px at 12% 22%, var(--jy-scene-dust) 50%, transparent 51%),
+    radial-gradient(1px 1px at 62% 74%, var(--jy-scene-dust) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 34% 46%, var(--jy-scene-dust) 50%, transparent 51%),
+    radial-gradient(1px 1px at 8% 82%, var(--jy-scene-dust) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 72% 12%, var(--jy-scene-dust) 50%, transparent 51%),
+    radial-gradient(1px 1px at 46% 62%, var(--jy-scene-dust) 50%, transparent 51%);
+  background-size: 44px 44px, 44px 44px, 44px 44px, 132px 132px, 132px 132px, 132px 132px;
+  animation: jy-dust-drift 96s ease-in-out infinite alternate;
+  will-change: background-position, opacity;
+}
+
+/* 极慢漂浮 + 呼吸：96s 单周期 alternate 往复（远慢于 sun 12s / stars 5s，避免抢注意力）；
+   两档 tile 反向漂移防止出现可辨认的行列规律。RM 下由 .juya-scene-dust 的 animation: none 完全停止 */
+@keyframes jy-dust-drift {
+  from {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+    opacity: 0.72;
+  }
+  to {
+    background-position: 44px -88px, -22px 44px, 33px 22px, 132px -66px, -66px 132px, 44px 44px;
+    opacity: 0.95;
+  }
+}
+
+/* 静态渐层雾（nebula）——共享层预置氛围件（2026-10-12，#1），**本无动画**（全文件零 animation/transition）。
+   三层色以 CSS 自定义属性给出，默认值刻意中性（纯白灰），不预设任何变体色相：
+   具体风格在自己的段内以复合选择器覆盖（#2 为 nocturne-dark 定 0.07/0.04/0.025 的紫蓝/青蓝/品红并做正文列避让）。
+   取色来源与 WCAG 对比度：默认三层纯白 alpha 0.045 / 0.028 / 0.018（合计 0.088），
+   合成到 nocturne-dark 的 --jy-bg #0a0a0c 上为 #202021；该底色上 --jy-muted #8a8b94 实算 **4.81:1** ≥ AA 4.5
+   （--jy-text #c4c5cc 为 9.46:1），对应需求 §3.1「暗色叠氛围层极易把 muted 推到 AA 以下」的防线；
+   守卫实算见 juyaCssGuard「Scene 预设守卫」⑧（改默认 alpha 会直接撞这条断言）。
+   绘制顺序：CSS 中首个 background-image 绘制在最上层，故 --jy-nebula-1 是最靠上的雾层。 */
+.juya-scene-nebula {
+  inset: 0;
+  --jy-nebula-1: rgba(255, 255, 255, 0.045);
+  --jy-nebula-2: rgba(255, 255, 255, 0.028);
+  --jy-nebula-3: rgba(255, 255, 255, 0.018);
+  background-image:
+    radial-gradient(120% 80% at 18% 4%, var(--jy-nebula-1), transparent 62%),
+    radial-gradient(110% 70% at 84% 10%, var(--jy-nebula-2), transparent 60%),
+    radial-gradient(130% 90% at 50% 100%, var(--jy-nebula-3), transparent 64%);
 }
 
 /* 条纹太阳：实心上弦 + 下弦逐层分离的切面条纹（单 mask 多停靠点手写） */
@@ -1589,7 +1651,8 @@
 @media (prefers-reduced-motion: reduce) {
   .juya-scene-sun,
   .juya-scene-grid-persp,
-  .juya-scene-stars {
+  .juya-scene-stars,
+  .juya-scene-dust {
     animation: none;
   }
 }

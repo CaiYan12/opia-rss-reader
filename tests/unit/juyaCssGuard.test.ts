@@ -37,6 +37,23 @@ const contrast = (a: number, b: number): number => {
   return (l1 + 0.05) / (l2 + 0.05)
 }
 
+/** source-over alpha 合成：把半透明前景（`0xRRGGBB` + alpha 0..1）叠到不透明底色上，逐通道取整。
+ *  WCAG 不定义半透明色，必须先合成再算对比度 —— 这是全文件唯一的合成原语。
+ *  各守卫组的 `over` 一律是本原语的**签名适配器**（见各组内一行定义），不再各写一份算法。 */
+const alphaOver = (fg: number, alpha: number, bg: number): number => {
+  const mix = (shift: number): number =>
+    Math.round(alpha * ((fg >> shift) & 0xff) + (1 - alpha) * ((bg >> shift) & 0xff))
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0)
+}
+
+/** `{ rgb, alpha }` 形态的适配器（#6 排版层级组与 #3 字体语言组同用） */
+const overRgba = (fg: { rgb: number; alpha: number }, bg: number): number =>
+  alphaOver(fg.rgb, fg.alpha, bg)
+
+/** nocturne 段（「暗夜精修式」段头 → 下一段「杂志编辑式」段头）：新规则必须落在此区间。
+ *  提升为模块级供 #6 / #2 两组复用（此前两组内各写一份） */
+const noctSection = (): string => css.slice(css.indexOf('暗夜精修式'), css.indexOf('杂志编辑式'))
+
 /** 取变体 token 块（首个 `[data-juya-variant='<variant>'] {` 块） */
 const variantBlock = (variant: string): string =>
   css.match(new RegExp(`\\[data-juya-variant='${variant}'\\]\\s*\\{[^}]*\\}`))?.[0] ?? ''
@@ -444,6 +461,10 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
   //   B) 本票两条规则原写作**共享** `.jynoct`，把 nocturne-light 也改了（需求 §0 声明范围仅暗侧、
   //      §9 把「nocturne-light 任何改动」列为不做）。现收窄为
   //      `[data-juya-variant='nocturne-dark'].jynoct …`；本组新增静态守卫锁死该形态。
+  //      **交叉引用（#8 的共享形态不违反本条）**：收窄只适用于**样式取值**规则（导语底/内衬、
+  //      栏目线、hover、序号微光）。#8 的 `.jynoct .jynoct-overflow-media` 是**模板结构**变化
+  //      （`IssueView` 无 variantId 分支 ⇒ 两变体共用骨架），必须共享，否则 nocturne-light 会
+  //      渲染出无样式的裸容器。详见「图文回流守卫」组头与 juya.css 该规则头的例外说明。
   const NIGHT = 'nocturne-dark'
 
   /** 暗侧变体专属复合规则块（缺陷 B 修正后的正确形态）：`[data-juya-variant='nocturne-dark'].jynoct <rest> { … }` */
@@ -468,19 +489,8 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     return { rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]), alpha: Number(m[4]) }
   }
 
-  /** 半透明前景按 alpha 合成到不透明底色之上（WCAG 不定义半透明色，必须先合成再算） */
-  const over = (fg: { rgb: number; alpha: number }, bg: number): number => {
-    const mix = (shift: number): number => {
-      const f = (fg.rgb >> shift) & 0xff
-      const b = (bg >> shift) & 0xff
-      return Math.round(fg.alpha * f + (1 - fg.alpha) * b)
-    }
-    return (mix(16) << 16) | (mix(8) << 8) | mix(0)
-  }
-
-  /** 块内某声明的完整右值（`prop: value;` → `value`；找不到返空串） */
-  const decl = (block: string, prop: string): string =>
-    block.match(new RegExp(`(?:^|[;{\\s])${prop}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+  /** 半透明前景按 alpha 合成到不透明底色之上（模块级 overRgba 的别名，签名不变） */
+  const over = overRgba
 
   /** 声明里的 4 个长度值（padding 简写；2 值简写按 CSS 规则展开为 4 值） */
   const lengths = (value: string): number[] =>
@@ -492,9 +502,6 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
   /** 声明里的 px 数值列表 */
   const px = (value: string): number[] =>
     [...value.matchAll(/([\d.]+)px/g)].map((m) => Number.parseFloat(m[1]))
-
-  /** nocturne 段（「暗夜精修式」段头 → 下一段「杂志编辑式」段头）：新规则必须落在此区间 */
-  const noctSection = (): string => css.slice(css.indexOf('暗夜精修式'), css.indexOf('杂志编辑式'))
 
   /** 导语区（暗侧两个复合规则块的合并文本）：发光规则须在此区间内 */
   const leadArea = (): string => leadDarkBlocks().join('\n')
@@ -994,6 +1001,15 @@ describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
 })
 
 describe('nocturne 图文回流守卫（2026-10-12，#8：右列限 2 张，其余回流通栏）', () => {
+  // **与「排版层级守卫」（#6）的作用域口径差异是有意的，不是不一致**：
+  //   #6 把导语/栏目线收窄为 `[data-juya-variant='nocturne-dark'].jynoct …`（§9 把
+  //   「nocturne-light 任何改动」列为不做）；#8 却要求共享 `.jynoct` 形态（见 ①）。
+  //   原因：#8 是**模板结构**变化而非样式取值变化 —— `NocturneEntrySplit` 由 `IssueView`
+  //   渲染，而 `IssueView` 没有 variantId 分支，两变体共用同一骨架，右列同样只取前 2 张、
+  //   第 3 张起同样回流。若把容器也收窄到暗侧前缀，nocturne-light 会渲染出**无任何样式**的
+  //   `.jynoct-overflow-media`（裸 div 装图）—— 那才是对亮侧的真实布局改动。
+  //   §9 的「不做」指样式取值，不指结构。详见 juya.css 内 `.jynoct .jynoct-overflow-media`
+  //   规则头的长注释。
   const TSX = () => readFileSync(join(process.cwd(), 'src/renderer/juya/templates/nocturne.tsx'), 'utf-8')
   const overflowRules = () => css.match(/^[^\n]*jynoct-overflow-media[^\n]*\{/gm) ?? []
 
@@ -1001,6 +1017,8 @@ describe('nocturne 图文回流守卫（2026-10-12，#8：右列限 2 张，其�
     const rules = overflowRules()
     expect(rules.length, '通栏容器应有基础规则 + 窄窗降级各一条').toBe(2)
     for (const rule of rules) {
+      // 共享形态是**要求**（不是遗漏）：见本组头部与 juya.css 的例外说明；#6 的暗侧复合
+      // 形态约束的是导语/栏目线等**样式取值**规则，不约束本结构容器。
       expect(rule, `通栏容器规则必须挂 .jynoct 作用域：${rule.trim()}`).toMatch(/^\s*\.jynoct \.jynoct-overflow-media \{/)
     }
     expect(css, '新类名不得出现在变体前缀复合选择器之外的作用域').not.toMatch(
@@ -1062,12 +1080,8 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
     if (close < 0 || before.slice(close + 2).trim() !== '') return ''
     return before.slice(open, close + 2)
   }
-  /** source-over alpha 合成（sRGB 8bit，逐层取整） */
-  const over = (fg: number, alpha: number, bg: number): number => {
-    const ch = (v: number, shift: number): number => (v >> shift) & 0xff
-    const mix = (f: number, d: number): number => Math.round(f * alpha + d * (1 - alpha))
-    return (mix(ch(fg, 16), ch(bg, 16)) << 16) | (mix(ch(fg, 8), ch(bg, 8)) << 8) | mix(ch(fg, 0), ch(bg, 0))
-  }
+  /** source-over alpha 合成（模块级 alphaOver 的别名，签名不变） */
+  const over = alphaOver
   /** 从规则里抠出 `background: rgba(r, g, b, α)` 的实参（本文件 rgba 一律用 0..1 小数 alpha） */
   const rgbaOf = (rule: string, prop: string): { color: number; alpha: number } => {
     const m = rule.match(
@@ -1217,20 +1231,14 @@ describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
     return { rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]), alpha: Number(m[4]) }
   }
 
-  /** 半透明前景按 alpha 合成到不透明底色之上（WCAG 不定义半透明，必须先合成再算） */
-  const over = (fg: { rgb: number; alpha: number }, bg: number): number => {
-    const mix = (shift: number): number => {
-      const f = (fg.rgb >> shift) & 0xff
-      const b = (bg >> shift) & 0xff
-      return Math.round(fg.alpha * f + (1 - fg.alpha) * b)
-    }
-    return (mix(16) << 16) | (mix(8) << 8) | mix(0)
-  }
+  /** 半透明前景按 alpha 合成到不透明底色之上（模块级 overRgba 的别名，签名不变） */
+  const over = overRgba
 
   /** 正文可能落在其上的半透明环境层：变体 background-image 全部 rgba + --jy-lead-bg */
   const ambientLayers = (block: string): Array<{ rgb: number; alpha: number }> => {
-    const decl = block.match(/background-image:[^;]*/)?.[0] ?? ''
-    const layers = [...decl.matchAll(/rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/g)].map((m) => ({
+    // 局部变量名避开模块级 `decl` 助手，防止遮蔽（此处要的是声明文本本身，不是取值）
+    const bgImageDecl = block.match(/background-image:[^;]*/)?.[0] ?? ''
+    const layers = [...bgImageDecl.matchAll(/rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/g)].map((m) => ({
       rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
       alpha: Number(m[4])
     }))
@@ -1253,10 +1261,11 @@ describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
     const block = noComments(variantBlock(NIGHT))
     expect(block, `${NIGHT} 不应残留未安装的 Inter`).not.toContain('Inter')
     expect(block, `${NIGHT} 不应残留未安装的 SF Pro`).not.toContain('SF Pro')
-    for (const decl of ['--jy-font-heading', '--jy-font-body']) {
-      const declText = block.match(new RegExp(`${decl}:[^;]*`))?.[0] ?? ''
-      expect(declText, `${decl} 须以通用族 sans-serif 收尾`).toMatch(/sans-serif$/)
-      expect(declText.replace(/sans-serif/g, ''), `${decl} 不得含衬线族（零衬线）`).not.toContain('serif')
+    // 循环变量名避开模块级 `decl` 助手（此处是 token 名，不是取值函数）
+    for (const token of ['--jy-font-heading', '--jy-font-body']) {
+      const declText = block.match(new RegExp(`${token}:[^;]*`))?.[0] ?? ''
+      expect(declText, `${token} 须以通用族 sans-serif 收尾`).toMatch(/sans-serif$/)
+      expect(declText.replace(/sans-serif/g, ''), `${token} 不得含衬线族（零衬线）`).not.toContain('serif')
     }
   })
 
@@ -1532,8 +1541,6 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
   // 中心区零覆盖的椭圆几何推导、叠加态 WCAG 实算、窄窗退化、reduced-motion 分流。
   const templatesDir = join(process.cwd(), 'src/renderer/juya/templates')
   const nocturneTsx = readFileSync(join(templatesDir, 'nocturne.tsx'), 'utf-8')
-  /** nocturne 段（「暗夜精修式」段头 → 「杂志编辑式」段头） */
-  const noctSection = (): string => css.slice(css.indexOf('暗夜精修式'), css.indexOf('杂志编辑式'))
   /** nocturne-dark 的变体作用域 nebula 覆盖（复合选择器形态；首个匹配即基础规则，窄窗规则在其后） */
   const nebulaOverride = (): string =>
     extractBlock(css, /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{/)
@@ -1561,14 +1568,10 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
       token: m[5],
       stop: Number(m[6])
     }))
-  /** 把 rgba 层按自下而上顺序 source-over 合成到纯色底上（返回 0xRRGGBB） */
-  const over = (bg: number, layers: { r: number; g: number; b: number; a: number }[]): number => {
-    let ch = [(bg >> 16) & 0xff, (bg >> 8) & 0xff, bg & 0xff]
-    for (const l of layers) {
-      ch = ch.map((c, i) => Math.round(c * (1 - l.a) + [l.r, l.g, l.b][i] * l.a))
-    }
-    return (ch[0] << 16) | (ch[1] << 8) | ch[2]
-  }
+  /** 把 rgba 层按自下而上顺序 source-over 合成到纯色底上（返回 0xRRGGBB）
+   *  逐层调用模块级 alphaOver，与各守卫组同一套取整口径 */
+  const over = (bg: number, layers: { r: number; g: number; b: number; a: number }[]): number =>
+    layers.reduce((acc, l) => alphaOver((l.r << 16) | (l.g << 8) | l.b, l.a, acc), bg)
 
   it('① 模板接线：IssueView 挂 <Scene dust nebula />，源码顺序在 .juya-issue 之前（与 y2k/dreamcore 同位）', () => {
     const partsImport = nocturneTsx.match(/^import \{([^}]*)\} from '\.\/parts'$/m)?.[1] ?? ''
@@ -1806,14 +1809,9 @@ describe('nocturne 阅读窗守卫（2026-10-12，#5）', () => {
     return [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])]
   }
 
-  /** source-over 合成半透明层到不透明底色（WCAG 不定义半透明色，必须先合成再算） */
-  const over = (layer: [number, number, number, number], base: number): number => {
-    const ch = [16, 8, 0].map((shift) => {
-      const l = (layer[0] >> shift) & 0xff
-      return Math.round(layer[3] * l + (1 - layer[3]) * ((base >> shift) & 0xff))
-    })
-    return (ch[0] << 16) | (ch[1] << 8) | ch[2]
-  }
+  /** source-over 合成半透明层到不透明底色（模块级 alphaOver 的适配器：[r,g,b,a] 元组形态） */
+  const over = (layer: [number, number, number, number], base: number): number =>
+    alphaOver(layer[0], layer[3], base)
   const hex = (rgb: number): string => `#${rgb.toString(16).padStart(6, '0')}`
 
   it('① 收窄列：变体作用域复合选择器覆写 max-width，实值落 680–720 且仍居中', () => {

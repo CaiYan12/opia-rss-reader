@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { inflateSync } from 'node:zlib'
 import { loadApp, openFirstArticle, activeTab } from './setup'
 
@@ -92,6 +94,8 @@ const decodePng = (buf: Buffer) => {
   return { width, height, rows }
 }
 
+// lum / contrast 与 scripts/nocturne-contrast-audit.mjs **同源**（同一套 WCAG sRGB 公式与合成口径）；
+// 改动任一处必须同步另一处，否则审计脚本与实测会悄悄分叉。
 const lum = (rgb: number) => {
   const ch = [16, 8, 0].map((s) => {
     const v = ((rgb >> s) & 0xff) / 255
@@ -103,7 +107,17 @@ const contrast = (a: number, b: number) => {
   const [l1, l2] = [lum(a), lum(b)].sort((x, y) => y - x)
   return (l1 + 0.05) / (l2 + 0.05)
 }
-const MUTED = 0x8a8b94
+
+/** 从 juya.css 实读 nocturne-dark 变体块的 `--jy-muted`（硬编码会让 token 一改就静默测错颜色）。
+ *  取首个 `[data-juya-variant='nocturne-dark'] {` 块内的 6 位 hex —— 与 juyaCssGuard 的 tokenHex 同口径。 */
+const readMuted = (): number => {
+  const css = readFileSync(join(__dirname, '../../src/renderer/juya/juya.css'), 'utf-8')
+  const block = css.match(/\[data-juya-variant='nocturne-dark'\]\s*\{[^}]*\}/)?.[0] ?? ''
+  const hex = block.match(/--jy-muted:\s*#([0-9a-fA-F]{6})/)?.[1]
+  if (!hex) throw new Error("juya.css 的 nocturne-dark 变体块未解析到 --jy-muted")
+  return Number.parseInt(hex, 16)
+}
+const MUTED = readMuted()
 const MUTED_LUM = lum(MUTED)
 
 /** 冻结动效：刊头 9s 呼吸 + dust 96s 漂移会让像素逐次不同；冻结后测量可复现

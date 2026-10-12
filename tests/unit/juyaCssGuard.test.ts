@@ -13,6 +13,15 @@ import { JUYA_STYLES } from '../../src/renderer/juya/juyaStyles'
 
 const css = readFileSync(join(process.cwd(), 'src/renderer/juya/juya.css'), 'utf-8')
 
+/** 块内某声明的完整右值（`prop: value;` → `value`；找不到返空串）。
+ *  提升为模块级供 #5 阅读窗守卫组复用（此前各守卫组内各写一份） */
+const decl = (block: string, prop: string): string =>
+  block.match(new RegExp(`(?:^|[;{\\s])${prop}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+
+/** 声明里的 px 数值列表（`px(rule, prop)` 的便捷签名见 #5 守卫组内 `pxOf`） */
+const pxValues = (value: string): number[] =>
+  [...value.matchAll(/([\d.]+)px/g)].map((m) => Number.parseFloat(m[1]))
+
 /** 相对亮度（WCAG sRGB 公式） */
 const lum = (rgb: number): number => {
   const channels = [rgb >> 16, (rgb >> 8) & 0xff, rgb & 0xff].map((c) => {
@@ -1634,3 +1643,324 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
     expect(noctSection(), '沿用判断须在 nocturne 段内留痕').toContain('--jy-scene-dust')
   })
 })
+
+/**
+ * #5 正文阅读窗守卫（2026-10-12）：收窄列（680–720px，变体作用域覆写）+ 左右渐隐遮罩（20–30px / alpha 0.3）。
+ * 断言面全部是从规则体 regex 抠出的**实值**（注释只是留痕，不读注释文字）：
+ * 复合选择器形态 + max-width 落值 / 遮罩 alpha 与宽度 / 100% 停靠点使内缘 alpha 归零（文本区零衰减的
+ * 几何证明）/ 叠加 nebula 后的 WCAG 实算（tokenHex 只读 hex ⇒ rgba 自写 alpha 合成）/
+ * 遮罩不引入横向溢出面与越界定位。构成色与两条实现路径的取舍依据见实现处注释。
+ */
+describe('nocturne 阅读窗守卫（2026-10-12，#5）', () => {
+  /** 剥注释后的代码视图：注释里出现的 `{` `}` `,` `%` 会破坏结构抠取与色标扫描（#2 守卫⑧同思路） */
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const ISSUE_SEL = "[data-juya-variant='nocturne-dark'].jynoct .juya-issue"
+  const MASK_VAR = '--jy-window-mask'
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  /** 取某选择器**独占规则头**（行首、选择器后直接跟 `{`）的规则块：
+   *  ① 排除缩进的媒体查询内规则；② 排除分组规则头里的同名分片（如共用规则 `X::before,\nX::after {`） */
+  const blk = (selector: string): string => {
+    const re = new RegExp(`(?:^|\\n)${esc(selector)}(?=[ \\t]*\\{)`)
+    return re.test(code) ? extractBlock(code, re) : ''
+  }
+  const pxOf = (block: string, prop: string): number => pxValues(decl(block, prop))[0] ?? Number.NaN
+
+  /** 某选择器在**每个**匹配位置的完整规则块（同一选择器可先出现在分组规则头、再作为独立规则头） */
+  const blocks = (selector: string): string[] => {
+    const re = new RegExp(`(?:^|\\n)${esc(selector)}(?=[ \\t]*\\{)`, 'g')
+    const out: string[] = []
+    let m: RegExpExecArray | null
+    while ((m = re.exec(code)) !== null) {
+      const from = m.index + (m[0].startsWith('\n') ? 1 : 0)
+      const end = code.indexOf('}', from)
+      if (end > from) out.push(code.slice(from, end + 1))
+    }
+    return out
+  }
+  /** 取某选择器的**行为规则**块：分组规则头里只有共享声明（定位/宽度/深度），
+   *  行为声明（background / left / right）落在紧随其后的独立规则头里 ⇒ 优先取含该声明的块 */
+  const behavior = (selector: string, probe: RegExp): string =>
+    blocks(selector).find((b) => probe.test(b)) ?? ''
+
+  const issueRule = (): string => blk(ISSUE_SEL)
+  /** 两侧遮罩的共用规则（分组选择器 `X::before,\nX::after {`） */
+  const maskCommon = (): string =>
+    extractBlock(
+      code,
+      new RegExp(`(?:^|\\n)${esc(ISSUE_SEL)}::before,[\\s\\S]*?${esc(ISSUE_SEL)}::after[ \\t]*\\{`)
+    )
+  /** 左右两条渐变规则（各自的 background/left|right）；须跳过分组规则头里的同名分片 */
+  const maskSide = (side: 'before' | 'after'): string =>
+    behavior(`${ISSUE_SEL}::${side}`, /linear-gradient\(/)
+  /** 规则的 `background` 声明值（`background-repeat` 是另一条声明，故按「background + 可选空白 + :」精确取） */
+  const bgOf = (rule: string): string =>
+    rule.replace(/\/\*[\s\S]*?\*\//g, '').match(/(?:^|[;{\s])background[ \t]*:[ \t]*([^;}]+)/)?.[1]?.trim() ??
+    ''
+
+  /** 抠 linear-gradient 的方向与色标（色标一律写成「色词 偏移%」；深度档引用共用 token） */
+  const gradientOf = (rule: string): { dir: string; stops: { color: string; off: number }[] } => {
+    const value = bgOf(rule)
+    const dir = value.match(/linear-gradient\(\s*([^,]+),/)?.[1]?.trim() ?? ''
+    const stops = [
+      ...value.matchAll(/(var\(--[\w-]+\)|rgba?\([^)]*\)|transparent)\s+([\d.]+)%/g)
+    ].map((m) => ({ color: m[1], off: Number(m[2]) }))
+    return { dir, stops }
+  }
+
+  /** 抠规则里某个自定义属性的 rgba 实值（tokenHex 读不了 rgba） */
+  const rgbaOf = (block: string, name: string): [number, number, number, number] => {
+    const m = block.match(
+      new RegExp(
+        `${name.replace(/-/g, '\\-')}:\\s*rgba\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*([\\d.]+)\\s*\\)`
+      )
+    )
+    if (!m) throw new Error(`${name} 未解析到 rgba`)
+    return [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])]
+  }
+
+  /** source-over 合成半透明层到不透明底色（WCAG 不定义半透明色，必须先合成再算） */
+  const over = (layer: [number, number, number, number], base: number): number => {
+    const ch = [16, 8, 0].map((shift) => {
+      const l = (layer[0] >> shift) & 0xff
+      return Math.round(layer[3] * l + (1 - layer[3]) * ((base >> shift) & 0xff))
+    })
+    return (ch[0] << 16) | (ch[1] << 8) | ch[2]
+  }
+  const hex = (rgb: number): string => `#${rgb.toString(16).padStart(6, '0')}`
+
+  it('① 收窄列：变体作用域复合选择器覆写 max-width，实值落 680–720 且仍居中', () => {
+    const rule = issueRule()
+    expect(rule, `须有 ${ISSUE_SEL} 收窄规则`).toBeTruthy()
+    // 基层 760px 是八风格共享（改它会波及其余 7 风格与订阅页）⇒ 必须仍在，收窄只能靠变体覆写
+    expect(extractBlock(css, /(?:^|\n)\.juya-issue \{/), '基层 .juya-issue 不得被改').toContain(
+      'max-width: 760px'
+    )
+    const maxWidth = pxOf(rule, 'max-width')
+    expect(Number.isNaN(maxWidth), 'max-width 须写成 px 绝对值').toBe(false)
+    expect(maxWidth, '收窄列实值须落 680–720px').toBeGreaterThanOrEqual(680)
+    expect(maxWidth, '收窄列实值须落 680–720px').toBeLessThanOrEqual(720)
+    expect(decl(rule, 'margin'), '收窄后仍须居中').toMatch(/\bauto\b/)
+    // 死形态（变体前缀 + 空格 + 风格类）永不匹配
+    expect(code, 'nocturne-dark 覆写不得写带空格的后代形态').not.toMatch(
+      /\[data-juya-variant='nocturne-dark'\]\s+\.jynoct/
+    )
+    // 回归红线：宽度覆写不得动高度链（zoom.spec 断 zoom2 下 .juya-issue 高度 >1.5×；feed.spec 断 .juya-root 高度 ≥ 滚动容器）
+    expect(rule, '宽度覆写不得引入高度/溢出声明').not.toMatch(
+      /(?:^|[;\s])(?:height|max-height|min-height|overflow[\w-]*)\s*:/
+    )
+  })
+
+  it('② 遮罩深度实值 = alpha 0.3（票面锁定）；0.4 与 0.2 均不得出现', () => {
+    const common = maskCommon()
+    expect(common, '两侧遮罩须有共用规则（定位/宽度/深度）').toBeTruthy()
+    // 深度只允许有一处字面 rgba ⇒ 两侧必然同深（改深度只能改这一处）
+    const literals = [...code.matchAll(new RegExp(`${MASK_VAR}:\\s*(rgba\\([^)]*\\))`, 'g'))].map(
+      (m) => m[1].replace(/\s+/g, '')
+    )
+    expect(literals, '深度 token 须全份唯一（避免两侧深度漂移）').toEqual(['rgba(10,10,12,0.3)'])
+    const depth = rgbaOf(common, MASK_VAR)
+    expect(depth[3], '遮罩最深处 alpha 须取票面决策值 0.3').toBe(0.3)
+    const seen = [common, maskSide('before'), maskSide('after')]
+    expect(seen.filter(Boolean), '共用规则 + 左右两条渐变规则须齐备').toHaveLength(3)
+    for (const rule of seen) {
+      const alphas = [...rule.matchAll(/rgba\([^)]*?,\s*([\d.]+)\s*\)/g)].map((m) =>
+        Number.parseFloat(m[1])
+      )
+      for (const a of alphas) expect(a, '规则内 rgba 深度只允许 0.3').toBe(0.3)
+      expect(rule, '0.4 会致正文 4.63:1 逼近 AA 底线 —— 禁止').not.toMatch(/,\s*0\.4\s*\)/)
+      expect(rule, '0.2 存在感弱于决策值 —— 不得取代').not.toMatch(/,\s*0\.2\s*\)/)
+    }
+    for (const side of ['before', 'after'] as const) {
+      const rule = maskSide(side)
+      expect(bgOf(rule), `${side} 须引用共用深度 token`).toContain(`var(${MASK_VAR})`)
+      // 单条渐变恰好铺满 24px 宽的遮罩盒；显式 no-repeat 不依赖 background-size 退化行为
+      expect(decl(rule, 'background-repeat'), `${side} 渐变不得平铺`).toBe('no-repeat')
+    }
+  })
+
+  it('③ 遮罩宽度 20–30px，且止于文字列缘（不压字）—— 范围受 .juya-issue 内边距约束', () => {
+    const rule = issueRule()
+    // padding 简写按 CSS 展开：1 值=四边同；2 值=上下/水平；3 值=上/水平/下；4 值=上/右/下/左
+    const pad = decl(rule, 'padding')
+      .split(/\s+/)
+      .map((v) => Number.parseFloat(v))
+    expect(pad.length, '收窄规则须显式写 padding（守卫据此算正文列缘）').toBeGreaterThanOrEqual(3)
+    expect(pad.every((n) => !Number.isNaN(n)), 'padding 须为 px 数值').toBe(true)
+    const padX = pad.length === 4 ? pad[3] : pad.length === 2 ? pad[0] : pad[1]
+    expect(padX, '收窄规则的水平内边距须等于基层 24px').toBe(24)
+    const common = maskCommon()
+    const w = pxOf(common, 'width')
+    expect(Number.isNaN(w), '遮罩须用 width 显式定宽').toBe(false)
+    expect(w, '遮罩宽度须落 20–30px').toBeGreaterThanOrEqual(20)
+    expect(w, '遮罩宽度须落 20–30px').toBeLessThanOrEqual(30)
+    // 宽度 = 水平内边距 ⇒ 内缘恰好停在文字列缘：文字像素处遮罩 alpha 恒为 0（不削减正文对比度）
+    expect(w, '遮罩内缘须止于文字列缘（不侵入正文）').toBeLessThanOrEqual(padX)
+    expect(decl(common, 'position'), '遮罩须绝对定位于 .juya-issue 内').toBe('absolute')
+    expect(decl(common, 'pointer-events'), '遮罩不得拦截正文点击').toBe('none')
+    expect(decl(common, 'top'), '纵向贴齐 .juya-issue').toBe('0')
+    expect(decl(common, 'bottom'), '纵向贴齐 .juya-issue').toBe('0')
+  })
+
+  it('④ 渐隐方向：外缘（贴边）为最深处 0%，内缘停在 transparent 100%（alpha 归零）', () => {
+    const sides = [
+      { side: 'before' as const, edge: 'left', deg: '90deg' },
+      { side: 'after' as const, edge: 'right', deg: '270deg' }
+    ]
+    for (const { side, edge, deg } of sides) {
+      const rule = maskSide(side)
+      expect(rule, `${side} 规则须存在`).toBeTruthy()
+      // top/bottom 已贴齐，故 0%/100% 两停靠点即横跨整条遮罩宽度
+      expect(decl(rule, edge), `遮罩须贴 ${edge} 缘`).toBe('0')
+      const { dir, stops } = gradientOf(rule)
+      expect(stops, '遮罩应为两端色标（深度 0% → transparent 100%）').toHaveLength(2)
+      expect(stops[0].color, '最深处须引用共用深度 token').toBe(`var(${MASK_VAR})`)
+      expect(stops[0].off, '0% 处即最深处（贴边）').toBe(0)
+      expect(stops[1].color, '内缘须渐隐到 transparent ⇒ alpha 0').toBe('transparent')
+      expect(stops[1].off, '停靠点须覆盖整条遮罩宽度').toBe(100)
+      // 双位置写法 `transparent 100% 100%`：末档把「100% 及其后」显式钉为全透明，
+      // 不依赖单位置色标的隐式延续（语义更强，等价于几何上「内缘起 alpha 恒 0」）
+      expect(bgOf(rule), '内缘全透明须显式到尾（100% 100%）').toMatch(/transparent\s+100%\s+100%/)
+      expect(dir, `渐隐方向须自${edge === 'left' ? '左' : '右'}缘指向列内`).toBe(deg)
+    }
+    expect(gradientOf(maskSide('before')).dir, '两侧方向须互为镜像').not.toBe(
+      gradientOf(maskSide('after')).dir
+    )
+  })
+
+  it('⑤ 叠加 nebula 后正文对比度 ≥ 4.5（自写 alpha 合成；同时反证全强度与 0.4 两条失效侧）', () => {
+    const dark = variantBlock('nocturne-dark')
+    const bg = tokenHex(dark, '--jy-bg')
+    const text = tokenHex(dark, '--jy-text')
+    const muted = tokenHex(dark, '--jy-muted')
+    for (const [label, v] of [
+      ['--jy-bg', bg],
+      ['--jy-text', text],
+      ['--jy-muted', muted]
+    ] as const) {
+      expect(v, `nocturne-dark ${label} 应为 6 位 hex`).not.toBeNaN()
+    }
+    // 遮罩色相须取自本变体 --jy-bg（只做渐隐不做染色）
+    const mask = rgbaOf(maskCommon(), MASK_VAR)
+    const bgRgb = [(bg >> 16) & 0xff, (bg >> 8) & 0xff, bg & 0xff]
+    /** rgba 抠出的是 [r,g,b,a] 通道数组；合成函数吃 0xRRGGBB ⇒ 打包成 [rgb, r, g, a] */
+    const layerOf = (rgba: number[], alpha = rgba[3]): [number, number, number, number] => [
+      (rgba[0] << 16) | (rgba[1] << 8) | rgba[2],
+      rgba[0],
+      rgba[1],
+      alpha
+    ]
+    expect([mask[0], mask[1], mask[2]], '遮罩色相须等于 --jy-bg').toEqual(bgRgb)
+
+    // 三层 nebula alpha/色相抠自 #2 落地的变体覆写规则（行首顶条，非窄窗态）
+    const nebulaRules = [
+      ...code.matchAll(
+        /(?:^|\n)\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{[^}]*\}/g
+      )
+    ].map((m) => m[0])
+    const nebulaRule = nebulaRules.find((r) => r.includes('--jy-nebula-1')) ?? ''
+    expect(nebulaRule, '须能抠到 #2 的三层 nebula 取值').toBeTruthy()
+    // CSS 首个 background-image 画在最上层 ⇒ 自下而上合成时 --jy-nebula-1 最后叠（同 #2 守卫③）
+    const layers = [1, 2, 3].map((n) => layerOf(rgbaOf(nebulaRule, `--jy-nebula-${n}`)))
+    const composited = [...layers].reverse().reduce((acc, l) => over(l, acc), bg)
+    expect(hex(composited), '减半三层全重叠的最坏合成底').toBe('#18192a')
+
+    // 正文列中心区底色 = 该合成底（#2 已把雾锚在左右水平边缘，中心区零覆盖）。
+    // 文本像素处遮罩 alpha = 0（几何闭环见 ③④：遮罩宽度 = 水平内边距）⇒ 正文对比度即下式。
+    expect(contrast(text, bg), '裸 --jy-bg 上的正文对比度（未叠雾的基线）').toBeGreaterThan(
+      contrast(text, composited)
+    )
+    expect(contrast(text, composited), '正文 --jy-text 对 nebula 合成底').toBeGreaterThanOrEqual(4.5)
+    expect(contrast(text, composited), '正文实测值应显著高于门槛（锁住当前真值）').toBeGreaterThan(9)
+    expect(contrast(text, composited), '正文实测值（1e-4 容差，防止注释数值漂移）').toBeCloseTo(
+      10.0762,
+      3
+    )
+    expect(
+      contrast(muted, composited),
+      '栏内 muted 文本（导语/元信息）对同一合成底亦须 ≥ 4.5'
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(muted, composited), 'muted 实测值（1e-4 容差）').toBeCloseTo(5.1192, 3)
+
+    // 反证 a：#2 已禁的全强度三层 ⇒ muted 跌破 AA
+    const full = layers.map((l, i) => layerOf([l[1], l[2], l[0] & 0xff], [0.14, 0.08, 0.05][i]))
+    const fullBase = [...full].reverse().reduce((acc, l) => over(l, acc), bg)
+    expect(hex(fullBase), '全强度合成底').toBe('#262845')
+    expect(contrast(muted, fullBase), '全强度取值必须跌破 4.5').toBeLessThan(4.5)
+
+    // 反证 b：票面 §5「遮罩越深 → 对比度越低，0.4 逼近 AA 底线、不得采用」的失败侧。
+    // 口径：把「文字像素处戴着 alpha 深的遮罩」合成为最终字色，再对最坏合成底计对比度
+    // （遮罩色 = --jy-bg，即向底色衰减）。实测 0.3 仍有余量、0.4 跌破 4.5 —— 与票面判定同侧
+    //（本票几何使文字像素 alpha 恒为 0，故此式只是失败侧的反证，不代表本实现的实际字色）。
+    const fade = (a: number): number => contrast(over(layerOf(bgRgb, a), text), composited)
+    expect(fade(0.3), 'alpha 0.3 在最坏合成底上仍须达标').toBeGreaterThanOrEqual(4.5)
+    expect(fade(0.4), 'alpha 0.4 必须跌破 4.5（票面「不得采用」的失败侧）').toBeLessThan(4.5)
+    expect(fade(0.4), '0.4 必须明显劣于 0.3').toBeLessThan(fade(0.3))
+    // muted 文本同口径更早跌破：这正是本票选「遮罩内缘止于文字列缘、文字零衰减」几何的原因
+    expect(
+      contrast(over(layerOf(bgRgb, 0.3), muted), composited),
+      'muted 若同深衰减会跌破 AA'
+    ).toBeLessThan(4.5)
+  })
+
+  it('⑥ 遮罩不得产生横向滚动条：无 overflow 声明、无越界定位、不脱离 .juya-issue 盒', () => {
+    const common = maskCommon()
+    expect(common, '两侧遮罩共用规则须可抠取').toBeTruthy()
+    expect(decl(common, 'position'), '遮罩须绝对定位（不参与布局计算）').toBe('absolute')
+    for (const rule of [common, maskSide('before'), maskSide('after')]) {
+      expect(rule, '遮罩不得引入任何 overflow 面（480px 横向滚动条红线）').not.toMatch(
+        /(?:^|[;\s])overflow(?:-x|-y)?\s*:/
+      )
+      expect(rule, '不得用 transform 参与定位（会把遮罩推出 .juya-issue 盒）').not.toMatch(
+        /(?:^|[;\s])transform\s*:/
+      )
+      expect(rule, '遮罩不得用 fixed/sticky 逃出 issue 盒').not.toMatch(
+        /(?:^|[;\s])position\s*:\s*(?:fixed|sticky)/
+      )
+      for (const prop of ['left', 'right', 'margin', 'margin-left', 'margin-right']) {
+        expect(decl(rule, prop), `遮罩 ${prop} 不得取负值/越界值`).not.toMatch(/^-/)
+      }
+    }
+    const rule = issueRule()
+    // .juya-issue 自身不得设 width/min-width（会与 auto 居中冲突并撑出溢出）
+    expect(rule, '收窄规则不得出现 width/min-width').not.toMatch(/(?:^|[;\s])(?:width|min-width)\s*:/)
+    // 遮罩的绝对定位包含块 = .juya-issue（position: relative 由共享层提供，本票不得撤）
+    expect(
+      css,
+      '.juya-issue / .juya-feed 的 position: relative 包含块须保留'
+    ).toContain('.juya-issue,\n.juya-feed {\n  position: relative;')
+  })
+
+  it('⑦ 窄窗（≤520px）退化自成一块：遮罩按该断点内边距收窄，仍不侵入正文；与 #2 窄窗退化不互斥', () => {
+    const blocks = extractBlocks(code, /@media \(max-width: 520px\) \{/)
+    const scoped = blocks.filter((b) => b.includes(`${ISSUE_SEL}::before`))
+    expect(scoped, '≤520px 须有 nocturne-dark 专属遮罩退化块（自成一块）').toHaveLength(1)
+    const narrow = extractBlock(
+      scoped[0],
+      new RegExp(`${esc(ISSUE_SEL)}::before,[\\s\\S]*?\\{`)
+    )
+    expect(narrow, '退化块体应可提取（须同时覆盖 ::before/::after）').toBeTruthy()
+    expect(narrow, '退化须同时覆盖右缘遮罩').toContain(`${ISSUE_SEL}::after`)
+    const narrowW = pxOf(narrow, 'width')
+    expect(Number.isNaN(narrowW), '退化宽度须写成 px').toBe(false)
+    // 该断点共享层把 .juya-issue 内边距收到 20px 14px 48px（既有规则）⇒ 遮罩同步收到 14px
+    const narrowIssue = extractBlock(blocks.find((b) => b.includes('padding: 20px 14px 48px')) ?? '', /\.[\w-]*juya-issue \{/)
+    expect(narrowIssue, '≤520px 基层 .juya-issue 收紧 padding 须保留').toContain(
+      'padding: 20px 14px 48px'
+    )
+    expect(narrowW, '窄窗遮罩不得超出该断点水平内边距 14px').toBeLessThanOrEqual(14)
+    expect(narrowW, '窄窗遮罩仍须可见（非归零）').toBeGreaterThan(0)
+    // #2 的 nebula 窄窗退化（收束为顶部单带、左右边缘雾全撤）须保留：两者不在同一像素叠加
+    const nebulaNarrow = extractBlock(
+      blocks.find((b) => b.includes('.juya-scene-nebula')) ?? '',
+      /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{/
+    )
+    expect(nebulaNarrow, '#2 的 nebula 窄窗退化须保留（本票不退它）').toBeTruthy()
+    expect(nebulaNarrow, '窄窗下 nebula 左右边缘雾仍须全撤（遮罩与雾互斥面为零）').not.toMatch(
+      /at\s+100%\s/
+    )
+    // 窄窗下遮罩同样只作用于内边距带 ⇒ 与雾零叠加
+    expect(narrowW, '窄窗遮罩内缘仍止于文字列缘').toBeLessThanOrEqual(14)
+  })
+})
+

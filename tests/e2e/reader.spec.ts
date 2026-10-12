@@ -150,3 +150,50 @@ test('序号徽章统一宽度：与位数无关（一位数与两位数同宽�
   expect(w0).toBeCloseTo(wEmpty, 6)
   expect(w0).toBeCloseTo(wDouble, 6)
 })
+
+test('nocturne 图文回流（真实图源）：右列限 2 张、其余回流通栏带，几何可复现（#9 用内联 SVG 场景）', async ({
+  page
+}) => {
+  // 为什么用 'nocturneSvg' 而不是夹具：tests/fixtures/juya-content.html 的 6 张图全指向
+  // 不可达的 assets.example.com（高度塌陷 ⇒ 任何几何断言都测不到真值），且该目录被 gitignore
+  // （新克隆没有它）。本场景的图源是 data:image/svg+xml（480×320 固有尺寸）⇒ 几何真实且可复现。
+  await loadApp(page, 'nocturneSvg')
+  await openFirstArticle(page)
+
+  const entry = activeTab(page).locator('article.juya-entry').first()
+  await expect(entry).toBeVisible()
+
+  // ① 决策 13 的结构面：右列恰好 2 张 plate，第 3/4 张进 .jynoct-overflow-media 通栏带
+  await expect(entry.locator('.juya-entry-figure .juya-plate')).toHaveCount(2)
+  await expect(entry.locator('.jynoct-overflow-media img')).toHaveCount(2)
+  await expect(entry.locator('.jynoct-overflow-media .juya-plate')).toHaveCount(0)
+
+  // ② 真实几何：右列图片按 200px 列宽等比缩放（480×320 ⇒ 200×133.3），高度非零
+  const geo = await entry.evaluate((el) => {
+    const row = el.querySelector('.juya-entry-row') as HTMLElement
+    const body = el.querySelector('.juya-entry-body') as HTMLElement
+    const fig = el.querySelector('.juya-entry-figure') as HTMLElement
+    const overflow = el.querySelector('.jynoct-overflow-media') as HTMLElement
+    const img = el.querySelector('.juya-entry-figure img') as HTMLImageElement
+    return {
+      bodyH: body.getBoundingClientRect().height,
+      figH: fig.getBoundingClientRect().height,
+      rowH: row.getBoundingClientRect().height,
+      imgW: img.getBoundingClientRect().width,
+      imgH: img.getBoundingClientRect().height,
+      overflowH: overflow.getBoundingClientRect().height
+    }
+  })
+  expect(geo.imgW).toBeCloseTo(200, 0)
+  expect(geo.imgH, '图源真实可渲染（坏链会塌到 0）').toBeGreaterThan(100)
+
+  // ③ 空洞（= 右列高 − 正文列高）的回归闸门：现状 167px（3:2 图源 + 导语 + 2 段正文）。
+  // 该值随图源纵横比与正文长度变化，故不锁死数值；闸门只拦「图全回到右列」这类回归——
+  // 4 张全堆右列时 figH ≈ 700、空洞 > 500。
+  const hole = geo.figH - geo.bodyH
+  expect(hole, '右列只装 2 张时空洞应显著小于全堆右列').toBeGreaterThan(0)
+  expect(hole, '空洞回归闸门（4 张全堆右列会 >500）').toBeLessThan(300)
+  expect(geo.rowH, '行高即右列高（图文并排，正文不足时留白）').toBeCloseTo(geo.figH, 0)
+  expect(geo.overflowH, '回流带自身有高度（2 张通栏图）').toBeGreaterThan(100)
+})
+

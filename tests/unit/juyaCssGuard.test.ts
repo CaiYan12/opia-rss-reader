@@ -475,3 +475,146 @@ describe('滚动条风格适配守卫（2026-10-11 用户指令：橘鸦风格�
     expect(mini, 'MiniView 不应挂 view-scroll').not.toContain('view-scroll')
   })
 })
+
+describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
+  // 需求：docs/juyathemesworks/nocturne-dark.md §4（微光 + 极慢呼吸，alpha 沿用 --jy-accent）。
+  // 硬约束（AGENTS.md / §10 红线 2）：background-clip:text 上禁用 text-shadow——它会盖住渐变填充
+  // （Chromium 绘制顺序，y2k 已踩坑），辉光只能用 filter: drop-shadow。
+  // 结构约束（红线 3）：动画只挂刊头子层，.juya-root 永无 animation。
+  const DARK = "\\[data-juya-variant='nocturne-dark'\\]"
+  const masthead = `${DARK}\\.jynoct \\.juya-masthead h1`
+  /** 基础刊头规则 `.jynoct .juya-masthead h1 { … }`（行首锚定：暗侧变体前缀规则不始于行首故不误命中） */
+  const mastheadRule = (): string =>
+    extractBlock(css, /(?:^|\n)\.jynoct \.juya-masthead h1 \{/).replace(/^\n/, '')
+  /** 决定本条票的暗侧复合选择器规则（辉光 + 呼吸挂载点） */
+  const darkRule = (): string =>
+    extractBlock(css, new RegExp(`(?:^|\\n)${masthead} \\{`)).replace(/^\n/, '')
+  /** 首条形如 `<selector> { … }` 的规则块（行首锚定，避免被变体前缀复合选择器规则包含匹配） */
+  const ruleOf = (selector: string): string =>
+    extractBlock(css, new RegExp(`(?:^|\\n)${selector} \\{`)).replace(/^\n/, '')
+  /** 全部 drop-shadow 的 (半径, alpha) 对 */
+  const shadows = (block: string): { radius: number; alpha: number }[] =>
+    [...block.matchAll(/drop-shadow\(0 0 ([\d.]+)px rgba\([^)]*?([\d.]+)\)\)/g)].map((m) => ({
+      radius: Number.parseFloat(m[1]),
+      alpha: Number.parseFloat(m[2])
+    }))
+  /** 块内是否真有 text-shadow 声明（`text-shadow: none` 是显式解除，不算） */
+  const hasTextShadow = (block: string): boolean => /text-shadow:\s*[^n\s]/.test(block)
+  const nocturneKeyframes = (): string => extractBlock(css, /@keyframes jy-noct-glow \{/)
+  /** 暗侧刊头区块（含前置说明注释 + 规则 + 关键帧及其注释）：供「取色来源 / 摆动区间注释可追溯」断言 */
+  const darkArea = (): string => {
+    const rule = css.indexOf("\n[data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 {")
+    const from = css.lastIndexOf('/*', rule)
+    const keyframes = nocturneKeyframes()
+    const to = keyframes ? css.indexOf(keyframes) + keyframes.length : css.length
+    return rule < 0 ? '' : css.slice(from, to)
+  }
+  /** 呼吸关键帧内的数值字面量（含 0.22 下限 / 0.32 上限） */
+  const keyframeNumbers = (): number[] => (nocturneKeyframes().match(/[\d.]+/g) ?? []).map(Number)
+  const rmBlock = (): string =>
+    extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).join('\n')
+  const supportsFallbackBlock = (): string =>
+    extractBlocks(css, /@supports not \(background-clip: text\) \{/).join('\n')
+
+  it('① 复合选择器规则存在：双层 drop-shadow，半径 18px/40px，alpha .28/.12（accent #6e7bff 同源）', () => {
+    const rule = darkRule()
+    expect(
+      rule,
+      "规则 [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1 应存在（复合选择器形态）"
+    ).toBeTruthy()
+    const glow = shadows(rule)
+    expect(glow.map((s) => s.radius), '辉光应为两层：近层 18px + 远层 40px').toEqual([18, 40])
+    expect(glow[0].alpha, '近层 alpha .28').toBeCloseTo(0.28, 5)
+    expect(glow[1].alpha, '远层 alpha .12').toBeCloseTo(0.12, 5)
+    expect(darkArea(), 'accent 取色来源须可追溯（中文注释 #6e7bff 与 rgba 110,123,255 同值）').toMatch(
+      /#6e7bff/
+    )
+    expect(rule, 'rgba 通道须与 #6e7bff 同值').toContain('rgba(110, 123, 255')
+  })
+
+  it('② 禁用 text-shadow：刊头规则与 nocturne 呼吸关键帧均不得出现 text-shadow 声明', () => {
+    expect(hasTextShadow(darkRule()), 'background-clip:text 上 text-shadow 会盖住渐变填充').toBe(false)
+    expect(nocturneKeyframes(), '呼吸关键帧应存在（@keyframes jy-noct-glow）').toBeTruthy()
+    expect(hasTextShadow(nocturneKeyframes()), '关键帧内同样禁用 text-shadow').toBe(false)
+  })
+
+  it('③ 呼吸：9s 周期 + alternate + 强度在 .22 ↔ .32 间摆动（远层按比例给 .094/.137）', () => {
+    const rule = darkRule()
+    const kf = nocturneKeyframes()
+    expect(rule, 'animation 简写应含 9s 周期与 alternate 方向').toMatch(
+      /animation:\s*jy-noct-glow 9s[^;]*alternate/
+    )
+    expect(kf, '关键帧 from 近层 .28').toContain('rgba(110, 123, 255, 0.28)')
+    expect(kf, '关键帧 from 远层 .12').toContain('rgba(110, 123, 255, 0.12)')
+    expect(kf, '关键帧 to 近层 .32').toContain('rgba(110, 123, 255, 0.32)')
+    expect(kf, '关键帧 to 远层按比例 .137').toContain('rgba(110, 123, 255, 0.137)')
+    const nums = keyframeNumbers()
+    expect(nums, '近层峰值 .32（to 端点即摆动上限）').toContain(0.32)
+    expect(kf, '近层起点 .28 与峰值 .32 = 摆动区间两端').toContain('0.28)')
+    // 关键帧两端是插值端点，区间下界由需求决策值给出（.22↔.32），须在实现注释里可追溯
+    expect(darkArea(), '摆动区间 .22 ↔ .32 须在区块注释中可追溯').toMatch(/\.22\s*↔\s*\.32/)
+    // 单色微光排除项：双色霓虹 = 青 rgba(90,160,255) + 品红 rgba(200,90,180)，其一即可判否
+    expect(nums, '不得出现双色霓虹青通道 160').not.toContain(160)
+    expect(nums, '不得出现双色霓虹品红 R 200').not.toContain(200)
+  })
+
+  it('④ reduced-motion：取消动画（animation: none !important）且保留静态辉光', () => {
+    const rm = rmBlock()
+    expect(rm, 'RM 块应存在').toBeTruthy()
+    const cancel = rm.match(new RegExp(`${masthead} \\{[^}]*\\}`))?.[0] ?? ''
+    expect(cancel, 'RM 块内应有取消该动画的规则').toBeTruthy()
+    expect(cancel, '取消动画用 animation: none !important').toMatch(/animation:\s*none\s*!important/)
+    expect(cancel, 'RM 下不得改动 filter（静态辉光须保留）').not.toMatch(/\bfilter\s*:/)
+    expect(cancel, 'RM 下不得改动 filter（静态辉光须保留）').not.toMatch(/\bfilter\s*:/)
+  })
+
+  it('⑤ @supports not (background-clip: text)：nocturne 刊头退回实色 var(--jy-heading)，无透明字', () => {
+    const fallback = supportsFallbackBlock()
+    expect(fallback, '@supports not (background-clip: text) 块应存在（审计 F-11）').toBeTruthy()
+    const rule =
+      fallback.match(/(?:^|\n)[ \t]*\.jynoct \.juya-masthead h1 \{[^}]*\}/)?.[0] ?? ''
+    expect(rule, '回退块内应命中 nocturne 刊头（覆盖亮暗两变体）.juya-masthead h1').toBeTruthy()
+    expect(rule, '回退用实色标题色').toContain('color: var(--jy-heading)')
+    expect(rule, '回退须清掉被裁剪的渐变背景，不得残留 color: transparent').toMatch(
+      /background:\s*none/
+    )
+    expect(rule, '回退块内不得残留 color: transparent').not.toContain('color: transparent')
+  })
+
+  it('⑥ .juya-root 全份 css 内无 animation（动画只挂刊头子层，reduced-motion E2E 断言依赖）', () => {
+    const start = css.indexOf('.juya-root {')
+    expect(start, '.juya-root 规则应存在').toBeGreaterThanOrEqual(0)
+    const end = css.indexOf('}', start)
+    const root = css.slice(start, end)
+    expect(root, '.juya-root 不得出现 animation（含 -webkit- 前缀）').not.toMatch(
+      /-?webkit-?animation|animation\s*:/
+    )
+    expect(darkRule(), '动画确实挂在刊头子层而非 .juya-root').toMatch(/animation:\s*jy-noct-glow/)
+  })
+
+  it('⑦ nocturne-light 刊头规则字节不变（本轮仅暗侧）', () => {
+    const base = mastheadRule()
+    expect(
+      base,
+      "base 规则原文（暗侧辉光挂在此条；亮侧仅覆盖渐变，不重复 background-clip/color）"
+    ).toContain(`.jynoct .juya-masthead h1 {
+  letter-spacing: -0.02em;
+  font-size: 30px;
+  background: linear-gradient(180deg, #ffffff, #b9bcc7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;`)
+    const light = ruleOf(`\\[data-juya-variant='nocturne-light'\\]\\.jynoct \\.juya-masthead h1`)
+    expect(light, '亮侧刊头覆盖规则应存在').toBeTruthy()
+    expect(light, 'nocturne-light 刊头规则须逐字节不变').toBe(
+      `[data-juya-variant='nocturne-light'].jynoct .juya-masthead h1 {
+  background: linear-gradient(180deg, #17181d, #3a3b44);
+  -webkit-background-clip: text;
+  background-clip: text;
+}`
+    )
+    expect(light, '亮侧规则不得继承暗侧辉光/动画').not.toMatch(/drop-shadow|animation/)
+    // 亮侧原有字面首帧不得被暗侧文案改动
+    expect(css, '亮侧 token 块不得改动').toContain("--jy-accent: #4f5ed8;")
+  })
+})

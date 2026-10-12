@@ -1746,6 +1746,113 @@
   }
 }
 
+/* ---- 正文阅读窗（2026-10-12，#5；需求 §5 决策 7 / §11 决策 14）----
+   两件事：① 正文列收窄居中，② 左右边缘各一道渐隐遮罩 → 得到「主文本 context window」。
+
+   ① 收窄：基层 `.juya-issue { max-width: 760px }`（内容盒 712px）是**八风格共享**的，且 `.juya-feed`
+   同为 760px、grid 预设 1120px —— 改基层会同时波及其余 7 风格与订阅页，故只能写变体作用域覆写
+   （复合选择器形态，先例 `.jyedit .juya-issue { max-width: 860px }`）。取 700px，落需求 680–720 区间中值；
+   内容盒 700 - 24×2 = 652px ≈ 45–48 字/行（中文正文 14.5px 下仍在舒适阅读带内）。
+   规则里重申 `padding: 32px 24px 64px`（取值与基层一致，非改动）有唯一目的：**把水平内边距钉成本地常量**，
+   使下方遮罩宽度（24px）与正文列缘构成可被静态守卫抠取验算的几何关系（守卫③据 padding 推列缘）。
+   只改 max-width，**不碰高度链**：zoom.spec 断 `zoom2` 下 `.juya-issue` 高度 > 1.5×、feed.spec 断
+   `.juya-root` 高度 ≥ 滚动容器，两者都吃高度链，故不引入 height/min-height/overflow 声明。
+
+   ② 遮罩实现路径**二选一，此处选 (b) `::before` / `::after` 覆层**（WAVE3.md 给了两条路）：
+   - (a) `mask-image` 于 `.juya-issue`：一行搞定，但 mask 作用于**整个** .juya-issue 盒 —— 刊头 h1、概览目录、
+     图版 figcaption 会一起被渐隐（需求 §5 限定的是「正文」边缘淡出），且 mask 新建独立堆叠上下文，
+     会牵动 .juya-issue 内 z-index:1 的既有层级安排。**代价不可接受，弃用。**
+   - (b) 覆层伪元素（**采用**）：作用范围可控（只盖左右各 24px 内边距带）、不动堆叠上下文层级、
+     不参与布局尺寸计算。代价：须字面色硬编码 + 注释（下条），且必须自己限制作用域 ——
+     `.juya-issue` 只有 `position: relative; z-index: 1`（场景区块给的）、**没有 `overflow: hidden`**，
+     故伪元素一律 `position: absolute` + `left/right/top/bottom: 0` 贴齐该盒，绝不越界（守卫⑥独立锁这条；
+     越界会立刻撞 feed.spec 480px 视口的 `scrollWidth - clientWidth ≤ 0` 断言）。
+     注：`z-index: 2` 只保证遮罩压在条目内容之上（`.juya-issue` 后代无更高 z-index），不新开堆叠上下文。
+
+   遮罩几何（把「渐隐到 alpha 0.3」落到不相交的两件事上，二者共同保证正文可读性）：
+   - 纵深：外缘（贴 .juya-issue 左右边）0% 停靠点即最深处 alpha **0.3**（票面锁定值），
+     100% 停靠点为 `transparent 100% 100%`（双位置写法把 100% 及其后显式钉成全透明，
+     不依赖单位置色标的隐式延续）⇒ 内缘 alpha 归零。左缘 `90deg`（向右淡出）、右缘 `270deg`（向左淡出）。
+   - 宽度：**24px = 正文列的水平内边距**。这一取值不是凑数：遮罩内缘恰好停在**文字列左/右缘**，
+     于是文字所在像素的遮罩 alpha 恒为 0（守卫③④把这条几何当断言锁住）。宽度取大了会真的压到字上，
+     取小了窗感不足；20–30px 区间由守卫③锁死。
+     **已知取舍（诚实记录）**：本几何下遮罩不削减任何文字像素的对比度，代价是最深档只落在
+     `.juya-issue` 边到文字列缘那段空内边距（无内容像素）上；又因遮罩色 = 本变体 `--jy-bg`，
+     暗色底上最深档对 nebula 合成底实算仅 **1.05:1**（见下）——「窗感」在亮背景风格上才显著，
+     暗侧读作极淡的边缘收束。需求 §5 的 0.3 是**决策值**，本票按值落地并把实际量级记录在此，
+     不夸大为「明显渐隐」。
+
+   构成色硬编码 + WCAG 实算（AGENTS.md 惯例：取色来源 + 对变体底色对比度；tokenHex 读不了 rgba，故自写合成）：
+   遮罩色 `rgba(10, 10, 12, 0.3)` —— RGB 取色自本变体 `--jy-bg` #0a0a0c（零新增颜色），只做渐隐不做染色。
+   底色不再是纯 #0a0a0c：#2 已把 nebula 三层接到本变体（alpha 减半 0.07/0.04/0.025，锚在水平边缘）。
+   最坏情况（三层全重叠于中心峰值）按 CSS 绘制序 source-over 合成 #0a0a0c → **#18192a**（与 #2 守卫③、
+   #6/#7 段注释同值；需求 §3.1 正文写的「约 #1a1b2e」是近似描述，**以本实算为准**）；
+   其上 `--jy-text` #c4c5cc（正文段落实际色，见基层 `.juya-root { color: var(--jy-text) }`）实算 **10.08:1**、
+   `--jy-muted` #8a8b94（导语/元信息）实算 **5.12:1**，均 ≥ AA 4.5（守卫⑤按 1e-4 容差锁这两个真值）。
+   反证（守卫⑤同时锁两条失效侧）：① 全强度三层同样叠法得 #262845，muted 仅 4.21:1（跌破 AA，属 #2 已禁取值）；
+   ② 若文字像素真的戴着 alpha 0.4 的遮罩，字色向遮罩色衰减后对最坏合成底只剩 **4.06:1**（< 4.5，禁止；
+   票面 §5 同侧表述为 4.63:1 —— 绝对数值因实算口径不同而有差，**失效侧判定一致**），同一口径下 0.3 为 5.23:1。
+   muted 按 0.3 同一口径仅 2.95:1 —— 这正是「遮罩内缘必须止于文字列缘、文字零衰减」这条几何的成因。
+
+   窄窗（≤520px）退化（自成一块，见本节末的 @media）：该断点基层 `.juya-issue` padding 收到 20px 14px 48px，
+   故遮罩同步收到 14px —— 内缘仍精确停在文字列缘（不侵入正文），窗感保留而不破版。
+   与 #2 的 nebula 窄窗退化**互斥面为零**：那边的左右边缘雾已整条撤除（收束为单条顶部窄带），
+   本遮罩只作用于正文列左右内边距带，两者不会在同一像素上叠加（守卫⑦同时验这两件）。
+   本段零 animation / transition（静态遮罩，不需要也不该进 reduced-motion 块）。
+   **排除项**：发丝边框窗口（与「去卡片化」既定决策冲突，folio 已定案透明无边框）—— 本段不引入任何 border。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue::before,
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  z-index: 2;
+  /* 遮罩色：rgba(10,10,12,·) 取色自本变体 --jy-bg #0a0a0c（只做渐隐不做染色，故与底色同 RGB）；
+     最深处 alpha 0.3 = 票面决策值。提成局部 token 是为了让两侧共用同一深度值
+     （改深度只能改这一处；守卫②按「全份唯一 + 实值恰为 0.3」双锁）。 */
+  --jy-window-mask: rgba(10, 10, 12, 0.3);
+}
+
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue::before {
+  left: 0;
+  /* 90deg = 自左缘（0%）向右（100%）淡出：0% 停靠点即最深处、100% 处 alpha 归零并且**保持为 0**
+     （末档写成 `transparent 100% 100%` 双位置 —— 单位置写法只锚住一个点，其后按透明处理，
+     这里显式写出避免依赖该退化行为）。no-repeat：单条渐变恰好铺满 24px 宽的遮罩盒。 */
+  background: linear-gradient(
+    90deg,
+    var(--jy-window-mask) 0%,
+    transparent 100% 100%
+  );
+  background-repeat: no-repeat;
+}
+
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue::after {
+  right: 0;
+  /* 同左缘，方向镜像（270deg = 自右缘 0% 向左 100% 淡出） */
+  background: linear-gradient(
+    270deg,
+    var(--jy-window-mask) 0%,
+    transparent 100% 100%
+  );
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 520px) {
+  /* ≤520px：正文列撑满全宽、两侧零空隙，遮罩宽度须同步收到该断点的水平内边距 14px，
+     内缘仍精确停在文字列缘（不压字），窗感保留；与 #2 nebula 窄窗退化互不叠加（见上方长注释）。 */
+  [data-juya-variant='nocturne-dark'].jynoct .juya-issue::before,
+  [data-juya-variant='nocturne-dark'].jynoct .juya-issue::after {
+    width: 14px;
+  }
+}
 /* 银灰渐变刊头字（亮暗各一组）；条目去卡片化：发丝线分隔 + hover 抬升；等宽数字元信息 */
 .jynoct .juya-masthead h1 {
   letter-spacing: -0.02em;

@@ -40,3 +40,14 @@ tests/fixtures/
 # Playwright run artifacts
 test-results/
 .superpowers/
+
+# Agent tool working data (local-only, never committed)
+# .run-profile/ is an Electron profile dir and holds opia-data.json — real
+# subscription/reading state. It must never reach the repository.
+.run-profile/
+.mimosa/
+.playwright-mcp/
+.zcodeignore
+# CodeGraph index. The dir carries its own .gitignore that ignores everything
+# except itself; the entry here keeps the stray file out of git status too.
+.codegraph/

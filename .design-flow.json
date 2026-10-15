@@ -84,5 +84,5 @@
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
     "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
   ],
-  "next": "polish: nocturne 已封版（2026-10-12）；继续其余五风格体检（newsprint90s/dreamcore/editorial/wabi）"
+  "next": "polish: nocturne 已封版（2026-10-12）；继续其余四风格体检（newsprint90s/dreamcore/editorial/wabi）"
 }

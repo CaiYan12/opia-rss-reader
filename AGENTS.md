@@ -133,7 +133,7 @@ powershell -File build.ps1 -Run   # 构建并启动
 ## 文档与记忆维护
 
 - 大型修改（新架构/新模块/行为变更）须同步更新本文件对应章节。
-- 调试得出的可复用教训（如上面的窗口行为事实）须沉淀到本文件与项目记忆（`~/.trae-cn/memory/projects/-d-Dev-opia-rss-reader--p2-8c5b710068a2fd63ae01/project_memory.md`）。
+- 调试得出的可复用教训（如上面的窗口行为事实）须沉淀到本文件对应章节，并写进**运行时记忆**（DSH Mnemon 的 MEMORY.md，经 `mnemon_runtime_memory` 工具写入）。历史路径 `~/.trae-cn/memory/projects/-d-Dev-opia-rss-reader--p2-8c5b710068a2fd63ae01/project_memory.md` 属 Trae CN 时代产物（自 2026-08-28 起未再更新），**不要再往里写**，以免同一教训存在两处且一处过期。
 - 犯错（错误 Root Cause 判断、虚构验证结果等）时必须更新记忆，避免重复犯错。
 
 ## Agent skills

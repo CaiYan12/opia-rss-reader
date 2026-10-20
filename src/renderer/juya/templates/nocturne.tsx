@@ -19,16 +19,21 @@ const NOCTURNE_FIGURE_LIMIT = 2
 /** 单幅图版（#21）：与 shared.tsx `ImageGrid` 的产出**同构**，唯一差异是「图片被 `<a>` 包裹时
  *  包一层 SafeLink」—— 放大视图只认裸图，链接图必须继续走既有外链分流（不吞「点图跳原文」）。
  *  为什么在本文件本地实现而不改共享 ImageGrid：后者被其余 7 风格共用，为单风格的图片链接形态
- *  给共享原子层加分支属于扩大共享面；本次只让 nocturne 消费 `JuyaImage.href`。 */
+ *  给共享原子层加分支属于扩大共享面；本次只让 nocturne 消费 `JuyaImage.href`。
+ *  **`wrapLinks` 必须由变体门控（2026-10-20 收口修正）**：链接包装只服务暗侧放大视图；
+ *  `nocturne-light` 按需求 §9「任何改动」不做，必须继续产出与上一轮**逐字相同**的裸 `<img>`
+ *  （包裹会在亮侧新增 `<a>` 节点与可点行为）。 */
 function NocturneImage({
   image,
-  onOpenLink
+  onOpenLink,
+  wrapLinks
 }: {
   image: JuyaImage
   onOpenLink: (href: string) => void
+  wrapLinks: boolean
 }): JSX.Element {
   const img = <img src={image.src} alt={image.alt} loading="lazy" />
-  return image.href ? (
+  return wrapLinks && image.href ? (
     <SafeLink href={image.href} onOpenLink={onOpenLink}>
       {img}
     </SafeLink>
@@ -42,18 +47,20 @@ function NocturneImage({
 function NocturneImageGrid({
   images,
   mode,
-  onOpenLink
+  onOpenLink,
+  wrapLinks
 }: {
   images: JuyaImage[]
   mode: 'plate' | 'grid'
   onOpenLink: (href: string) => void
+  wrapLinks: boolean
 }): JSX.Element {
   if (mode === 'plate') {
     return (
       <div className="juya-media juya-media-plate">
         {images.map((image, i) => (
           <figure className="juya-plate" key={i}>
-            <NocturneImage image={image} onOpenLink={onOpenLink} />
+            <NocturneImage image={image} onOpenLink={onOpenLink} wrapLinks={wrapLinks} />
             {image.alt && <figcaption>{image.alt}</figcaption>}
           </figure>
         ))}
@@ -63,7 +70,7 @@ function NocturneImageGrid({
   return (
     <div className="juya-media juya-media-grid">
       {images.map((image, i) => (
-        <NocturneImage key={i} image={image} onOpenLink={onOpenLink} />
+        <NocturneImage key={i} image={image} onOpenLink={onOpenLink} wrapLinks={wrapLinks} />
       ))}
     </div>
   )
@@ -137,10 +144,12 @@ function NocturneLightbox({
  *    回归闸门见 `tests/e2e/reader.spec.ts` 的「已接受偏差的回归闸门」注释（引用 167px）。 */
 export function NocturneEntrySplit({
   entry,
-  onOpenLink
+  onOpenLink,
+  wrapLinks
 }: {
   entry: JuyaEntry
   onOpenLink: (href: string) => void
+  wrapLinks: boolean
 }): JSX.Element {
   const figureImages = entry.images.slice(0, NOCTURNE_FIGURE_LIMIT)
   const overflowImages = entry.images.slice(NOCTURNE_FIGURE_LIMIT)
@@ -154,14 +163,24 @@ export function NocturneEntrySplit({
         </div>
         {figureImages.length > 0 && (
           <div className="juya-entry-figure">
-            <NocturneImageGrid images={figureImages} mode="plate" onOpenLink={onOpenLink} />
+            <NocturneImageGrid
+              images={figureImages}
+              mode="plate"
+              onOpenLink={onOpenLink}
+              wrapLinks={wrapLinks}
+            />
           </div>
         )}
       </div>
       {/* 第 3 张及以后：通栏海报带（grid 模式自适应多列，1 张时退化为单幅通栏） */}
       {overflowImages.length > 0 && (
         <div className="jynoct-overflow-media">
-          <NocturneImageGrid images={overflowImages} mode="grid" onOpenLink={onOpenLink} />
+          <NocturneImageGrid
+            images={overflowImages}
+            mode="grid"
+            onOpenLink={onOpenLink}
+            wrapLinks={wrapLinks}
+          />
         </div>
       )}
       <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
@@ -203,7 +222,12 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
           <section className="juya-section" key={section.heading}>
             <h2>{section.heading}</h2>
             {section.entries.map((entry, i) => (
-              <NocturneEntrySplit key={i} entry={entry} onOpenLink={onOpenLink} />
+              <NocturneEntrySplit
+                key={i}
+                entry={entry}
+                onOpenLink={onOpenLink}
+                wrapLinks={lightboxEnabled}
+              />
             ))}
           </section>
         ))}

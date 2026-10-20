@@ -1893,13 +1893,16 @@ describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
     return layers
   }
 
-  it('① 标题（h1/h2/h3）栈以 DengXian 起，正文栈以 Noto Sans SC 起', () => {
+  it('① 标题（h1/h2/h3）栈以 DengXian 为 CJK 首选，正文栈以 Noto Sans SC 为 CJK 首选', () => {
+    // 2026-10-20（#17 / SPEC B3）追加「拉丁在前、CJK 在后」：拉丁族 'Segoe UI' 提到两个 CJK 族之前，
+    // 否则拉丁字母/数字由 CJK 族自带的拉丁字形绘制（=本票要避免的回退）。CJK 面别**未变**：
+    // 标题仍是 DengXian、正文仍是 Noto Sans SC，只是让位给拉丁族先接拉丁字符。
     const block = variantBlock(NIGHT)
-    expect(block, `${NIGHT} --jy-font-heading 应为等线起始的三档无衬线栈`).toMatch(
-      /--jy-font-heading:\s*'DengXian',\s*'Noto Sans SC',\s*'Segoe UI',\s*sans-serif/
+    expect(block, `${NIGHT} --jy-font-heading 应为「拉丁在前 + 等线 CJK」的三档无衬线栈`).toMatch(
+      /--jy-font-heading:\s*'Segoe UI',\s*'DengXian',\s*'Noto Sans SC',\s*sans-serif/
     )
-    expect(block, `${NIGHT} --jy-font-body 应为 Noto Sans SC 起始的正文栈`).toMatch(
-      /--jy-font-body:\s*'Noto Sans SC',\s*'Segoe UI',\s*sans-serif/
+    expect(block, `${NIGHT} --jy-font-body 应为「拉丁在前 + Noto Sans SC」的正文栈`).toMatch(
+      /--jy-font-body:\s*'Segoe UI',\s*'Noto Sans SC',\s*sans-serif/
     )
   })
 
@@ -2931,8 +2934,14 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
 
   it('③ 字体栈落点：暗侧三档声明齐全、段内 font-family 无 Inter / SF Pro、token 无中段覆写', () => {
     const dark = variantBlock('nocturne-dark')
-    expect(decl(dark, '--jy-font-heading'), '标题档首位须是等线').toMatch(/^'DengXian'/)
-    expect(decl(dark, '--jy-font-body'), '正文档首位须是 Noto Sans SC').toMatch(/^'Noto Sans SC'/)
+    // 2026-10-20（#17 / SPEC B3）追加「拉丁在前、CJK 在后」：拉丁族 'Segoe UI' 排到最前，
+    // CJK 面别不变（标题仍 DengXian、正文仍 Noto Sans SC）。断言同样严格，只是把顺序写死。
+    expect(decl(dark, '--jy-font-heading'), '标题档：拉丁族在前、等线为 CJK 首选').toMatch(
+      /^'Segoe UI', 'DengXian'/
+    )
+    expect(decl(dark, '--jy-font-body'), '正文档：拉丁族在前、Noto Sans SC 为 CJK 首选').toMatch(
+      /^'Segoe UI', 'Noto Sans SC'/
+    )
 
     // 段内能命中暗侧的每个 font-family 声明：只允许三档（heading token / body token / 等宽元信息档）
     const families = segmentRules()
@@ -3307,5 +3316,122 @@ describe('nocturne 右边缘对齐记号守卫（2026-10-20，#16 / SPEC 批次 
     const hover = ruleOf(`${DARK} .juya-overview li:hover {`)
     expect(hover, 'hover 整行底色规则应保留').toBeTruthy()
     expect(decl(body(hover), 'background'), 'hover 底色应存在').toBeTruthy()
+  })
+})
+
+describe('nocturne 排印补齐守卫（2026-10-20，#17 / SPEC 批次 B3：避孤字 / 中西文间距 / 等宽数字）', () => {
+  // 需求（issue #17 / SPEC B3）：
+  //   ① 导语试 `text-wrap: pretty`（可与 `balance` 对比后择一）；正文暂不启用。
+  //   ② `line-break: strict` 以实测决定 —— 本票实测 156 组断行样本 + 5 视口 × 3 段落零差异，故**不启用**。
+  //   ③ `text-autospace` 作用于条目标题 / 概览项 / 正文段落；**h1 不单独排除**，但须实测不变。
+  //   ④ 字体栈拉丁在前、CJK 在后；日期与序号 `tabular-nums`。
+  // 全部只动暗侧，选择器一律复合形态（AGENTS「变体覆盖选择器约定」：变体属性与风格类恒挂同一根元素）。
+  const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
+  const stripComments = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  /** 取全部形如 `<selector> { … }` 的规则块（同一选择器可能被拆成多条，例如导语区两条） */
+  const blocksOf = (selector: string): string[] =>
+    extractBlocks(css, new RegExp(`(?:^|\\n)${escape(selector)} \\{`)).map(stripComments)
+  /** 是否存在「该选择器的某条规则里 decl(prop) === value」 */
+  const hasDecl = (selector: string, prop: string, value: string): boolean =>
+    blocksOf(selector).some((b) => decl(b, prop) === value)
+
+  it('① 导语 text-wrap: pretty（暗侧专属）；正文段落不启用；全仓不得出现 balance', () => {
+    expect(hasDecl(`${DARK} .juya-lead`, 'text-wrap', 'pretty'), '暗侧导语应 text-wrap: pretty').toBe(true)
+    // 实测对比（脚本 scripts/nocturne-typography-probe.mjs）：pretty 把末行只有 1 字的样本全部消除（三档各 2 组 → 0），
+    // 总行数不变、改动只落在末尾 4 行窗口内；balance 会重排近乎全部的段落（60 组样本里 54~57 组断行变化），
+    // 是标题级短块的算法，正文导语不取。
+    expect(stripComments(css), '全仓不得落 text-wrap: balance（本票实测后弃用的候选）').not.toMatch(
+      /text-wrap:\s*balance/
+    )
+    // 正文暂不启用（票面明写）：段落选择器上不得出现 text-wrap 声明
+    expect(stripComments(css), '正文段落不得启用 text-wrap（票面：正文暂不启用）').not.toMatch(
+      /\.juya-entry p[^{]*\{[^}]*text-wrap/
+    )
+  })
+
+  it('② text-autospace 落在阅读页文本根 .juya-issue：一处作用域覆盖三类目标，且不单独排除 h1', () => {
+    expect(hasDecl(`${DARK} .juya-issue`, 'text-autospace', 'normal'), '暗侧阅读页文本根应启用自动中西文间距').toBe(true)
+    const rule = blocksOf(`${DARK} .juya-issue`).find((b) => b.includes('text-autospace'))
+    expect(rule, 'text-autospace 规则块应存在').toBeTruthy()
+    // 「h1 不得单独排除」：作用域内不得出现任何 :not(…) 排除形态
+    expect(rule!, '不得用 :not(…) 把刊头/h1 排除在自动间距之外').not.toContain(':not(')
+    // 也不得反向把 h1 的自动间距关掉
+    expect(stripComments(css), '不得出现把 text-autospace 关掉的声明').not.toMatch(
+      /text-autospace:\s*no-autospace/
+    )
+    // 三类目标都在 .juya-issue 子树内（结构断言，防模板改名后静默失效）：
+    // 刊头与条目标题由 nocturne.tsx 直接渲染，概览项走共享原子层 OverviewItems（.juya-overview 在 shared.tsx）
+    const nocturneTsx = readFileSync(join(process.cwd(), 'src/renderer/juya/templates/nocturne.tsx'), 'utf-8')
+    const sharedTsx = readFileSync(join(process.cwd(), 'src/renderer/juya/templates/shared.tsx'), 'utf-8')
+    for (const anchor of ['juya-masthead', 'juya-issue', 'OverviewItems', 'NocturneEntrySplit']) {
+      expect(nocturneTsx, `模板应仍在阅读页内渲染 ${anchor}`).toContain(anchor)
+    }
+    expect(sharedTsx, '概览项类名应仍由共享原子层渲染').toContain('juya-overview')
+  })
+
+  it('③ 字体栈拉丁在前、CJK 在后（避免拉丁字符回退到 CJK 字体）', () => {
+    const block = stripComments(variantBlock('nocturne-dark'))
+    const heading = decl(block, '--jy-font-heading')
+    const body = decl(block, '--jy-font-body')
+    // 精确形态：拉丁族（Segoe UI）必须排在两个 CJK 族之前；DengXian 仍是标题的 CJK 首选（#3 的风格身份）
+    expect(heading, '--jy-font-heading 应为「拉丁在前 + 等线 CJK」').toBe(
+      "'Segoe UI', 'DengXian', 'Noto Sans SC', sans-serif"
+    )
+    expect(body, '--jy-font-body 应为「拉丁在前 + Noto Sans SC」').toBe(
+      "'Segoe UI', 'Noto Sans SC', sans-serif"
+    )
+    for (const [name, stack] of [
+      ['--jy-font-heading', heading],
+      ['--jy-font-body', body]
+    ] as const) {
+      expect(stack.indexOf('Segoe UI'), `${name} 的拉丁族应排在 CJK 族之前`).toBeLessThan(
+        stack.indexOf("'Noto Sans SC'")
+      )
+      expect(stack, `${name} 仍须以通用族 sans-serif 收尾（零衬线）`).toMatch(/sans-serif$/)
+    }
+    expect(heading.indexOf('Segoe UI'), '标题栈拉丁族应排在 DengXian 之前').toBeLessThan(
+      heading.indexOf('DengXian')
+    )
+    // 等宽三档（元信息 / 序号 / 题注）本来就是拉丁在前：JetBrains Mono > … > Noto Sans SC
+    for (const sel of ['\\.juya-feed-meta', '\\.juya-index', '\\.juya-plate figcaption']) {
+      const mono = decl(noctRule(sel), 'font-family')
+      expect(mono, `${sel} 等宽栈应保持 JetBrains Mono 首选`).toContain("'JetBrains Mono'")
+      expect(mono.indexOf('JetBrains Mono'), `${sel} 拉丁等宽族应排在 Noto Sans SC 之前`).toBeLessThan(
+        mono.indexOf('Noto Sans SC')
+      )
+    }
+  })
+
+  it('④ 日期与序号等宽数字：订阅页日期 / 序号徽章 / 刊头日期行均声明 tabular-nums', () => {
+    // 订阅页日期（.juya-feed-meta）与序号（.juya-index，概览序号与条目 #N 徽章共用同一个类）
+    expect(decl(noctRule('\\.juya-feed-meta'), 'font-variant-numeric'), '订阅页日期应等宽数字').toBe(
+      'tabular-nums'
+    )
+    expect(decl(noctRule('\\.juya-index'), 'font-variant-numeric'), '序号应等宽数字').toBe('tabular-nums')
+    // 阅读页日期承载在刊头 h1（形如「AI 早报 2026-10-12」），暗侧补声明；
+    // 实测三档字体（DengXian / Segoe UI / Noto Sans SC）默认数字即等宽 ⇒ 该声明是**零像素变化**的意图锁死
+    expect(
+      hasDecl(`${DARK} .juya-masthead h1`, 'font-variant-numeric', 'tabular-nums'),
+      '暗侧刊头日期应声明 tabular-nums'
+    ).toBe(true)
+  })
+
+  it('⑤ line-break: strict 不启用（实测决定，2026-10-20）', () => {
+    // 实测口径：Chromium 150 目标内核支持该值（探针 CSS.supports = true），但
+    // 5 档视口（560/700/900/1280/1920）× 3 段含「」（）【】；：、——% 的简体中文，
+    // 加不加 strict 的**每行字数与断点完全相同**；再把样本按长度切片扫 156 组，差异仍为 0 组。
+    // 结论：默认标点禁则已覆盖简体中文，加规则只增加内核分支与误伤风险 ⇒ 不落声明。
+    expect(stripComments(noctSection()), 'nocturne 段不得出现 line-break 声明').not.toMatch(/line-break:/)
+  })
+
+  it('⑥ 范围未越界：三条新声明均不出现在 nocturne-light（本轮仅暗侧）', () => {
+    const light = stripComments(css)
+    expect(light, '不得给 nocturne-light 加 text-wrap / text-autospace').not.toMatch(
+      /\[data-juya-variant='nocturne-light'\][^{]*\{[^}]*text-(wrap|autospace)/
+    )
+    expect(light, '不得给 nocturne-light 加 line-break').not.toMatch(
+      /\[data-juya-variant='nocturne-light'\][^{]*\{[^}]*line-break/
+    )
   })
 })

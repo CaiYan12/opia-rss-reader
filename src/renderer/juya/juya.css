@@ -1725,9 +1725,15 @@
   /* 三档无衬线分工（#3，需求 §2）：等线标题 + Noto Sans SC 正文 + 元信息/序号等宽。
      原栈首选 Inter / SF Pro * 在本机均未安装（Fonts 注册表 596 条实测），整体落回
      Segoe UI + Noto Sans SC —— 与应用 UI 字体无差别，风格识别度归零。可用中文黑体只有
-     Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选只能取等线（八风格无人占用）。 */
-  --jy-font-body: 'Noto Sans SC', 'Segoe UI', sans-serif;
-  --jy-font-heading: 'DengXian', 'Noto Sans SC', 'Segoe UI', sans-serif;
+     Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选只能取等线（八风格无人占用）。
+     **拉丁在前、CJK 在后（#17 / SPEC B3）**：字体族按字符逐个解析，若 CJK 族写在最前，
+     拉丁字母与数字就由该 CJK 族自带的拉丁字形绘制 —— 那正是「拉丁字符回退到 CJK 字体」。
+     故把拉丁族 `'Segoe UI'` 提到最前，两个 CJK 族（DengXian / Noto Sans SC）仅在其缺字时接手：
+     中文观感不变（实测 30px 下「早报」两字宽 58.813 → 58.828px，Δ 0.015 属亚像素舍入），
+     只有拉丁与数字换到拉丁族（刊头 h1「AI 早报 2026-10-12」文本宽 259.031 → 259.859px，
+     其中拉丁段「AI」27.688 → 29.406、日期段 157.266 → 156.313 —— 两边都来自拉丁族字形本身）。 */
+  --jy-font-body: 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: 'Segoe UI', 'DengXian', 'Noto Sans SC', sans-serif;
 }
 
 /* ---- 场景氛围层接线（2026-10-12，#2）：dust（尘埃微粒）+ nebula（静态渐层雾）----
@@ -1962,6 +1968,11 @@
   filter: drop-shadow(0 0 18px rgba(110, 123, 255, 0.28))
     drop-shadow(0 0 40px rgba(110, 123, 255, 0.12));
   animation: jy-noct-glow 9s ease-in-out infinite alternate;
+  /* 刊头日期等宽数字（#17 / SPEC B3）：h1 文本形如「AI 早报 2026-10-12」，是本页唯一的日期行。
+     实测 DengXian / Segoe UI / Noto Sans SC 三档字体的数字**本来就等宽**（1/8/0 的推进宽逐档相同），
+     故该声明是零像素变化的**意图锁死**（h1 文本宽 259.859 → 259.859px，Δ 0），
+     与 .juya-feed-meta / .juya-index 既有的 tabular-nums 取同一口径。 */
+  font-variant-numeric: tabular-nums;
 }
 
 /* 极光带的定位上下文：`.juya-masthead` 基层为 static，若不建立包含块，两条 absolute 伪元素会
@@ -2289,6 +2300,36 @@
 [data-juya-variant='nocturne-dark'].jynoct .juya-section > h2 {
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+/* ---- 排印补齐（2026-10-20，#17 / SPEC 批次 B3）：避孤字 + 中西文自动间距 ----
+   **② text-autospace（中西文间距）**：需求「作用于条目标题 / 概览项 / 正文段落；h1 不单独排除，
+   但必须验证它不变」。故**不去逐个点名元素**（点名就得给 h1 写例外，正好是「单独排除」），
+   改为落在阅读页文本根 `.juya-issue` 上 —— 一处作用域同时覆盖三类目标，h1 也自然被包含。
+   实测语义（Chromium 150 目标内核 CSS.supports('text-autospace','normal') = true；Playwright 151 同）：
+   在 CJK 与拉丁字母/数字的**无空白相邻**处各插 0.125em（20px 字号下每侧 2.5px，如「第6天」+5px），
+   标点（，。、：（）「」）与拉丁的边界**不插**，拉丁与数字之间**不插**。
+   h1 不变的实测（1280×800，deviceScaleFactor=1，同一帧内注入开关对照，560/1280/1920 三档同值）：
+     `.juya-masthead h1` 文本宽 **259.859px → 259.859px（Δ 0）**、盒高 37.5px → 37.5px；
+     原因是 h1 文本「AI 早报 2026-10-12」两侧都有字面空格，按规范只在无空白相邻字符间插距 ⇒ 无作用点。
+     同一帧的**正对照**（.juya-issue 内注入「第6天」@20px）51.109 → 56.109px（Δ +5），证明规则确实生效、不是被丢弃。
+   零横向溢出：autospace 只改行内文字推进，不改任何盒宽（.juya-overview li 的 bleed 记号与 h2 横线边界不动）。
+   **① text-wrap（避孤字）**：只对导语启用 `pretty`（票面：正文暂不启用）。
+   实测对比（脚本 scripts/nocturne-typography-probe.mjs，560 / 1280 / 1920 三档 + 60 组长度切片）：
+     · `pretty` 把「末行只剩 1 字」的样本**全部**消除（三档各 2 组孤字 → 0 组），总行数不变；
+       改动只落在末尾 4 行窗口内（实测首个差异行恒 ≥ 行数−3），段落前部一字不动。
+     · `balance` 是短块算法：60 组里 54~57 组断行都变（把每行都拉齐，长段落会牺牲正常的参差感）。
+   结论：取 `pretty` —— 它只修末行短断（孤字），不重排整段，正是本票要的「最小介入」。
+   **③ line-break: strict 不启用（实测决定，不凭印象）**：目标内核支持该值（CSS.supports = true），
+   但对简体中文**没有可观测差异** —— 5 档视口（560/700/900/1280/1920）× 3 段含「」（）；：、——% 的
+   真实中文断行，加不加 strict 的每行字数与断点**完全相同**；再把样本按长度切片扫 156 组，差异仍为 **0 组**。
+   默认标点禁则已覆盖简体中文，故不落声明（加规则只增加内核分支与误伤风险）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue {
+  text-autospace: normal;
+}
+
+[data-juya-variant='nocturne-dark'].jynoct .juya-lead {
+  text-wrap: pretty;
 }
 
 .jynoct .juya-feed-meta {

@@ -28,7 +28,10 @@
  *   node scripts/nocturne-font-probe.mjs --json        # 额外输出机器可读 JSON（供验收报告引用）
  *
  * 端口：静态服务固定 **4195**（避开 playwright.config.ts 的 4173 与视觉走查的 4196，三者可共存）。
- * 退出码：0 = 三档字体均落地且对照面正确回退；1 = 有断言不成立；2 = 环境/前置条件缺失。
+ * 退出码：0 = 三档按「拉丁在前、CJK 在后」落到预期族且无栈外回退、对照面正确回退；1 = 有断言不成立；
+ *         2 = 环境/前置条件缺失。
+ * （2026-10-20 #17 起暗侧栈改为「拉丁在前」：断言从「声明首选族必须落地」改为「逐目标落到预期族 +
+ *   落地族 ⊆ 声明栈」—— 纯中文样本本来就不该落到拉丁族，旧口径在 Latin-first 栈下会误报。）
  */
 
 import { createServer } from 'node:http'
@@ -93,6 +96,13 @@ const firstFamily = (stack) => {
   }
   return ''
 }
+
+/** 栈里的全部具体族名（去引号、跳通用族关键字）—— 用于断言「落地族 ⊆ 声明栈」 */
+const stackFamilies = (stack) =>
+  stack
+    .split(',')
+    .map((raw) => raw.trim().replace(/^['"]|['"]$/g, ''))
+    .filter((name) => name && firstFamily(name) === name)
 
 const DARK_TOKENS = fontTokens('nocturne-dark')
 const LIGHT_TOKENS = fontTokens('nocturne-light')
@@ -177,11 +187,35 @@ async function loadStubScript(scenario) {
 /** 活动阅读标签容器：keep-alive 下主页与阅读页同时在 DOM，必须限定带刊头的那个。 */
 const ACTIVE_READER = 'div.min-h-0.w-full:has(.juya-masthead)'
 
-/** 三档探针：标题 / 正文 / 序号（#3 票面点名的三档无衬线分工）。 */
+/** 三档探针：标题 / 正文 / 序号（#3 票面点名的三档无衬线分工）。
+ *  `expected` = 该目标文本**按 #17 的「拉丁在前、CJK 在后」约定应当落地的族**：
+ *    · 刊头 h1 文本含拉丁（AI / 日期）与中文（早报）⇒ 拉丁族 Segoe UI 与 CJK 档 DengXian 都应落地（各管一段字形）；
+ *    · 正文段落样本是纯中文 ⇒ 只有 CJK 档 Noto Sans SC 该落地（Segoe UI 无中文字形，落到它才是异常）；
+ *    · 序号是拉丁数字串 ⇒ 等宽档 JetBrains Mono。
+ *  旧口径「声明首选族必须落地」在 CJK-first 栈下成立，在 Latin-first 栈下对纯中文样本必然不成立 —— 故改为
+ *  逐目标列出预期族，并额外断言「落地族 ⊆ 声明栈」（不回退到栈外字体）。 */
 const TARGETS = [
-  { key: 'heading', label: '刊头标题 h1', selector: '.juya-masthead h1', stackOf: (t) => t.heading },
-  { key: 'body', label: '正文段落 p', selector: '.juya-entry-body p', stackOf: (t) => t.body },
-  { key: 'index', label: '概览序号 .juya-index', selector: '.juya-overview .juya-index', stackOf: () => MONO_STACK }
+  {
+    key: 'heading',
+    label: '刊头标题 h1',
+    selector: '.juya-masthead h1',
+    stackOf: (t) => t.heading,
+    expected: ['Segoe UI', 'DengXian']
+  },
+  {
+    key: 'body',
+    label: '正文段落 p',
+    selector: '.juya-entry-body p',
+    stackOf: (t) => t.body,
+    expected: ['Noto Sans SC']
+  },
+  {
+    key: 'index',
+    label: '概览序号 .juya-index',
+    selector: '.juya-overview .juya-index',
+    stackOf: () => MONO_STACK,
+    expected: ['JetBrains Mono']
+  }
 ]
 
 /** 用 CDP 问渲染引擎「这个节点实际用了哪些平台字体」（含 glyph 计数）。
@@ -304,15 +338,23 @@ try {
       }
       const fonts = await platformFonts(client, nodeId)
       const declaredFirst = firstFamily(t.stackOf(tokens))
+      const declaredFamilies = stackFamilies(t.stackOf(tokens))
       const rendered = fonts.map((f) => `${f.familyName}(${f.glyphCount})`).join(', ') || '(无)'
       const renderedFamilies = fonts.map((f) => f.familyName)
       rows.push({ key: t.key, label: t.label, declaredFirst, fonts })
-      console.log(`  ${t.label.padEnd(22)} 声明首选 ${String(declaredFirst).padEnd(16)} ⇒ 实际落地 ${rendered}`)
+      console.log(`  ${t.label.padEnd(22)} 声明栈 ${String(declaredFirst).padEnd(16)} ⇒ 实际落地 ${rendered}`)
       report[`${variant}.${t.key}`] = { declaredFirst, fonts }
       if (side === 'dark') {
+        // 拉丁在前（#17）：每个目标按自己文本的字形需求，落到预期族
         check(
-          renderedFamilies.includes(declaredFirst),
-          `${variant} ${t.label} 首选族「${declaredFirst}」须真实落地（CDP 平台字体）`,
+          t.expected.every((f) => renderedFamilies.includes(f)),
+          `${variant} ${t.label} 应落到预期族 ${t.expected.join(' + ')}（拉丁在前、CJK 在后）`,
+          `实际：${rendered}`
+        )
+        // 落地族必须都在声明栈里 —— 否则说明发生了栈外回退（探针同时守住这一点）
+        check(
+          renderedFamilies.every((f) => declaredFamilies.includes(f)),
+          `${variant} ${t.label} 落地族须全部来自声明栈（无栈外回退）`,
           `实际：${rendered}`
         )
       }
@@ -356,7 +398,7 @@ try {
 console.log()
 console.log('【E】汇总')
 if (failures.length === 0) {
-  console.log('  结论：全部成立（暗侧三档首选族真实落地；对照面旧 Inter 栈正确回退）。')
+  console.log('  结论：全部成立（暗侧三档按「拉丁在前」落到预期族、无栈外回退；对照面旧 Inter 栈正确回退）。')
 } else {
   console.log(`  结论：FAIL ${failures.length} 项 —— 逐项如下：`)
   for (const f of failures) console.log(`    · ${f}`)

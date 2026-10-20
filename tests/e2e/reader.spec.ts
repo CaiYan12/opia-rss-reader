@@ -265,4 +265,64 @@ test('nocturne 窄窗单列回落：图宽跟随内容列、两图竖向堆叠�
   )
 })
 
+test('nocturne 概览键盘焦点（#20）：Tab 到目录链接时焦点环 + 整行高亮同时可见', async ({ page }) => {
+  // 票面验收：键盘 Tab 到概览项，焦点环（2px solid --jy-focus）与整行高亮同时可见，
+  // 且不被列表/行容器裁切。断言语义面 = 计算样式 + 焦点态伪类，不是截图目测；
+  // 截图作为可视证据附到 Playwright 报告（不写仓库文件）。
+  await loadApp(page, 'nocturneSvg')
+  await openFirstArticle(page)
 
+  const tab = activeTab(page)
+  const link = tab.locator('.juya-overview a').first()
+  await expect(link).toBeVisible()
+
+  // 从文档起点 Tab（先 blur，避免焦点停在触发打开的控件上）
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  let reached = false
+  for (let i = 0; i < 60 && !reached; i++) {
+    await page.keyboard.press('Tab')
+    reached = await link.evaluate((el) => el === document.activeElement).catch(() => false)
+  }
+  expect(reached, '键盘 Tab 应能到达概览目录链接').toBe(true)
+
+  const focus = await link.evaluate((el) => {
+    const a = el as HTMLElement
+    const li = a.closest('li') as HTMLElement
+    const ul = a.closest('.juya-overview') as HTMLElement
+    const cs = getComputedStyle(a)
+    return {
+      outlineStyle: cs.outlineStyle,
+      outlineWidth: cs.outlineWidth,
+      outlineColor: cs.outlineColor,
+      outlineOffset: cs.outlineOffset,
+      rowBg: getComputedStyle(li).backgroundColor,
+      rowHighlighted: li.matches(':has(a:focus-visible)'),
+      ulOverflow: getComputedStyle(ul).overflow,
+      liOverflow: getComputedStyle(li).overflow,
+      focusVisible: a.matches(':focus-visible')
+    }
+  })
+
+  // :focus-visible 只在键盘/非指针模态命中（鼠标点击不触发 ⇒ 行高亮不会误闪）
+  expect(focus.focusVisible, '键盘 Tab ⇒ :focus-visible 命中').toBe(true)
+  // 完整声明（Chromium UA 的 auto 圈忽略作者 outline-color，必须显式 solid + 变量）
+  expect(focus.outlineStyle, '焦点环样式必须是 solid').toBe('solid')
+  expect(focus.outlineWidth, '焦点环宽度 2px').toBe('2px')
+  expect(focus.outlineOffset, '与文字留 2px 间隙').toBe('2px')
+  // 颜色走 index.css 既有的 0.2s outline-color 过渡（基态是 transparent 的 solid 圈），
+  // 故用 Playwright 的 CSS 断言轮询到过渡结束值，而不是瞬时快照（会读到 rgba(...,0)）。
+  await expect(link).toHaveCSS('outline-color', 'rgb(139, 151, 255)')
+  // 整行高亮（li:has(a:focus-visible)），与 hover 同底色
+  expect(focus.rowHighlighted, '行高亮选择器形态 li:has(a:focus-visible) 命中').toBe(true)
+  expect(focus.rowBg, '整行底色 = hover 同值 rgba(110,123,255,0.06)').toBe(
+    'rgba(110, 123, 255, 0.06)'
+  )
+  // 环不被裁切：概览列表与行都没有 overflow 裁剪
+  expect(focus.ulOverflow, '概览列表不得裁切焦点环').toBe('visible')
+  expect(focus.liOverflow, '概览行不得裁切焦点环').toBe('visible')
+
+  await test.info().attach('nocturne-overview-focus', {
+    body: await page.screenshot(),
+    contentType: 'image/png'
+  })
+})

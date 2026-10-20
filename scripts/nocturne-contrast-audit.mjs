@@ -34,6 +34,9 @@
  *   栏目线：青白 → 靛蓝 → 透明），旧脚本按单一 rgba 取数已失真。现改为**解析每条渐变的色标**
  *   （实读 CSS，不手抄）：竖线 UI 行只对**不透明峰值段**判 3:1（两端是设计要的淡出，逐点取最小会恒为 1:1、
  *   不承载判定），品红半透明端与栏目线最亮停靠点各列 decor 行如实打印数值。
+ * #20 / SPEC 批次 B5（2026-10-20）：新增「概览焦点环对页面底」ui 行（门槛 3:1）。取色/宽度/样式
+ *   **实读** `.juya-overview a:focus-visible` 的 outline 简写（规则缺失或退化成无样式 ⇒ exit 2），
+ *   而不是直接拿 --jy-focus 计算 —— 避免「CSS 里根本没有焦点环、脚本仍报 PASS」的失真。
  * 已修缺口（2026-10-12，本脚本现判 PASS，退出码 0）：
  *   ① 「条目 hover ∩ 导语」：原 `.jynoct .juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg
  *      ⇒ 悬停时导语像素叠两层 0.08 白，muted 掉到 3.53~3.82（8/8 档 < 4.5）。
@@ -325,6 +328,33 @@ const ENTRY_HOVER_DARK = (() => {
   return c ? c.a : 0
 })()
 const DUST = must(rgba(block(/\.juya-scene-dust\s*\{[^}]*\}/), '--jy-scene-dust'), '--jy-scene-dust')
+
+/** 概览键盘焦点环（#20 / SPEC 批次 B5）：非文本 UI 件，门槛 3:1。
+ *  取值**实读规则本身**（不是拿 --jy-focus 直接算）：规则缺失 ⇒ exit 2，避免「CSS 里根本没有焦点环、
+ *  脚本却拿 token 报 PASS」的失真。Chromium UA 的 auto 焦点圈忽略作者 outline-color，
+ *  故这里必须核对作者写了「宽度 + 样式 + var(--jy-*)」的完整 outline 简写。 */
+const FOCUS_RING_RULE = must(
+  block(
+    /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-overview a:focus-visible\s*\{[^}]*\}/
+  ),
+  '概览焦点环规则（.juya-overview a:focus-visible）'
+)
+const FOCUS_RING = (() => {
+  const v = decl(FOCUS_RING_RULE, 'outline')
+  const m = v.match(/([\d.]+)px\s+(solid|dashed|dotted|double)\s+var\((--jy-[\w-]+)\)/)
+  if (!m) {
+    console.error(
+      `[fatal] 概览焦点环 outline 不是「宽度 + 样式 + var(--jy-*)」完整简写：${v || '(缺失)'} —— Chromium UA 的 auto 圈忽略作者 outline-color，本脚本拒绝失真值`
+    )
+    process.exit(2)
+  }
+  const rgb = hex(DARK, m[3])
+  if (Number.isNaN(rgb)) {
+    console.error(`[fatal] 概览焦点环取色 ${m[3]} 不在 nocturne-dark token 块内`)
+    process.exit(2)
+  }
+  return { width: Number(m[1]), style: m[2], token: m[3], rgb }
+})()
 const FEED_HOVER_BORDER = must(
   rgba(block(/(?:^|\n)\.jynoct \.juya-feed-item:hover\s*\{[^}]*\}/), 'border-color'),
   '.jynoct .juya-feed-item:hover border-color'
@@ -503,6 +533,16 @@ const ITEMS = [
     overlay: 'sectionLine',
     box: 'content'
   },
+  {
+    /* #20 / SPEC B5：概览键盘焦点环。非文本 UI 件（WCAG 1.4.11，门槛 3:1），取色实读规则里的
+       outline 简写 ⇒ 规则缺失/退化会让本脚本 exit 2，而不是拿 token 蒙混过关。
+       票面口径是「对页面底」，故按 --jy-bg 固定面判定（pageOnly），不走滚动雾模型。 */
+    id: `概览焦点环 ${FOCUS_RING.width}px ${FOCUS_RING.style} ${FOCUS_RING.token}（对页面底，非文本 UI）`,
+    kind: 'ui',
+    color: FOCUS_RING.rgb,
+    pageOnly: true,
+    box: 'content'
+  },
   { id: '概览条目发丝线 0.05（装饰分隔件）', kind: 'decor', overlay: 'overviewSep', box: 'content' },
   { id: '条目 hover 描边 0.16（装饰描边）', kind: 'decor', overlay: 'feedHoverBorder', box: 'content' },
   { id: '尘埃微粒 dust 0.16（纯装饰层）', kind: 'decor', overlay: 'dust', box: 'content' },
@@ -565,6 +605,8 @@ const surfaceOf = (name, base) => {
 
 /** 单条目的可达最坏面：扫过可达像素框取对比度最小值 */
 const worstOf = (item, vw) => {
+  // 票面口径「对页面底」的静态项（#20 焦点环）：不扫几何，直接对 --jy-bg 判定
+  if (item.pageOnly) return { ratio: contrast(item.color, TOKEN.bg), x: 0, y: 0 }
   const g = geometry(vw)
   const box = boxOf(item.box, g)
   let worst = { ratio: Number.POSITIVE_INFINITY, x: Number.NaN, y: Number.NaN }

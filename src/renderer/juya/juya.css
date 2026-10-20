@@ -1782,6 +1782,26 @@
     radial-gradient(42% 44% at 0% calc(100% - 136px), var(--jy-nebula-3), transparent 78%);
 }
 
+/* ---- 星尘破除规则点阵（2026-10-20，#20 / SPEC 批次 B5）----
+   病根：共享 dust 预设的 6 层平铺尺寸是 3×44 + 3×132 —— 132 = 44×3，两组互为整数倍，六层相位
+   共锁进一个 132px 的大格点，暗侧背景读出可辨认的规则点阵。
+   修法：**只在暗侧作用域**覆写 background-size 为 6 个互不相同、任意两层之比都不贴近整数的尺寸；
+   共享 `.juya-scene-dust` 预设（y2k / dreamcore 也在用）一字节不改。
+   取值来源（脚本搜索，非随手填）：搜索空间 = 小尺寸 [38,60] × 大尺寸 [100,200] 中取 3+3，
+   共 295,137,150 组；判据「任意两层之比距最近整数 ≥0.1」+「1280×800 点数 ∈ [1000,2500]」
+   ⇒ 2,546,089 组解；取「最小两两余量」最大者（0.2241，是门槛 0.1 的两倍以上），
+   再按点数最接近共享原值 1764 定为：38 / 47 / 58 / 129 / 161 / 199 px（points = 1604.0）。
+   实算两两之比距最近整数：最小 0.2241（129/58 与 161/58），最大 0.4737（58/38）——无一贴近整数，
+   且六层尺寸互不相同（同尺寸的三层只是同一格点的偏移拷贝，周期仍等于该 size）。
+   **接缝**：jy-dust-drift 是 `infinite alternate` 往复（不是单向循环），终点位移无需为 size 整数倍，
+   故不改 keyframe、不改共享层的背景位置序列；RM 下共享层 `animation: none` 原样生效
+   （本条只声明 background-size，不碰 animation / transition / 点色 token）。
+   隔离：作用域写复合形态（AGENTS「变体覆盖选择器约定」）；共享预设一字节不改 ⇒ y2k / dreamcore
+   的 dust 完全不受影响（其模板也不挂本变体的复合选择器）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust {
+  background-size: 38px 38px, 47px 47px, 58px 58px, 129px 129px, 161px 161px, 199px 199px;
+}
+
 /* 窄窗（≤520px）退化：该断点下 .juya-issue 撑满全宽（padding 20px 14px 48px）、两侧零空隙，
    百分比定位的左右边缘雾会直接压在正文上。故收束为**单条顶部窄带**，左右边缘雾全部撤除 ——
    与 #5 的阅读窗渐隐遮罩「互斥面为零」：后者只作用于正文列左右边缘，本降级态已把雾完全
@@ -2639,7 +2659,36 @@
   background: rgba(110, 123, 255, 0.06);
 }
 
-/* ④ 窄窗（≤520px）退化：该断点基层把 .juya-issue 内边距收到 `20px 14px 48px`，行内 8px 的
+/* ④ 键盘焦点环与整行高亮（2026-10-20，#20 / SPEC 批次 B5）：
+   病根：概览目录行只有鼠标 hover 反馈，键盘用户 Tab 过去看不到焦点落在哪一行。
+   **焦点环必须是完整声明**：Chromium UA 的 auto 焦点圈忽略作者 outline-color（项目既有教训，
+   index.css 同款），只写 outline-color 不生效，必须写含宽度与样式的 outline 简写。
+   取色来源：本变体 --jy-focus #8b97ff（既有焦点色，零新增色相）。WCAG 对比度：对页面底
+   --jy-bg #0a0a0c 实算 **7.5058:1** ≥ 非文本 UI 3:1（scripts/nocturne-contrast-audit.mjs
+   新增行同口径实读本规则）。
+   **行高亮**：`li:has(a:focus-visible)` —— 「祖先包含聚焦元素」写法，与上面 hover 同为
+   rgba(110,123,255,0.06) 整行底色（取色来源 = 本变体 --jy-accent #6e7bff，见上方 hover 条；
+   对比度：叠 nebula 最坏合成底 #18192a 上目录正文 --jy-text 为 9.36:1）。
+   **严禁 `:focus-within`**：鼠标点击链接同样会命中它，键盘与指针用户将无法区分；
+   :focus-visible 只在键盘/非指针模态命中。
+   **裁切与叠层**：概览 ul / li / .juya-issue 均无 overflow（最近裁剪者是滚动容器，而环在内容盒
+   内 2px 宽 + 2px 偏移，有余量）；条目间发丝线是 `li + li::after`（top: -3.5px，落在 6px 间隙
+   中点、在行盒**之外**），焦点行底色画在 li 的 background 层、发丝线是更上层的伪元素 ⇒ 线不会被
+   行底色盖住。环用 outline（边框盒之外），不参与行底色合成。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview a:focus-visible {
+  outline: 2px solid var(--jy-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 焦点行整行高亮：取色来源 = 本变体 --jy-accent #6e7bff（与上面 hover 同一 rgba 字面值）；
+   WCAG 对比度：叠 nebula 最坏合成底 #18192a 后，目录正文 --jy-text #c4c5cc 实算 9.36:1 ≥ 4.5。
+   与 hover 同底色是有意为之：键盘焦点与指针悬停提供同一「当前行」视觉语义。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible) {
+  background: rgba(110, 123, 255, 0.06);
+}
+
+/* ⑤ 窄窗（≤520px）退化：该断点基层把 .juya-issue 内边距收到 `20px 14px 48px`，行内 8px 的
    负向外扩只剩 6px 余量，发丝线与 hover 高亮块看上去像贴屏边的表格框线 → 撤掉横向外扩
    （只留纵向内衬、margin 归零），线仍落在文字列内。序号微光同步收一档（6px→4px、.32→.28）：
    窄列里同样的半径在 12px 小字周围占更大视觉比重，收一档才维持「克制」标定。

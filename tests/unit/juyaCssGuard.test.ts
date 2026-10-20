@@ -2725,8 +2725,26 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
   it('⑧ dust 沿用共享层中性默认：本变体不覆写 --jy-scene-dust（覆写只会抬高存在感）', () => {
     // 剥注释后判定：注释里引用选择器形态（写作规范示例）不算实现
     const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '')
-    const overrides = cssCode.match(/\[data-juya-variant='nocturne-dark'\][^{}]*\.juya-scene-dust/g) ?? []
-    expect(overrides, 'nocturne-dark 不覆写 dust token（需求 §3.2「不抢正文」）').toEqual([])
+    // #20 / SPEC B5 起，暗侧**允许且仅允许一条** dust 规则用于「破除点阵」的 background-size 覆写。
+    // 本守卫的原意（测试名）是「不覆写点色 token」，不是「一条 dust 规则都不许有」；故收窄为：
+    // 规则恰好一条、且其全部声明只能是 background-size —— token / 动画 / 透明度仍是零放行。
+    const dustRules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(
+      ([, sel]) => sel.includes("data-juya-variant='nocturne-dark'") && sel.includes('.juya-scene-dust')
+    )
+    expect(dustRules.length, '暗侧 dust 覆写规则恰好一条（#20 点阵破除）').toBe(1)
+    const body = dustRules[0][2]
+    expect(body, '不得覆写 dust 点色 token').not.toContain('--jy-scene-dust')
+    expect(body, '不得改 dust 动画/透明度').not.toMatch(/\b(?:animation|transition|opacity)\b/)
+    expect(
+      body
+        .split(';')
+        .map((d) => d.split(':')[0]?.trim())
+        .filter(Boolean),
+      '唯一允许的声明是 background-size'
+    ).toEqual(['background-size'])
+    // 更强的一层：整份 css 里 `--jy-scene-dust:` 只出现一次（共享层声明），任何选择器都不得覆写它
+    const tokenDecls = cssCode.match(/--jy-scene-dust\s*:/g) ?? []
+    expect(tokenDecls, '--jy-scene-dust 只在共享层声明一次').toHaveLength(1)
     const rule = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
     const alpha = Number.parseFloat(
       rule.match(/--jy-scene-dust:\s*rgba\([^)]*?,\s*([\d.]+)\)/)?.[1] ?? 'NaN'
@@ -3227,6 +3245,9 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     //  · .juya-issue img = 1px 发丝环（var(--jy-border)）+ 外发光 rgba(110,123,255,0.16)；
     //    同批的 `.jynoct { --jy-media-radius: 8px }` 与改写的 `.jynoct .juya-entry-figure img`
     //    无任何字面色值（纯 token 消费），故不入表。
+    // #20 概览焦点整行高亮（2026-10-20，SPEC B5）再新增一条，故 18 → 19 条：
+    //  · li:has(a:focus-visible) = 与 hover 同底色 rgba(110,123,255,0.06)；
+    //    同批的焦点环规则 `a:focus-visible` 只写 outline 简写（var(--jy-focus)）无字面色值，不入表。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
@@ -3245,6 +3266,7 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index"
     ])
 
@@ -3766,5 +3788,158 @@ describe('nocturne 排印补齐守卫（2026-10-20，#17 / SPEC 批次 B3：避�
     expect(light, '不得给 nocturne-light 加 line-break').not.toMatch(
       /\[data-juya-variant='nocturne-light'\][^{]*\{[^}]*line-break/
     )
+  })
+})
+
+/**
+ * #20 / SPEC 批次 B5（2026-10-20）：星尘破除点阵 + 概览焦点环。
+ * 断言面全部取自**剥注释后的代码视图**（注释里复述选择器/尺寸会污染结构抠取）：
+ *  · 暗侧 dust 只覆写 background-size（共享预设 44/132 与 keyframe 一字节不改）；
+ *  · 六层尺寸互不相同，任意两层之比距最近整数 ≥ 0.1（票面判据，脚本搜索所得值）；
+ *  · 焦点环写完整 outline 简写（只写 outline-color 在 Chromium 下不生效），取 --jy-focus；
+ *  · 行高亮用 `li:has(a:focus-visible)` 且与 hover 同底色，全文件禁用 `:focus-within`；
+ *  · 概览容器/行/issue 均无 overflow 裁剪，分隔线 ::after 的负 top 与焦点行底色分层正确。
+ */
+describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20 / SPEC 批次 B5）', () => {
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const sel = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const ruleOf = (selector: string): string =>
+    extractBlock(code, new RegExp(`${sel(selector)}\\s*\\{`))
+  const DUST_OVERRIDE =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust"
+  const FOCUS_LINK =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview a:focus-visible"
+  const FOCUS_ROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)"
+  const HOVER_ROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover"
+  const SEP_ROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after"
+  const bodyOf = (rule: string): string => rule.match(/\{([^}]*)\}/)?.[1] ?? ''
+  const propsOf = (rule: string): string[] =>
+    bodyOf(rule)
+      .split(';')
+      .map((d) => d.split(':')[0]?.trim())
+      .filter((p): p is string => Boolean(p))
+  const sizesOf = (rule: string): Array<[number, number]> =>
+    (decl(bodyOf(rule), 'background-size') ?? '')
+      .split(',')
+      .map((s) => s.trim().split(/\s+/).map((v) => Number.parseFloat(v)) as [number, number])
+
+  it('① 暗侧 dust 只覆写 background-size：共享预设 44/132 与 96s alternate 一字节不改', () => {
+    const shared = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
+    expect(shared, '共享 dust 预设应存在').toBeTruthy()
+    // 共享层是 y2k / dreamcore 也在用的预置：本票**不得**改它（隔离验证由归档逐字节比对兜底）
+    expect(decl(shared, 'background-size'), '共享 dust 尺寸必须保持 3×44 + 3×132').toBe(
+      '44px 44px, 44px 44px, 44px 44px, 132px 132px, 132px 132px, 132px 132px'
+    )
+    expect(decl(shared, 'animation'), '共享 dust 的 96s 往复动画不改').toContain(
+      '96s ease-in-out infinite alternate'
+    )
+
+    const override = ruleOf(DUST_OVERRIDE)
+    expect(override, '暗侧 dust 覆写规则应存在').toBeTruthy()
+    expect(override.split('{')[0].trim(), '必须写复合形态（变体属性与 .jynoct 同根、无空格）').toBe(
+      DUST_OVERRIDE
+    )
+    // 只允许一条声明（背景尺寸）；点色 token / 动画 / 透明度一律不得在这里覆写
+    expect(propsOf(override), '暗侧 dust 覆写只允许 background-size').toEqual(['background-size'])
+    expect(override, '不得覆写尘埃点色 token（沿用共享层中性白）').not.toContain('--jy-scene-dust')
+    expect(override, '不得自带 animation/transition（RM 复位继续由共享层承担）').not.toMatch(
+      /\b(?:animation|transition)\b/
+    )
+  })
+
+  it('② 六层尺寸互不相同且两两之比距最近整数 ≥ 0.1（脚本搜索所得值，非随手填）', () => {
+    const sizes = sizesOf(ruleOf(DUST_OVERRIDE))
+    expect(sizes, '六层各一个 background-size').toHaveLength(6)
+    const values = sizes.map(([w, h]) => {
+      expect(w, '平铺单元应为正方形（与共享层一致）').toBe(h)
+      return w
+    })
+    expect(new Set(values).size, '每层必须各用不同尺寸（同尺寸只是同格点的偏移拷贝）').toBe(6)
+    // 搜索空间：小尺寸 [38,60] × 大尺寸 [100,200]，3+3 组合共 295,137,150 组；
+    // 满足判据且 1280×800 点数 ∈ [1000,2500] 的解 2,546,089 组；取「最小两两余量」最大者
+    // （0.2241，判据门槛 0.1 的两倍以上），再按点数最接近共享原值 1764 定值。
+    expect([...values].sort((a, b) => a - b), '锁定脚本搜索结果（防随手改）').toEqual([
+      38, 47, 58, 129, 161, 199
+    ])
+    for (let i = 0; i < values.length; i++) {
+      for (let j = i + 1; j < values.length; j++) {
+        const ratio = Math.max(values[i], values[j]) / Math.min(values[i], values[j])
+        expect(
+          Math.abs(ratio - Math.round(ratio)),
+          `${Math.max(values[i], values[j])}/${Math.min(values[i], values[j])} = ${ratio.toFixed(4)} 距最近整数`
+        ).toBeGreaterThanOrEqual(0.1)
+      }
+    }
+    // 点数密度与共享层同量级（不因破除周期变密/变稀）
+    const points = sizes.reduce((sum, [w, h]) => sum + (1280 / w) * (800 / h), 0)
+    expect(points, '1280×800 下尘埃点数仍为一两千点量级').toBeGreaterThanOrEqual(1000)
+    expect(points, '不得堆到万点量级').toBeLessThanOrEqual(2500)
+
+    // keyframe 不改：alternate 往复 ⇒ 无接缝问题，终点位移不必是 size 整数倍
+    const kf = extractBlock(css, /@keyframes jy-dust-drift \{/)
+    expect(kf, '漂移关键帧应存在').toContain(
+      'background-position: 44px -88px, -22px 44px, 33px 22px, 132px -66px, -66px 132px, 44px 44px'
+    )
+  })
+
+  it('③ 焦点环是完整声明（2px solid var(--jy-focus)）：只写 outline-color 在 Chromium 下不生效', () => {
+    const rule = ruleOf(FOCUS_LINK)
+    expect(rule, '概览链接焦点环规则应存在').toBeTruthy()
+    expect(rule.split('{')[0].trim(), '必须写暗侧复合形态').toBe(FOCUS_LINK)
+    // Chromium UA 的 auto focus 圈忽略作者 outline-color ⇒ 必须写含样式的简写
+    expect(decl(bodyOf(rule), 'outline'), '完整 outline 简写（宽度 + 样式 + 取色）').toBe(
+      '2px solid var(--jy-focus)'
+    )
+    expect(decl(bodyOf(rule), 'outline-offset'), '与底座留 2px 间隙，不压字').toBe('2px')
+    expect(bodyOf(rule), '不得退化成 outline: auto / none').not.toMatch(
+      /outline\s*:\s*(?:auto|none)\b/
+    )
+    expect(bodyOf(rule), '不得只改 outline-color（UA auto 圈不读它）').not.toMatch(/outline-color/)
+    // 反证：亮侧不新增同名焦点环规则（本轮只动暗侧）
+    expect(code).not.toContain("[data-juya-variant='nocturne-light'].jynoct .juya-overview a:focus-visible")
+  })
+
+  it('④ 行高亮用 li:has(a:focus-visible)，与 hover 同底色；全文件严禁 :focus-within', () => {
+    const row = ruleOf(FOCUS_ROW)
+    const hover = ruleOf(HOVER_ROW)
+    expect(row, '焦点行高亮规则应存在').toBeTruthy()
+    expect(hover, '既有 hover 行高亮规则应存在').toBeTruthy()
+    expect(decl(bodyOf(row), 'background'), '焦点态与 hover 必须同底色').toBe(
+      decl(bodyOf(hover), 'background')
+    )
+    expect(row.split('{')[0]).not.toContain(':focus-within')
+    expect(code, ':focus-within 会被鼠标点击触发，全文件禁用').not.toContain(':focus-within')
+    // 概览区所有 focus 相关选择器都必须用 :focus-visible（而不是 :focus）
+    const focusHeads = [...code.matchAll(/([^{}]+)\{/g)]
+      .map((m) => m[1].trim())
+      .filter((h) => h.includes('.juya-overview') && h.includes(':focus'))
+    expect(focusHeads.length, '概览区应恰有两条焦点规则').toBe(2)
+    for (const h of focusHeads) expect(h, `焦点规则必须用 :focus-visible：${h}`).toContain(':focus-visible')
+  })
+
+  it('⑤ 焦点环不被裁切：概览容器/行/issue 无 overflow；分隔线 ::after 与焦点行底色分层正确', () => {
+    const rules = [...code.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, s, b]) => ({
+      sel: s.trim(),
+      body: b
+    }))
+    const clippers = rules.filter(
+      (r) =>
+        /\.juya-overview\b|\.juya-issue\b/.test(r.sel) &&
+        /(?:^|[;\s])overflow(?:-[xy])?\s*:/.test(r.body)
+    )
+    expect(clippers.map((r) => r.sel), '概览列表/行/issue 不得有 overflow 裁剪（会切掉 2px+2px 焦点环）').toEqual([])
+
+    const sep = ruleOf(SEP_ROW)
+    expect(sep, '既有条目间发丝线规则应保留').toBeTruthy()
+    expect(decl(bodyOf(sep), 'top'), '发丝线落在 6px 间隙中点（行盒之外）').toBe('-3.5px')
+    expect(decl(bodyOf(sep), 'left'), '线与内容栏同界（#16 记号）').toBe('var(--jy-ov-bleed)')
+    expect(decl(bodyOf(sep), 'background'), '线色不改').toBe('rgba(255, 255, 255, 0.05)')
+    // 叠层：焦点行底色画在 li 的 background 层，发丝线是 li 的 ::after（更上层），
+    // 且 top 为负 ⇒ 线在行盒之外，不会被行底色覆盖；焦点规则不得另画/隐藏分隔线。
+    expect(ruleOf(FOCUS_ROW), '焦点行规则不得触碰分隔线伪元素').not.toContain('::after')
+    expect(ruleOf(FOCUS_ROW), '焦点行规则不得改用 outline 之外的元素做环').not.toContain('outline')
   })
 })

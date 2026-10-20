@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { inflateSync } from 'node:zlib'
@@ -198,3 +198,37 @@ for (const vw of [480, 700, 800]) {
     ).toBeGreaterThanOrEqual(4.5)
   })
 }
+
+/** #12 / SPEC 批次 B5a：内容区配色方案（区域级，与主题级根元素互不覆盖）。
+ *  为什么只能断言计算样式：headless Chromium 不绘制滚动条（真实窗口目视由用户执行）。
+ *  声明落在滚动容器 .view-scroll 上（:has 向上匹配后代 .jynoct），滚动条与原生控件取容器的
+ *  used color-scheme；applyTheme 无条件写根元素是**主题级**，不得被本票改动。 */
+test('nocturne 暗侧：订阅页与阅读页滚动容器计算 colorScheme 为 dark，亮色根方案不覆盖', async ({
+  page
+}) => {
+  await loadApp(page, 'nocturne')
+  const schemeOf = (locator: Locator) =>
+    locator.evaluate((el) => getComputedStyle(el).colorScheme)
+
+  const home = activeTab(page).locator('.view-scroll').first()
+  await expect(home).toBeVisible()
+  expect(await schemeOf(home), '订阅页滚动容器应为暗色方案').toBe('dark')
+
+  // 模拟「亮色应用主题」：主题注入链路的唯一落点就是根元素的 colorScheme
+  await page.evaluate(() => {
+    document.documentElement.style.colorScheme = 'light'
+  })
+  expect(
+    await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme),
+    '根元素此时为亮色方案'
+  ).toBe('light')
+  expect(await schemeOf(home), '亮色主题叠加时订阅页内容区仍呈暗色').toBe('dark')
+
+  await openFirstArticle(page)
+  const reader = activeTab(page).locator('.view-scroll').first()
+  await expect(reader).toBeVisible()
+  await expect(activeTab(page).locator('.jynoct')).toHaveCount(1)
+  expect(await schemeOf(reader), '阅读页滚动容器应为暗色方案（不跟随亮色根）').toBe('dark')
+  // 内容根是滚动容器的后代，配色由容器声明向下继承（单一来源在滚动容器）
+  expect(await reader.locator('.juya-root').count(), '内容根应在滚动容器内').toBe(1)
+})

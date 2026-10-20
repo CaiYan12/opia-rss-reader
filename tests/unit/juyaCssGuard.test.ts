@@ -837,6 +837,56 @@ describe('滚动条风格适配守卫（2026-10-11 用户指令：橘鸦风格�
   })
 })
 
+describe('nocturne 暗侧原生件配色守卫（2026-10-20，#12 / SPEC B5a）', () => {
+  // 需求：内容区原生件（滚动条 / 下拉 / 输入框）跟随**内容自身**的亮暗，而非应用主题（根元素）。
+  // 结构约束：滚动容器 .view-scroll 是 .juya-root 的**祖先**，故只能 :has() 向上匹配（同滚动条先例）；
+  // 变体覆盖按 AGENTS「变体覆盖选择器约定」写复合形式 `[data-juya-variant='nocturne-dark'].jynoct`
+  // （变体属性与风格类恒挂同一根元素，带空格的后代形式永不匹配）。
+  const RULE_OPEN =
+    /(?:^|\n)\.view-scroll:has\(\[data-juya-variant='nocturne-dark'\]\.jynoct\)\s*\{/
+  const rule = (): string => extractBlock(css, RULE_OPEN).replace(/^\n/, '')
+  /** 剥注释（就地替换为空格）：注释里提到 nocturne-light / color-scheme 不得计入声明面 */
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, ' ')
+
+  it('① 滚动容器声明 color-scheme: dark（滚动条与原生控件取容器的 used color-scheme）', () => {
+    expect(rule(), 'nocturne-dark 的 .view-scroll:has() 配色规则应存在').toBeTruthy()
+    expect(decl(rule(), 'color-scheme'), '滚动容器应是暗色方案').toBe('dark')
+  })
+
+  it('② 作用域限定 nocturne 暗侧：复合形式、亮侧不声明、独此一条', () => {
+    expect(RULE_OPEN.test(bare), '必须复合形式（.jynoct 紧贴变体属性，无空格后代）').toBe(true)
+    const declarations = [...bare.matchAll(/color-scheme\s*:/g)]
+    expect(declarations, 'juya.css 只允许本票这一条 color-scheme 声明').toHaveLength(1)
+    const at = declarations[0].index ?? 0
+    const host = bare.slice(bare.lastIndexOf('}', at) + 1, at)
+    expect(host, '声明的宿主必须带滚动容器选择器（区域级，不写根元素）').toContain(
+      ".view-scroll:has([data-juya-variant='nocturne-dark'].jynoct)"
+    )
+    expect(bare, 'nocturne-light 不得声明配色方案（§9 亮侧不在范围）').not.toMatch(
+      /nocturne-light[^{}]*\{[^}]*color-scheme/
+    )
+  })
+
+  it('③ 不落内容根与根元素，且主题注入链路无变体感知（两套配色互不覆盖）', () => {
+    expect(
+      extractBlock(bare, /(?:^|\n)\.juya-root\s*\{/),
+      '内容根不得声明 color-scheme'
+    ).not.toContain('color-scheme')
+    expect(bare, 'juya.css 不得给 html/body/:root 声明 color-scheme').not.toMatch(
+      /(?:^|\n)(?:html|body|:root)[^{}]*\{[^}]*color-scheme/
+    )
+    // 主题注入链路保持主题级原样：只写根元素，不感知 juya 变体/滚动容器
+    const applyTheme = readFileSync(
+      join(process.cwd(), 'src/renderer/theme/applyTheme.ts'),
+      'utf-8'
+    )
+    expect(applyTheme, '主题注入仍写根元素 colorScheme').toContain('root.style.colorScheme')
+    expect(applyTheme, '主题注入不得感知 juya 变体（区域级配色只在 juya.css）').not.toMatch(
+      /juya|jynoct|view-scroll/
+    )
+  })
+})
+
 describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
   // 需求：docs/juyathemesworks/nocturne-dark.md §4.2（静态辉光近层 .28 / 远层 .12；呼吸 9s alternate，
   // 近层 alpha .22 ↔ .32 摆动；alpha 沿用 --jy-accent #6e7bff）。区间两端以关键帧声明为真值断言。
@@ -2446,13 +2496,14 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       )
     }
 
-    // 变体前缀的**非选择器开头**出现处：只允许两处滚动条 :has() 规则（各自列在滚动条守卫组里）；
+    // 变体前缀的**非选择器开头**出现处：只允许滚动条 :has() 规则（各自列在滚动条守卫组里）
+    // + #12 的配色方案 :has() 规则（列在「暗侧原生件配色守卫」组里，同上不可写成选择器开头）
     // 该弹坑是既有死形态守卫拦不住的（`[data-juya-variant='x'] .view-scroll` 不以 .jy 开头）
     const occurrences = (masked.match(new RegExp(`\\[${NOCT}`, 'g')) ?? []).length
     expect(
       occurrences - prefixed.length,
-      '段外的 :has() 滚动条规则是仅有的非选择器开头出现处（改这里须同步滚动条守卫组）'
-    ).toBe(2)
+      '非选择器开头处只允许 :has() 滚动条规则与 #12 配色规则（改这里须同步对应守卫组）'
+    ).toBe(3)
   })
 
   /** 规则体内的字面色值（剔除注释；含自定义属性声明——`--x: rgba()` 同样是构成色） */

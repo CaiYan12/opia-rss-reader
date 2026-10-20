@@ -2910,3 +2910,17 @@
   /* wabi-dark 陶土 accent #b37a5e，对暗底 #1e1c18 对比 4.75 */
   background: #b37a5e;
 }
+
+/* ==== 内容区原生件配色（2026-10-20，#12 / SPEC 批次 B5a）：nocturne 暗侧的滚动条与原生控件
+   跟随**内容自身**的暗色方案 ====
+   与上方滚动条同一结构约束：滚动容器 .view-scroll 是 .juya-root / .jynoct 的**祖先**，
+   故同样用 :has() 向上匹配，把 color-scheme 直接落在滚动容器上（不是取色，滚动条与下拉/输入框
+   取的是该容器的 used color-scheme）。区域级声明压过从根元素继承来的值：应用主题为亮色时
+   内容区仍是暗色，两套配色互不覆盖。
+   不写 html/body/:root —— 主题级配色由 applyTheme 无条件写 root.style.colorScheme，本文件不碰；
+   变体覆盖按 AGENTS「变体覆盖选择器约定」用复合形式（变体属性与 .jynoct 恒挂同一根元素）。
+   仅 nocturne-dark 一条：nocturne-light 按 §9 不在本轮范围。 */
+
+.view-scroll:has([data-juya-variant='nocturne-dark'].jynoct) {
+  color-scheme: dark;
+}

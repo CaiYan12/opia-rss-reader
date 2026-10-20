@@ -596,6 +596,22 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     for (const s of shadows) {
       expect(s, `导语规则体内不得有非 inset 的 box-shadow（实测：${s}）`).toContain('inset')
     }
+    // **全量扫描**（2026-10-20 收口修正）：暗侧 `.juya-lead` 不止一条规则（底色/文字色、竖线几何、
+    // 内衬各一条）。只查带 `border-left` 的那条，等于「给另一条加外发光不会转红」—— 收口 Spec 评审
+    // 抓到的守卫盲区。此处按选择器前缀扫**全部**暗侧导语规则体，任一条出现非 inset 阴影即红。
+    const leadBodies = [
+      ...css.matchAll(
+        /\[data-juya-variant='nocturne-dark'\]\.jynoct[^{}]*\.juya-lead[^{}]*\{([^}]*)\}/g
+      )
+    ].map((m) => m[1])
+    expect(leadBodies.length, '应至少匹配到两条暗侧导语规则').toBeGreaterThanOrEqual(2)
+    for (const leadBody of leadBodies) {
+      for (const s of [...leadBody.matchAll(/box-shadow\s*:\s*([^;}]+)/g)].map((m) => m[1].trim())) {
+        expect(s, `任意暗侧导语规则体内不得有非 inset 的 box-shadow（实测：${s}）`).toContain(
+          'inset'
+        )
+      }
+    }
     // 块级 drop-shadow 会按元素 alpha 轮廓（含导语 0.08 半透明底）整片垫在矩形底下 ——
     // 既是「整框泛光」而非票面要的「竖线发光」，也是把 muted 压到 4.4744（<AA 4.5）的唯一分量。
     expect(body, '导语规则体内不得出现 filter: drop-shadow').not.toMatch(/filter\s*:\s*drop-shadow/)

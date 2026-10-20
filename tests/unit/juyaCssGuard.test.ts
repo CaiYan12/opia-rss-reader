@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { JUYA_STYLES } from '../../src/renderer/juya/juyaStyles'
+import {
+  buildPhaseSamples,
+  cycleSeconds,
+  extremeTimes
+} from '../../scripts/nocturne-aurora-phase.mjs'
 
 // juya.css 静态守卫（与 ipcContract 静态守卫同思路，不渲染、纯文本断言）：
 // 1) 变体覆盖必须写成复合选择器（[data-juya-variant='x'].jyY…）。
@@ -1365,6 +1370,273 @@ describe('nocturne 刊头极光带守卫（2026-10-12，用户指令「头部过
       [...new Set(glowColors)],
       'h1 辉光须仍是单一 accent 靛蓝（不得混入青蓝/品红等极光色相）'
     ).toEqual(['110,123,255'])
+  })
+})
+
+describe('nocturne 极光品红可辨守卫（2026-10-20，#19 T8）', () => {
+  // 实测背景（scripts/nocturne-aurora-phase-probe.mjs，**逐层隔离**口径）：
+  //   只留远层时 R−G 最大 16（rgb(44,28,52)）、只留近层时 R−G = 0；
+  //   联合差分下近层白脊 Δ 远高于远层 ⇒ 刊头整体读作「一片蓝白」，设计里的冷 → 暖层次看不见。
+  // 票面只允许抬**远层渐变自身 alpha**（0.36 → 0.5），其余一律锁死：
+  //   · 不改 opacity 关键帧下限 —— 实测定论：opacity 相位不是主因（逐层隔离已排除）；
+  //   · 不改近层白脊的几何与强度（它是极光唯一的硬信号）；
+  //   · 零新增色相：色相仍恰为既有四色；需要非 token alpha 时写**字面 rgba(同色相, 自定 alpha)** 并注明；
+  //   · 极光层 z-index 仍为 **-1**（绝不能 0，否则按 CSS 2.1 附录 E 会盖在非定位文本之上）。
+  const PREFIX = "[data-juya-variant='nocturne-dark'].jynoct"
+  const beforeSel = `${PREFIX} .juya-masthead::before`
+  const afterSel = `${PREFIX} .juya-masthead::after`
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  /** 按**精确选择器列表**取规则体。为什么不能用 extractBlock 的首次匹配：
+   *  两条伪元素共用的分组规则头第二行正是 `… ::after {`，行首锚定会命中它，
+   *  取「后层」时会误得共用规则（连带 z-index / mask 一起错判）。教训见极光组同名注释。 */
+  const ruleBy = (...sels: string[]): string => {
+    const masked = css.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    const want = [...sels].sort().join(' || ')
+    for (let i = 0; i < masked.length; i++) {
+      if (masked[i] !== '{') continue
+      let j = i
+      while (j > 0 && !'{};'.includes(masked[j - 1])) j--
+      const selectors = masked
+        .slice(j, i)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (
+        selectors.length !== sels.length ||
+        selectors.some((s) => s.startsWith('@')) ||
+        [...selectors].sort().join(' || ') !== want
+      ) {
+        continue
+      }
+      let depth = 0
+      for (let k = i; k < masked.length; k++) {
+        if (masked[k] === '{') depth++
+        else if (masked[k] === '}') {
+          depth--
+          if (depth === 0) return css.slice(j, k + 1)
+        }
+      }
+    }
+    return ''
+  }
+  const beforeRule = (): string => ruleBy(beforeSel)
+  const afterRule = (): string => ruleBy(afterSel)
+  const sharedRule = (): string => ruleBy(beforeSel, afterSel)
+  const bare = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  /** 规则体里某色相字面量的 alpha（如 `rgba(200, 90, 180, 0.5)` → 0.5） */
+  const alphaOf = (rule: string, rgb: string): number =>
+    Number.parseFloat(
+      bare(rule).match(new RegExp(`rgba\\(\\s*${rgb}\\s*,\\s*([\\d.]+)\\s*\\)`))?.[1] ?? 'NaN'
+    )
+  /** 规则体里的色相集合（去掉 alpha，仅 R,G,B） */
+  const huesOf = (rule: string): string[] => [
+    ...new Set([...bare(rule).matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map((m) => `${m[1]},${m[2]},${m[3]}`))
+  ]
+  const FAR_MAGENTA = '200,\\s*90,\\s*180'
+  const FAR_ACCENT = '110,\\s*123,\\s*255'
+  const NEAR_RIDGE = '214,\\s*236,\\s*255'
+  const NEAR_CYAN = '90,\\s*160,\\s*255'
+
+  it('① 远层品红端 alpha 已抬到下限 0.5（原 0.36 被近层亮脊压制约 1:5）', () => {
+    const far = afterRule()
+    expect(far, '远层规则应存在').toBeTruthy()
+    const alpha = alphaOf(far, FAR_MAGENTA)
+    expect(alpha, '远层品红 alpha 应为字面 rgba 小数（token 的 0.025 不适用）').not.toBeNaN()
+    // 保留一个上界：极光是装饰层，继续加大 alpha 会把远层推成独立光源（需求 §4.2 排除双色霓虹）。
+    expect(alpha, `远层品红 alpha 须 ≥ 0.5（实得 ${alpha}）；0.36 会被亮脊压成一片蓝白`).toBeGreaterThanOrEqual(0.5)
+    expect(alpha, `远层品红 alpha 须 ≤ 0.6（实得 ${alpha}）；再高即越出「克制」装饰口径`).toBeLessThanOrEqual(0.6)
+  })
+
+  it('② 不改近层白脊的几何与强度（逐值锁死：停靠点 + alpha + top/height/blur/周期）', () => {
+    const near = bare(beforeRule())
+    expect(near, '近层规则应存在').toBeTruthy()
+    // 亮脊：窄环带（86%→100%）、alpha 0.92，落在盒内 y≈37px
+    expect(near, '亮脊青白 rgba(214,236,255) 的 alpha 与停靠点不得改动').toContain(
+      'rgba(214, 236, 255, 0.92) 90%'
+    )
+    // 幕帘 + 底纹两层的 alpha 与停靠点
+    for (const lock of [
+      'rgba(90, 160, 255, 0.42) 86%',
+      'rgba(110, 123, 255, 0.2) 94%',
+      'rgba(110, 123, 255, 0.26) 0%',
+      'rgba(110, 123, 255, 0.09) 38%',
+      'transparent 72%'
+    ]) {
+      expect(near, `近层强度字面量不得改动：${lock}`).toContain(lock)
+    }
+    // 几何（伪元素盒与模糊半径）：改动会改变亮脊在刊头坐标里的落点
+    expect(near, '近层 top 应保持 -26px').toContain('top: -26px')
+    expect(near, '近层 height 应保持 92px').toContain('height: 92px')
+    expect(near, '近层 blur 应保持 4px').toContain('blur(4px)')
+    expect(near, '近层周期应保持 24s').toContain('jy-noct-aurora-near 24s')
+    // 近层弧心几何（178% 118% at 50% 146% 等）不得动
+    expect(near, '近层主弧几何不得改动').toContain('178% 118% at 50% 146%')
+    expect(near, '近层幕帘弧几何不得改动').toContain('196% 152% at 50% 168%')
+  })
+
+  it('③ 远层的几何与尾色零改动：只许动品红端 alpha', () => {
+    const far = bare(afterRule())
+    expect(far, '远层弧几何应保持（偏心 at 38% 172%）').toContain('205% 140% at 38% 172%')
+    expect(far, '远层品红端停靠点应保持 88%').toContain('88%')
+    expect(far, '远层 accent 尾色 alpha 应保持 0.18').toContain('rgba(110, 123, 255, 0.18) 95%')
+    expect(far, '远层 top 应保持 -40px').toContain('top: -40px')
+    expect(far, '远层 height 应保持 104px').toContain('height: 104px')
+    expect(far, '远层 blur 应保持 13px').toContain('blur(13px)')
+    expect(far, '远层周期应保持 31s').toContain('jy-noct-aurora-far 31s')
+  })
+
+  it('④ 零新增色相：两层色相集合不变，且字面 alpha 在注释里注明来源', () => {
+    // 色相集合（跨两层）必须恰为这四个既有色 —— 新增任何色相即撞红（同极光组 ⑤）
+    const nearHues = huesOf(beforeRule())
+    const farHues = huesOf(afterRule())
+    expect(nearHues.sort()).toEqual(['110,123,255', '214,236,255', '90,160,255'])
+    expect(farHues.sort()).toEqual(['110,123,255', '200,90,180'])
+    // 取色来源必须仍是本变体既有 token（色相相同 ⇒ 不是新色相）
+    const dark = variantBlock('nocturne-dark')
+    expect(decl(dark, '--jy-accent').toLowerCase(), '--jy-accent 应仍是 #6e7bff（110,123,255）').toBe('#6e7bff')
+    const nebula3 = bare(extractBlock(css, /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{/))
+    expect(nebula3, '--jy-nebula-3 应仍是品红 rgba(200, 90, 180)（远层色相来源）').toContain(
+      '--jy-nebula-3: rgba(200, 90, 180'
+    )
+    expect(nebula3, '--jy-nebula-2 应仍是青蓝 rgba(90, 160, 255)（近层色相来源）').toContain(
+      '--jy-nebula-2: rgba(90, 160, 255'
+    )
+    // 「需要不同 alpha 时写字面 rgba(同色相, 自定 alpha) 并注明」：远层规则前的注释须点到来源且说明 alpha 已自定
+    // 必须取**最后一次**出现：共用分组规则的第二行同样以该选择器行首开头（见本组 ruleBy 注释），
+    // 用 indexOf 会命中分组头、把共用规则的注释误当成远层规则的前导注释（第一版守卫即此假红）。
+    const i = css.lastIndexOf(`\n${afterSel} {`)
+    expect(i, '远层规则应以行首形式存在').toBeGreaterThan(0)
+    const before = css.slice(0, i)
+    const open = before.lastIndexOf('/*')
+    const close = before.lastIndexOf('*/')
+    const comment = open >= 0 && close > open && before.slice(close + 2).trim() === '' ? before.slice(open, close + 2) : ''
+    expect(comment, '远层规则前应有说明注释（取色来源 + alpha 自定）').toBeTruthy()
+    expect(comment, '注释须注明色相来源 --jy-nebula-3').toContain('--jy-nebula-3')
+    expect(comment, '注释须说明 alpha 是自定字面量（不复用雾记号的 0.025）').toMatch(/alpha/i)
+  })
+
+  it('⑤ 分层不变量不因调 alpha 松动：z-index 仍为 -1，两层规则自身不得覆盖它', () => {
+    const shared = sharedRule()
+    expect(shared, '伪元素共用规则应存在').toBeTruthy()
+    expect(decl(bare(shared), 'z-index'), '极光 z-index 必须仍为 -1（0 会盖在非定位文本之上）').toBe('-1')
+    for (const [name, rule] of [
+      ['前层', beforeRule()],
+      ['后层', afterRule()]
+    ]) {
+      expect(bare(rule), `${name}不得自行覆盖 z-index`).not.toMatch(/z-index\s*:/)
+    }
+  })
+
+  it('⑥ 不动 opacity 下限：两条关键帧端点与 RM 静态档原样保留', () => {
+    const step = (name: string, s: string): number =>
+      Number.parseFloat(
+        extractBlock(css, new RegExp(`@keyframes ${name} \\{`)).match(
+          new RegExp(`(?:^|[\\s{])${s}\\s*\\{[^}]*opacity:\\s*([\\d.]+)`)
+        )?.[1] ?? 'NaN'
+      )
+    expect(step('jy-noct-aurora-near', 'from'), '近层 from 应仍为 0.62').toBe(0.62)
+    expect(step('jy-noct-aurora-near', 'to'), '近层 to 应仍为 1').toBe(1)
+    expect(step('jy-noct-aurora-far', 'from'), '远层 from 应仍为 1').toBe(1)
+    expect(step('jy-noct-aurora-far', 'to'), '远层 to（opacity 下限）应仍为 0.52，不得靠它补品红').toBe(0.52)
+    // RM 静态档同样不动（0.81 / 0.76）
+    const rm = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).join('\n')
+    for (const [sel, want] of [
+      [beforeSel, 0.81],
+      [afterSel, 0.76]
+    ] as const) {
+      const block = rm.match(new RegExp(`${esc(sel)} \\{[^}]*\\}`))?.[0] ?? ''
+      expect(Number.parseFloat(block.match(/opacity:\s*([\d.]+)/)?.[1] ?? 'NaN'), `${sel} RM 静态 opacity 应仍为 ${want}`).toBe(
+        want
+      )
+    }
+  })
+
+  it('⑦ 相位探针独立新增：按层各自 duration/keyframe 算极端时刻、≥5 采样、不复用归档 FREEZE', () => {
+    const probePath = join(process.cwd(), 'scripts/nocturne-aurora-phase-probe.mjs')
+    const phasePath = join(process.cwd(), 'scripts/nocturne-aurora-phase.mjs')
+    const probe = readFileSync(probePath, 'utf-8')
+    const phaseSrc = readFileSync(phasePath, 'utf-8')
+
+    // 独立探针：必须自己 seek 两层，且**不得**复用归档依赖的冻结方案（animation: none）
+    expect(probe, '探针应引用纯相位模块').toContain("from './nocturne-aurora-phase.mjs'")
+    expect(probe, '探针应逐层按关键帧名 seek').toContain('jy-noct-aurora-near')
+    expect(probe, '探针应逐层按关键帧名 seek').toContain('jy-noct-aurora-far')
+    expect(probe, '逐层隔离应走 visibility（display:none 会让动画从 getAnimations 消失、无法 seek）').toContain(
+      'visibility: hidden'
+    )
+    // 只对**代码**断言，不对注释断言：脚本头注释里必然会解释「为什么不能用 animation: none」，
+    // 不剥注释会把说明文字误判成用法（第一版守卫即此假红）。
+    expect(
+      probe.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' '),
+      '不得退回 walkthrough 的 FREEZE（animation: none 会把两条极光动画从 getAnimations 移除，无法 seek；且归档图依赖它）'
+    ).not.toMatch(/animation:\s*none/)
+    const walkthrough = readFileSync(
+      join(process.cwd(), 'scripts/nocturne-visual-walkthrough.mjs'),
+      'utf-8'
+    )
+    expect(walkthrough, '既有归档 FREEZE 必须原样保留（本票不动它）').toContain(
+      'animation: none !important'
+    )
+
+    // 相位数学：从 CSS 实读 duration / 关键帧端点，交给纯函数模块
+    const durationOf = (name: string): number =>
+      Number.parseFloat(css.match(new RegExp(`animation:\\s*${name}\\s+([\\d.]+)s`))?.[1] ?? 'NaN')
+    const endpointsOf = (name: string): { from: number; to: number } => ({
+      from: Number.parseFloat(
+        extractBlock(css, new RegExp(`@keyframes ${name} \\{`)).match(
+          /(?:^|[\s{])from\s*\{[^}]*opacity:\s*([\d.]+)/
+        )?.[1] ?? 'NaN'
+      ),
+      to: Number.parseFloat(
+        extractBlock(css, new RegExp(`@keyframes ${name} \\{`)).match(
+          /(?:^|[\s{])to\s*\{[^}]*opacity:\s*([\d.]+)/
+        )?.[1] ?? 'NaN'
+      )
+    })
+    const config = () => ({
+      near: { duration: durationOf('jy-noct-aurora-near'), ...endpointsOf('jy-noct-aurora-near') },
+      far: { duration: durationOf('jy-noct-aurora-far'), ...endpointsOf('jy-noct-aurora-far') }
+    })
+    const cfg = config()
+    const samples = buildPhaseSamples(cfg)
+    expect(samples.length, '相位采样须 ≥ 5 个').toBeGreaterThanOrEqual(5)
+
+    const nearCycle = cycleSeconds(cfg.near)
+    const farCycle = cycleSeconds(cfg.far)
+    // 每层 seek 时刻都按**自身**周期落在合法区间，且两层数值不同（不存在同一个 -Xs）
+    for (const s of samples) {
+      expect(s.nearTime, `${s.label}: 近层 seek 时刻须落在其 alternate 周期内`).toBeGreaterThanOrEqual(0)
+      expect(s.nearTime, `${s.label}: 近层 seek 时刻须落在其 alternate 周期内`).toBeLessThan(nearCycle)
+      expect(s.farTime, `${s.label}: 远层 seek 时刻须落在其 alternate 周期内`).toBeGreaterThanOrEqual(0)
+      expect(s.farTime, `${s.label}: 远层 seek 时刻须落在其 alternate 周期内`).toBeLessThan(farCycle)
+    }
+    // 「不用同一个 -Xs」的正确判据不是「每条采样两层秒数都不同」——极端组合里两层各自的谷/峰值
+    // 本来就可能同为 0s（远层峰 = 0s、近层谷 = 0s），那是**按层算出来的巧合**，不是统一施加。
+    // 真正的判据：交错相位采样下两层的归一化周期进度相同、而秒数不同（因为 duration 各异）。
+    expect(samples.some((s) => s.nearTime !== s.farTime), '两层不得被同一个时刻统一 seek').toBe(true)
+    // 极端时刻按层各自 duration + 关键帧方向计算：四个组合全部出现
+    const nearEx = extremeTimes(cfg.near)
+    const farEx = extremeTimes(cfg.far)
+    expect(nearEx.peak, '近层关键帧 0.62→1 为正、峰值应在其 duration 处').toBe(cfg.near.duration)
+    expect(farEx.peak, '远层关键帧 1→0.52 为负、峰值应在 0s').toBe(0)
+    expect(farEx.floor, '远层谷值应在其 duration 处').toBe(cfg.far.duration)
+    for (const [nt, ft] of [
+      [nearEx.peak, farEx.peak],
+      [nearEx.peak, farEx.floor],
+      [nearEx.floor, farEx.peak],
+      [nearEx.floor, farEx.floor]
+    ]) {
+      expect(
+        samples.some((s) => s.nearTime === nt && s.farTime === ft),
+        `极端组合 近${nt}s / 远${ft}s 应在采样表中`
+      ).toBe(true)
+    }
+    // 「按各自 duration 计算」的直接证据：同一周期进度下两层的秒数不同、但归一化进度相同
+    const proportional = samples.filter(
+      (s) => s.label.includes('%') && Math.abs(s.nearTime / nearCycle - s.farTime / farCycle) < 1e-9
+    )
+    expect(proportional.length, '交错相位采样应按各层自身周期换算（同一进度、不同秒数）').toBeGreaterThan(0)
+    expect(phaseSrc, '纯相位模块应说明 alternate 的完整周期是 2×duration').toMatch(/2 × duration|2 \* duration/)
   })
 })
 

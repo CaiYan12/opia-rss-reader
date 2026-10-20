@@ -2713,6 +2713,88 @@
   }
 }
 
+/* ---- 图片放大视图 lightbox（2026-10-20，#21 / SPEC 批次 B5b）----
+   **形态**：原生 `<dialog>` + `showModal()`（`templates/nocturne.tsx` 的 `NocturneLightbox`）。
+   焦点陷阱、ESC 关闭、`role=dialog` / `aria-modal` 语义全部由浏览器提供 —— 本段**只做呈现**，
+   不手写一套焦点/键盘逻辑；开合统一经原生 `close()` 事件回到 React 状态。
+   **挂载点**：portal 到 `document.body`（内容区在 CSS zoom 容器内，居中与尺寸会被 zoom 缩放，
+   先例 ThemeEditor 取色器）。因此 dialog 不在 `.juya-root` 子树内 —— 「`.juya-root` 永无
+   animation」的结构不变量不受影响。
+   **作用域**：只对暗侧（需求 §9：nocturne-light 任何改动不做），模板层同样只在
+   `nocturne-dark` 挂载 lightbox。选择器沿用「变体复合作用域」形态
+   `[data-juya-variant='nocturne-dark'].jynoct-lightbox`（dialog 自带同一 data 属性作 token 宿主，
+   否则 portal 出 `.juya-root` 后读不到 `--jy-*`）。
+   **取色来源（零新增色相）**：
+     面板底 `var(--jy-bg)` #0a0a0c、发丝描边 `var(--jy-border)`（白 8%）—— 均取自本变体既有序；
+     遮罩字面 `rgba(10, 10, 12, 0.82)` = 本变体 `--jy-bg` #0a0a0c 的 82% alpha（与
+     `--jy-window-mask` 同一「页面底压暗」手法）。取 0.82（不是更浓的 0.9+）：正文在遮罩下仍可辨
+     轮廓，关闭后视线无需重新适应；对遮罩上白光标称的「非文本 UI 3:1」不适用（遮罩不承载信息）。
+   **压暗义务（T3 留下的注释）**：正文流 `[data-juya-variant='nocturne-dark'].jynoct .juya-issue img`
+   的 `filter: brightness(.88)` **绝不作用于放大图** —— 放大就是为了看原图。dialog 已脱离
+   `.juya-issue` 子树（该规则结构上打不中），但仍在此**显式**声明 `filter: none`：让「放大图不压暗」
+   成为一条可读取、可被 E2E 断言的义务，而不是依赖祖先链的巧合。
+   **圆角**：走本风格既有记号 `--jy-media-radius`（8px）；dialog 不是 `.jynoct` 后代，未定义时回退 8px。
+   **动画**：只设开（160ms 淡入 + 0.98→1 微缩放，挂在**大图自身**这个子层上 —— 全仓不变量
+   「动画不挂根/层本身、只挂子层」由 `juyaCssGuard` ⑤ 灰盒扫描），关不设动画（原生 dialog 退场
+   本就不可动画）；`::backdrop` 不做动画（它只负责压暗，淡入由大图承接）。
+   `prefers-reduced-motion: reduce` 下把大图的 `animation` 显式复位为 `none`（撤回关键帧后元素
+   回到静态末态，不会比动画过程中途更亮 —— 与刊头极光那条 RM 教训同一口径）。 */
+[data-juya-variant='nocturne-dark'].jynoct-lightbox {
+  box-sizing: border-box;
+  /* 覆盖 UA 对 modal dialog 的 `max-*` 收窄：面板尺寸由内部图片的 92vw / 88vh 决定，
+     否则窄窗下 UA 的 `max-width` 会把大图**裁掉一条**（本票要求完整可见、不裁切） */
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-media-radius, 8px);
+  /* 覆盖变体调色板块给宿主元素挂的顶部 radial-gradient：放大视图用整块纯页面底，不要渐晕 */
+  background: var(--jy-bg);
+}
+
+/* 遮罩取色来源：本变体 `--jy-bg` #0a0a0c 的 82% alpha（与 `--jy-window-mask` 同一「页面底压暗」
+   手法，零新增色相）。对比度：遮罩只压暗背景、不承载文字或图标 ⇒ 不设对比度门槛（也不借此抬高/
+   压低本变体任何既有取值）；0.82 的取值理由见上方区块注释。 */
+[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop {
+  background: rgba(10, 10, 12, 0.82);
+}
+
+[data-juya-variant='nocturne-dark'].jynoct-lightbox img {
+  display: block;
+  width: auto;
+  height: auto;
+  /* 按比例适配、四边完整可见（不裁切）：只给上限，不强制填满盒子 */
+  max-width: min(92vw, 1200px);
+  max-height: 88vh;
+  object-fit: contain;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  /* T3 义务：放大图 filter: none（正文流的 brightness(.88) 只属于缩略形态） */
+  filter: none;
+  animation: jy-noct-lightbox-in 160ms ease-out;
+}
+
+@keyframes jy-noct-lightbox-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-juya-variant='nocturne-dark'].jynoct-lightbox img {
+    animation: none;
+  }
+}
+
+/* 可点击提示（#21）：裸图用 zoom-in 光标；被 `<a>` 包裹的图保持链接形态的默认光标，
+   不暗示「点了会放大」。只加光标，不改几何与颜色 ⇒ 归档像素零变化。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue img:not(:is(a img)) {
+  cursor: zoom-in;
+}
+
 /* 订阅封面 16/9 发丝边；featured 顶部渐变高光线 */
 .jynoct .juya-feed-cover {
   aspect-ratio: 16 / 9;

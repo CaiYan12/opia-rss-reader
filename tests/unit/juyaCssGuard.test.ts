@@ -2181,13 +2181,37 @@ describe('nocturne 阅读页图片压暗与发丝描边守卫（2026-10-20，#14
     )
   })
 
-  it('⑦ 本票不建 lightbox：注释留「落地时须 filter: none」的义务，且不产生 lightbox 规则', () => {
-    const seg = noctSection()
-    expect(seg, '注释须点名 lightbox（T10 范围）').toMatch(/lightbox/i)
-    expect(seg, '注释须写明 lightbox 大图 filter: none').toMatch(/filter:\s*none/)
-    // 本票只留注释，不写任何 lightbox 规则/类名（避免越界到 T10）
-    const code = seg.replace(/\/\*[\s\S]*?\*\//g, ' ')
-    expect(code, '不得在本票新建 lightbox 规则').not.toMatch(/lightbox/i)
+  it('⑦ lightbox（T10 / #21 已落地接棒）：放大图 filter: none + object-fit: contain，暗侧复合作用域，正文压暗不得命中', () => {
+    // 守卫交棒说明（不是放宽）：本组 ⑦ 原为 T3（#14）的**范围守卫** —— 断言「本票不建 lightbox，
+    // 只留 filter: none 的注释义务」。T10（#21）已按 SPEC 批次 B5b 落地 lightbox，故该断言的前提
+    // 消失；此处把它换成对**同一义务**的代码级断言（注释义务 → 实现契约），并保留原「注释须点名
+    // lightbox / filter: none」两条（改成代码面），断言强度只增不减：
+    //   ① 放大图规则必须存在且为暗侧复合作用域（§9 亮侧不做）；
+    //   ② 放大图 filter 必须恰为 `none`（T3 义务的最终落点）；
+    //   ③ 放大图 object-fit: contain（按比例完整可见，不裁切）；
+    //   ④ 正文流压暗规则仍只选择 `.juya-issue` 子树、不得扩到 lightbox（放大图不压暗的结构依据）；
+    //   ⑤ 遮罩为暗色半透明（::backdrop 有 rgba 且 alpha 落在 0.6–0.95）。
+    const code = noctSection().replace(/\/\*[\s\S]*?\*\//g, ' ')
+    const bigImg =
+      extractBlock(code, /\[data-juya-variant='nocturne-dark'\]\.jynoct-lightbox img \{/) ?? ''
+    expect(bigImg, '放大图规则应为暗侧复合作用域 [data-juya-variant="nocturne-dark"].jynoct-lightbox img').toBeTruthy()
+    expect(decl(strip(bigImg), 'filter'), 'T3 义务：放大图必须 filter: none').toBe('none')
+    expect(decl(strip(bigImg), 'object-fit'), '按比例完整可见（不裁切）').toBe('contain')
+
+    const backdrop =
+      extractBlock(code, /\[data-juya-variant='nocturne-dark'\]\.jynoct-lightbox::backdrop \{/) ?? ''
+    expect(backdrop, '遮罩规则应存在').toBeTruthy()
+    const mask = rgbaOf(decl(strip(backdrop), 'background'))
+    expect(mask.alpha, '遮罩须为暗色半透明（alpha 0.6–0.95）').toBeGreaterThanOrEqual(0.6)
+    expect(mask.alpha, '遮罩须为暗色半透明（alpha 0.6–0.95）').toBeLessThanOrEqual(0.95)
+
+    // 正文压暗不得命中放大图：压暗规则的选择器仍必须是 .juya-issue 子树
+    expect(imgRule(), '正文压暗规则应保持 .juya-issue 作用域').toBeTruthy()
+    expect(strip(imgRule()), '正文压暗规则不得扩到 lightbox').not.toMatch(/lightbox/i)
+    // 反证：放大图规则里也确实带了 filter: none（不是靠祖先链「打不中」的巧合）
+    expect(code, '全份 CSS 不得给 lightbox 大图任何 brightness 压暗').not.toMatch(
+      /jynoct-lightbox[^{]*\{[^}]*brightness\(/
+    )
   })
 })
 
@@ -3248,6 +3272,10 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     // #20 概览焦点整行高亮（2026-10-20，SPEC B5）再新增一条，故 18 → 19 条：
     //  · li:has(a:focus-visible) = 与 hover 同底色 rgba(110,123,255,0.06)；
     //    同批的焦点环规则 `a:focus-visible` 只写 outline 简写（var(--jy-focus)）无字面色值，不入表。
+    // #21 图片放大视图（2026-10-20，SPEC B5b）再新增一条，故 19 → 20 条：
+    //  · ::backdrop = 暗色半透明遮罩 rgba(10,10,12,0.82)（--jy-bg 的 82% alpha 字面）；
+    //    同批的 `.jynoct-lightbox`（面板底 var(--jy-bg)/描边 var(--jy-border)）与
+    //    `.jynoct-lightbox img`（filter/object-fit/几何）全走 token 或无字面色值，不入表。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
@@ -3267,7 +3295,8 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)",
-      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index"
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
+      "[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop"
     ])
 
     // 反证（范围闸门）：段内亮侧作用域的字面色规则恰好是既有两条；新增亮侧规则会撞红本断言

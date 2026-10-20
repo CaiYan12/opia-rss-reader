@@ -7,6 +7,11 @@
 export interface JuyaImage {
   src: string
   alt: string
+  /** 外层 `<a>` 的 href（图片被链接包裹时）；裸图为 null。
+   *  #21 / SPEC B5b：图片放大视图**只对裸图生效**，被链接包裹的图必须继续走既有外链分流
+   *  （不吞「点图跳原文」）——模板必须能分辨这两种形态。
+   *  该字段是**增量**：其余 7 风格不消费，渲染产出零变化；不传时为 `undefined`，与裸图同义。 */
+  href?: string | null
 }
 
 /** 条目内容流块：按文档顺序交错记录段落与图片（图文混排模板用） */
@@ -99,7 +104,12 @@ function parseEntry(h3: Element): JuyaEntry {
       entry.lead = (node.textContent ?? '').trim() || null
     } else if (tag === 'P') {
       for (const img of node.querySelectorAll('img')) {
-        const image = { src: img.getAttribute('src') ?? '', alt: img.getAttribute('alt') ?? '' }
+        const image: JuyaImage = {
+          src: img.getAttribute('src') ?? '',
+          alt: img.getAttribute('alt') ?? '',
+          // 链接包裹判定在解析期完成：模板层只拿到结构化模型，看不到原始 HTML 的 `<a>` 包裹关系
+          href: img.closest('a')?.getAttribute('href') ?? null
+        }
         entry.images.push(image)
         entry.blocks.push({ kind: 'img', image })
       }

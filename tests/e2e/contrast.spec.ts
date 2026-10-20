@@ -14,7 +14,7 @@ import { loadApp, openFirstArticle, activeTab } from './setup'
  *    ① 把导语文字设为透明（只去掉字形绘制，雾/底色/遮罩全在）；
  *    ② 截「文字列宽 × 首行 6 行」的条带 → 自写 PNG 解码读真实像素；
  *    ③ **逐列取 6 行中位数**（滤掉 dust 的 1~1.6px 中性点）→ 列间取最坏；
- *    ④ 对该像素的合成底算 --jy-muted 的 WCAG 对比度。
+ *    ④ 对该像素的合成底算导语文字记号（#13 起为 --jy-lead-text）的 WCAG 对比度。
  *  解析式实算（scripts/nocturne-contrast-audit.mjs）与实测的关系：解析式取雾峰像素（y=0、x=文字
  *  列左缘）并逐层取整，比实测**保守 0.05~0.12**（实测含浏览器渐变栅格化与逐列中位数口径）。
  */
@@ -108,17 +108,19 @@ const contrast = (a: number, b: number) => {
   return (l1 + 0.05) / (l2 + 0.05)
 }
 
-/** 从 juya.css 实读 nocturne-dark 变体块的 `--jy-muted`（硬编码会让 token 一改就静默测错颜色）。
- *  取首个 `[data-juya-variant='nocturne-dark'] {` 块内的 6 位 hex —— 与 juyaCssGuard 的 tokenHex 同口径。 */
-const readMuted = (): number => {
+/** 从 juya.css 实读 nocturne-dark 变体块的导语专用文字记号 `--jy-lead-text`（#13 / SPEC B1）。
+ *  硬编码会让 token 一改就静默测错颜色；取首个 `[data-juya-variant='nocturne-dark'] {` 块内的
+ *  6 位 hex —— 与 juyaCssGuard 的 tokenHex、审计脚本的 hex() 同口径。
+ *  （#13 起导语不再复用 --jy-muted；仍读 muted 会系统性低估导语对比度。） */
+const readLeadText = (): number => {
   const css = readFileSync(join(__dirname, '../../src/renderer/juya/juya.css'), 'utf-8')
   const block = css.match(/\[data-juya-variant='nocturne-dark'\]\s*\{[^}]*\}/)?.[0] ?? ''
-  const hex = block.match(/--jy-muted:\s*#([0-9a-fA-F]{6})/)?.[1]
-  if (!hex) throw new Error("juya.css 的 nocturne-dark 变体块未解析到 --jy-muted")
+  const hex = block.match(/--jy-lead-text:\s*#([0-9a-fA-F]{6})/)?.[1]
+  if (!hex) throw new Error("juya.css 的 nocturne-dark 变体块未解析到 --jy-lead-text")
   return Number.parseInt(hex, 16)
 }
-const MUTED = readMuted()
-const MUTED_LUM = lum(MUTED)
+const LEAD_TEXT = readLeadText()
+const LEAD_TEXT_LUM = lum(LEAD_TEXT)
 
 /** 冻结动效：刊头 9s 呼吸 + dust 96s 漂移会让像素逐次不同；冻结后测量可复现
  *  （dust 无静态 opacity ⇒ 冻结于最亮档 1，属于对己方最不利的一侧，偏保守）。 */
@@ -126,7 +128,7 @@ const FREEZE =
   '*, *::before, *::after { animation: none !important; transition: none !important; }'
 
 for (const vw of [480, 700, 800]) {
-  test(`叠加态可达最坏面（${vw}px 视口，滚到滚动口顶端）：导语 muted 对比度 ≥ 4.5（含 hover 态）`, async ({
+  test(`叠加态可达最坏面（${vw}px 视口，滚到滚动口顶端）：导语 --jy-lead-text 对比度 ≥ 4.5（含 hover 态）`, async ({
     page
   }) => {
     await page.setViewportSize({ width: vw, height: 800 })
@@ -166,7 +168,7 @@ for (const vw of [480, 700, 800]) {
       const perColumn: number[] = []
       for (let cx = 0; cx < width; cx++) {
         const lumas = rows.map((r) => lum(r[cx])).sort((a, b) => a - b)
-        perColumn.push((MUTED_LUM + 0.05) / (lumas[Math.floor(lumas.length / 2)] + 0.05))
+        perColumn.push((LEAD_TEXT_LUM + 0.05) / (lumas[Math.floor(lumas.length / 2)] + 0.05))
       }
       return Math.min(...perColumn)
     }
@@ -176,7 +178,7 @@ for (const vw of [480, 700, 800]) {
     console.log(`[对比度实测] vw=${vw} 可达最坏面（默认态，导语滚到滚动口顶端）= ${defaultWorst.toFixed(4)}:1`)
     expect(
       defaultWorst,
-      `红线 7：导语 --jy-muted 对「雾 + 导语底」的合成底须 ≥ 4.5（实测 ${defaultWorst.toFixed(4)}）`
+      `红线 7：导语 --jy-lead-text 对「雾 + 导语底」的合成底须 ≥ 4.5（实测 ${defaultWorst.toFixed(4)}）`
     ).toBeGreaterThanOrEqual(4.5)
 
     // hover 态（#9 G-1 修复后应达标）：鼠标悬停在条目上时，暗侧已**不再叠背景微亮**
@@ -194,10 +196,42 @@ for (const vw of [480, 700, 800]) {
     console.log(`[对比度实测] vw=${vw} 条目 hover ∩ 导语 = ${hoverWorst.toFixed(4)}:1`)
     expect(
       hoverWorst,
-      `红线 7（hover 态）：悬停条目时导语 --jy-muted 仍须 ≥ 4.5（实测 ${hoverWorst.toFixed(4)}）`
+      `红线 7（hover 态）：悬停条目时导语 --jy-lead-text 仍须 ≥ 4.5（实测 ${hoverWorst.toFixed(4)}）`
     ).toBeGreaterThanOrEqual(4.5)
   })
 }
+
+/** #13 / SPEC 批次 B1：条目标题编号取 accent、**无微光**；概览序号保留 accent + 微光。
+ *  为什么必须在真实 DOM 上量计算样式：静态守卫只能证明 juya.css 里写了一条后代形态规则，
+ *  证明不了它**真的命中**嵌套结构 —— `EntrySplit` 把 h3 嵌在 `.juya-entry-row > .juya-entry-body`，
+ *  写成 `>` 子选择器时 CSS 文本完全合法、规则却静默失效（本仓已踩过两次）。此处的 computed
+ *  color/filter 正是「有无微光区分两个编号角色」的落实证据。 */
+test('nocturne 暗侧：条目标题编号取 accent 无微光，概览序号保留微光（选择器真的命中）', async ({
+  page
+}) => {
+  await loadApp(page, 'nocturneSvg')
+  await openFirstArticle(page)
+  const tab = activeTab(page)
+
+  const entryIndex = tab.locator('.juya-entry .juya-index').first()
+  await expect(entryIndex).toBeVisible()
+  const entryStyle = await entryIndex.evaluate((el) => {
+    const s = getComputedStyle(el)
+    return { color: s.color, filter: s.filter, opacity: s.opacity }
+  })
+  expect(entryStyle.color, '条目标题编号应取 --jy-accent #6e7bff').toBe('rgb(110, 123, 255)')
+  expect(entryStyle.filter, '条目标题编号不得加微光（两个角色靠有无微光区分）').toBe('none')
+  expect(entryStyle.opacity, '编号不得降 alpha（会掉出 AA）').toBe('1')
+
+  const overviewIndex = tab.locator('.juya-overview .juya-index').first()
+  await expect(overviewIndex).toBeVisible()
+  const overviewStyle = await overviewIndex.evaluate((el) => {
+    const s = getComputedStyle(el)
+    return { color: s.color, filter: s.filter }
+  })
+  expect(overviewStyle.color, '概览序号颜色不变（accent）').toBe('rgb(110, 123, 255)')
+  expect(overviewStyle.filter, '概览序号的既有微光须保留').toContain('drop-shadow')
+})
 
 /** #12 / SPEC 批次 B5a：内容区配色方案（区域级，与主题级根元素互不覆盖）。
  *  为什么只能断言计算样式：headless Chromium 不绘制滚动条（真实窗口目视由用户执行）。

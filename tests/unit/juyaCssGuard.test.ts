@@ -553,11 +553,14 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     const glowAlpha = Number.parseFloat(glow.split(',').pop()?.trim() ?? 'NaN')
     expect(Number.isNaN(glowAlpha), `box-shadow 末位参数应为 alpha（实测 ${glowAlpha}）`).toBe(false)
     expect(glowAlpha, '发光 alpha 应克制（≤0.6）').toBeLessThanOrEqual(0.6)
-    // 文字色（危险组合的来源）：本票不改，须仍是基层的 --jy-muted —— 只在有人覆写时才校验覆写值
+    // 文字色：本票（#6）不改，但 #13（SPEC 批次 B1）已把暗侧导语提亮到**专用记号** --jy-lead-text，
+    // 故断言随之指向新记号，并**明确禁止**再退回 muted —— 那正是 #13 要修的「导语比正文暗一倍」。
+    // （口径未放宽：仍锁死一个具体 token，且多一条反向断言。）
     const leadColor = decl(rule, 'color') || decl(css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? '', 'color')
-    expect(leadColor, '导语文字色应走 --jy-muted（需求 §3.1 点名的危险组合）').toContain(
-      'var(--jy-muted)'
+    expect(leadColor, '导语文字色须走专用记号 --jy-lead-text（#13 起）').toContain(
+      'var(--jy-lead-text)'
     )
+    expect(leadColor, '导语不得再复用 --jy-muted（#13 的验收红线）').not.toContain('var(--jy-muted)')
   })
 
   it('③ 导语内边距加大：4 边均大于基层 padding: 8px 12px，与正文段落形成层级差', () => {
@@ -1428,8 +1431,18 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
 
     // 反证：全文件里「jynoct + juya-index」同现的规则，除既有那条无中缀的 `.jynoct .juya-index`
     //（条目内序号徽章重置）外，都必须带 .juya-overview —— 不得新增无中缀规则去连带命中条目标题。
+    // #13 起条目标题编号有了**显式后代形态**规则（`.juya-entry h3 .juya-index`，票面要求），它同样
+    // 不带 .juya-overview 中缀。本断言改为**精确列举**这两条（仍不容忍任何第三条），守卫原意不变。
     const heads = (css.match(/^[^\n{}]*jynoct[^\n{}]*juya-index[^\n{}]*\{/gm) ?? []).map((h) => h.trim())
-    expect(heads.filter((h) => !h.includes('.juya-overview'))).toEqual(['.jynoct .juya-index {'])
+    const plainHeads = heads.filter((h) => !h.includes('.juya-overview'))
+    expect(plainHeads).toEqual([
+      '.jynoct .juya-index {',
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {"
+    ])
+    expect(
+      plainHeads.filter((h) => h !== '.jynoct .juya-index {'),
+      '无中缀规则只允许那一条后代形态的条目标题编号规则（不得出现 `>` 子选择器死形态）'
+    ).toEqual(["[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {"])
 
     // 既有徽章规则逐字未改：仍是 muted 灰、无辉光/无 accent/无 filter（条目标题序号带 # 的小字上下文）
     const badge = noctRule('\\.juya-index')
@@ -1517,6 +1530,147 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
     const baseRadius = Number(ruleOf(INDEX_RULE).match(/drop-shadow\(0 0 (\d+)px/)?.[1])
     const narrowRadius = Number(narrowGlow.match(/drop-shadow\(0 0 (\d+)px/)?.[1])
     expect(narrowRadius, '窄列里同半径占更大视觉比重，须收一档').toBeLessThan(baseRadius)
+  })
+})
+
+describe('nocturne 导语提亮与编号 accent 守卫（2026-10-20，#13 / SPEC 批次 B1）', () => {
+  // issue #13 两条验收：
+  //  ① 导语文字改用**专用**记号 --jy-lead-text（不得再复用次要文字记号 --jy-muted）：对比度按
+  //     「页面底 + 8% 白底 + 可透出层最亮情形」实算，目标 ≈7:1 —— 须高于现状 muted、明显低于正文。
+  //  ② 条目标题编号 `#N` 取 --jy-accent，**无微光、不降 alpha**，选择器必须是**后代形态**
+  //     `.jynoct .juya-entry h3 .juya-index`（EntrySplit 把 h3 嵌在 `.juya-entry-row > .juya-entry-body`，
+  //     子选择器打不中 —— 本仓已记录过两次的老坑）；概览序号的既有颜色/微光零改动。
+  const NIGHT = 'nocturne-dark'
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  /** 三层 nebula 的「最亮单层」合成面：三对支撑域两两不相交（任何像素最多被一层雾覆盖），
+   *  故逐层单独 source-over 后取亮度最大者即**可透出层最亮情形**。真值一律从规则抠（不手抄）。 */
+  const nebulaPeak = (): number => {
+    const neb =
+      css.match(
+        /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula\s*\{[^}]*\}/
+      )?.[0] ?? ''
+    expect(neb, 'nocturne 的 nebula 覆盖规则应存在（依赖 #2 已接线）').toBeTruthy()
+    const bg = tokenHex(variantBlock(NIGHT), '--jy-bg')
+    const faces = [1, 2, 3].map((n) => {
+      const m = neb.match(
+        new RegExp(
+          `--jy-nebula-${n}:\\s*rgba\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*([\\d.]+)\\s*\\)`
+        )
+      )
+      expect(m, `--jy-nebula-${n} 应为 rgba() 字面量`).toBeTruthy()
+      const rgb = (Number(m![1]) << 16) | (Number(m![2]) << 8) | Number(m![3])
+      return alphaOver(rgb, Number(m![4]), bg)
+    })
+    return faces.reduce((a, b) => (lum(b) > lum(a) ? b : a))
+  }
+
+  /** 导语块自身的合成底 = 页面底（取最亮雾层）+ 导语底 8% 白（SPEC 明写的计算面） */
+  const leadSurface = (): number => {
+    const m = variantBlock(NIGHT).match(
+      /--jy-lead-bg:\s*rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*([\d.]+)\s*\)/
+    )
+    expect(m, '--jy-lead-bg 应为 8% 白底 rgba（本守卫合成层之一）').toBeTruthy()
+    return alphaOver(0xffffff, Number(m![1]), nebulaPeak())
+  }
+
+  it('① 新增专用记号 --jy-lead-text：对「雾峰 + 导语底」合成面 ≈7:1（高于 muted、明显低于正文）', () => {
+    const block = variantBlock(NIGHT)
+    const leadText = tokenHex(block, '--jy-lead-text')
+    const muted = tokenHex(block, '--jy-muted')
+    const text = tokenHex(block, '--jy-text')
+    expect(leadText, 'nocturne-dark 变体块须声明 --jy-lead-text（6 位 hex）').not.toBeNaN()
+    const surface = leadSurface()
+    const rLead = contrast(leadText, surface)
+    expect(
+      rLead,
+      `--jy-lead-text 对合成面实算 ${rLead.toFixed(4)} 须 ≈7:1（下限 6.9）`
+    ).toBeGreaterThanOrEqual(6.9)
+    expect(rLead, `≈7:1 上限（实算 ${rLead.toFixed(4)}）`).toBeLessThanOrEqual(7.15)
+    // 「高于现状」：同一合成面上须明显强于 muted 档（现状 4.4915）
+    expect(
+      rLead - contrast(muted, surface),
+      `须明显强于现状 muted 档（${contrast(muted, surface).toFixed(4)}）`
+    ).toBeGreaterThan(1.5)
+    // 「明显低于正文」：与 --jy-text 保持一档层级差
+    expect(
+      contrast(text, surface) - rLead,
+      `须明显低于正文档 --jy-text（${contrast(text, surface).toFixed(4)}）`
+    ).toBeGreaterThan(1.5)
+    // 专用记号：不得退化成复用现有两档之一
+    expect([muted, text], '--jy-lead-text 不得等于 muted 或 text').not.toContain(leadText)
+    // 声明点唯一（只允许落在暗侧 token 块；亮侧 §9 不在范围）
+    expect(
+      (css.match(/--jy-lead-text:/g) ?? []).length,
+      '--jy-lead-text 只允许有一个声明点（暗侧 token 块）'
+    ).toBe(1)
+  })
+
+  it('② 暗侧导语规则用新记号取色；基层（亮侧路径）仍走 --jy-muted，亮侧零改动', () => {
+    const dark = extractBlock(
+      css,
+      /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-lead \{/
+    )
+    expect(dark, "暗侧导语规则 [data-juya-variant='nocturne-dark'].jynoct .juya-lead 应存在").toBeTruthy()
+    expect(decl(dark, 'color'), '暗侧导语文字色须走 var(--jy-lead-text)').toBe('var(--jy-lead-text)')
+    expect(dark, '暗侧导语不得再复用 --jy-muted').not.toContain('var(--jy-muted)')
+    // 基层 .juya-lead 是亮侧路径：保持 muted，不得被动跟随
+    const base = css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? ''
+    expect(base, '基层 .juya-lead 规则应存在（亮侧走它）').toBeTruthy()
+    expect(decl(base, 'color'), '基层导语色须保持 var(--jy-muted)（亮侧零改动）').toBe('var(--jy-muted)')
+    expect(
+      css,
+      '不得出现 nocturne-light 的导语/新记号覆写（§9 亮侧不在范围）'
+    ).not.toMatch(
+      /\[data-juya-variant='nocturne-light'\][^{}]*\{[^}]*(?:juya-lead|--jy-lead-text)/
+    )
+  })
+
+  it('③ 条目标题编号 #N：accent 取色、后代形态（严禁 `>`）、无微光、不降 alpha、对页面底 ≥4.5', () => {
+    const BADGE = "[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {"
+    const rule = extractBlock(css, new RegExp(esc(BADGE)))
+    expect(rule, `条目标题编号规则应为后代形态：${BADGE}`).toBeTruthy()
+    const head = rule.slice(0, rule.indexOf('{'))
+    expect(head, '选择器须含后代链 .juya-entry h3 .juya-index').toContain(
+      '.juya-entry h3 .juya-index'
+    )
+    expect(head, '严禁子选择器（EntrySplit 把 h3 嵌进 .juya-entry-body，`>` 打不中）').not.toMatch(
+      /\.juya-entry\s*>\s*h3/
+    )
+    const body = rule.slice(rule.indexOf('{'))
+    expect(body, '编号色须走 var(--jy-accent)（强调色相，零新增色）').toContain('color: var(--jy-accent)')
+    // 「不加微光」：两个序号角色靠有无微光区分（辉光唯一合法写法是 filter: drop-shadow，本仓禁 text-shadow）
+    expect(body, '条目标题编号不得加微光（filter / drop-shadow）').not.toMatch(/filter|drop-shadow/)
+    expect(body, '全仓禁 text-shadow').not.toContain('text-shadow')
+    // 「不降 alpha」：既不得用 rgba 字面量，也不得叠 opacity
+    expect(body, '不得降 alpha（rgba 字面量会掉出 AA）').not.toMatch(/rgba?\(/)
+    expect(body, '不得用 opacity 降透明度').not.toMatch(/opacity\s*:/)
+    expect(body, '静态样式：零 animation / transition').not.toMatch(/animation|transition/)
+    // 对页面底 ≥4.5（含最亮雾层的合成面也须过）
+    const block = variantBlock(NIGHT)
+    const accent = tokenHex(block, '--jy-accent')
+    expect(contrast(accent, tokenHex(block, '--jy-bg')), '编号 accent 对 --jy-bg').toBeGreaterThanOrEqual(4.5)
+    expect(contrast(accent, nebulaPeak()), '编号 accent 对最亮雾层合成面').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('④ 既有 `.jynoct .juya-index` 与概览序号规则零改动（反证：两种序号角色仍可区分）', () => {
+    const badge = noctRule('\\.juya-index')
+    expect(badge, '条目标题序号既有规则应存在').toContain('color: var(--jy-muted)')
+    expect(badge, '既有规则不得被本票改写（新规则是独立的后代形态覆盖）').not.toMatch(
+      /--jy-accent|drop-shadow|filter/
+    )
+    const overview =
+      css.match(
+        /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-overview \.juya-index\s*\{[^}]*\}/
+      )?.[0] ?? ''
+    expect(overview, '概览序号规则应存在').toContain('color: var(--jy-accent)')
+    expect(overview, '概览序号的微光须保留（有无微光才是两个角色的区分手段）').toMatch(
+      /filter:\s*drop-shadow\(/
+    )
+    // 全文件不得出现「jynoct + .juya-entry > h3 + juya-index」的死形态
+    expect(css, '不得用子选择器打条目标题编号').not.toMatch(
+      /jynoct[^\n{}]*\.juya-entry\s*>\s*h3[^\n{}]*\.juya-index/
+    )
   })
 })
 

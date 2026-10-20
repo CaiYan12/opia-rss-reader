@@ -24,10 +24,12 @@
  * 退出码：0 = 全部达标；1 = 有 text/ui 项未达标（逐项打印）。
  *
  * 与栅格化实测的关系（可复现）：`tests/e2e/contrast.spec.ts` 在真实像素上量同一口径的最坏面
- * （把导语滚到滚动口顶端 → 截图 → 逐列取中位数滤掉 dust → 算 muted 对比度）。实测比本脚本的
+ * （把导语滚到滚动口顶端 → 截图 → 逐列取中位数滤掉 dust → 算导语文字对比度）。实测比本脚本的
  * 解析式**高 0.05~0.12**（本脚本取雾峰像素并逐层取整 ⇒ 偏保守）：
  *   vw=700 默认态：解析式 4.5995 / 实测 **4.6567**；vw=800：4.6617 / 4.7303；
- *   vw=1280：4.8504 / 4.9105（与 #6 票面记录的 4.6567 / 4.9105 独立吻合）。
+ *   vw=1280：4.8504 / 4.9105（#6 时代的 muted 档留档；#13 起导语行改读 --jy-lead-text，见下）。
+ * #13 / SPEC 批次 B1（2026-10-20）：导语改用**专用**文字记号 `--jy-lead-text`（不再复用 --jy-muted），
+ *   本脚本的导语行（含 hover 变体）**实读该 token**；另新增「条目标题编号 #N 对页面底」一行。
  * 已修缺口（2026-10-12，本脚本现判 PASS，退出码 0）：
  *   ① 「条目 hover ∩ 导语」：原 `.jynoct .juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg
  *      ⇒ 悬停时导语像素叠两层 0.08 白，muted 掉到 3.53~3.82（8/8 档 < 4.5）。
@@ -120,7 +122,10 @@ const TOKEN = {
   heading: must(hex(DARK, '--jy-heading'), '--jy-heading'),
   accent: must(hex(DARK, '--jy-accent'), '--jy-accent'),
   focus: must(hex(DARK, '--jy-focus'), '--jy-focus'),
-  leadBg: must(rgba(DARK, '--jy-lead-bg'), '--jy-lead-bg')
+  leadBg: must(rgba(DARK, '--jy-lead-bg'), '--jy-lead-bg'),
+  /** 导语专用文字记号（#13 / SPEC B1）：导语不再复用 muted —— 本脚本的导语行必须**实读**它，
+   *  否则会继续报旧值（票面明确点名的失真点）。 */
+  leadText: must(hex(DARK, '--jy-lead-text'), '--jy-lead-text')
 }
 const NEBULA_BASE = must(
   block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula\s*\{[^}]*\}/),
@@ -188,6 +193,21 @@ const LEAD_RULE = must(
   'nocturne-dark 的 .juya-lead 规则'
 )
 const LEAD_PAD = padOf(must(decl(LEAD_RULE, 'padding'), '.juya-lead padding'))
+/** 一致性闸门（#13 / SPEC B1）：导语行的取值来源是**新记号**，因此暗侧导语规则必须真的消费它 ——
+ *  否则本脚本会为一个页面上并不存在的颜色下结论（票面点名的失真点，换个形式复发）。
+ *  规则一旦退回 `var(--jy-muted)`（旧取值），本脚本以退出码 2 拒绝继续，而不是报旧值。 */
+if (!must(decl(LEAD_RULE, 'color'), 'nocturne-dark .juya-lead 的 color 声明').includes('var(--jy-lead-text)')) {
+  console.error(
+    '[fatal] 暗侧导语规则未消费 --jy-lead-text —— 导语行的取值来源与页面不一致，本脚本拒绝用失真值继续'
+  )
+  process.exit(2)
+}
+/** 条目标题编号 `#N` 的规则（#13 / SPEC B1）：这一行同样**实读规则**而不是「假定是 accent」。
+ *  选择器形态是票面硬约束（后代形态，`EntrySplit` 把 h3 嵌在 .juya-entry-body 里）。 */
+const BADGE_RULE = must(
+  block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-entry h3 \.juya-index\s*\{[^}]*\}/),
+  "条目标题编号 #N 规则（[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index）"
+)
 const MASK_COMMON = must(
   block(
     /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-issue::before,[\s\S]*?\.juya-issue::after\s*\{[^}]*\}/
@@ -315,6 +335,23 @@ const geometry = (vw) => {
 const TEXT_THRESHOLD = 4.5
 const UI_THRESHOLD = 3
 
+/** 条目标题编号 `#N` 的取色（#13 / SPEC B1）——**实读**规则里的 color 声明，不假定成 accent：
+ *   · `var(--jy-<token>)`（正常路径）⇒ 直接引用同一 token；
+ *   · 字面 `rgba()`/hex ⇒ 按 source-over 先合成到页面底再算（「降 alpha」的失败模式会被如实量化，
+ *     而不是拿 token 数值蒙混过关）。解析不出 ⇒ 退出码 2（拒绝用失真值继续）。 */
+const BADGE_COLOR = (() => {
+  const v = must(decl(BADGE_RULE, 'color'), '条目标题编号 #N 的 color 声明')
+  const tok = v.match(/var\((--jy-[\w-]+)\)/)
+  if (tok) return { key: tok[1].slice('--jy-'.length), label: tok[1] }
+  const m = v.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/)
+  if (m) {
+    const raw = (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3])
+    const rgb = over(raw, m[4] === undefined ? 1 : Number(m[4]), TOKEN.bg)
+    return { rgb, label: `${hexOf(rgb)}（字面 ${v.trim()} 叠页面底）` }
+  }
+  return must('', `条目标题编号 #N 的 color 无法解析：${v}`)
+})()
+
 /**
  * 每个条目声明：色 / 面 / 可达像素框。
  * 「可达」= 该元素被滚到滚动口顶端后，其像素在场景坐标系里的位置（场景视口锚定 ⇒ y 就是视口行）。
@@ -326,13 +363,25 @@ const ITEMS = [
   { id: '栏目标题 --jy-heading（纯雾底）', kind: 'text', color: 'heading', surface: 'plain', box: 'content' },
   { id: '元信息/题注 --jy-muted（纯雾底）', kind: 'text', color: 'muted', surface: 'plain', box: 'content' },
   {
-    id: '导语 --jy-muted（导语底 0.08）',
+    id: '导语 --jy-lead-text（导语底 0.08）',
     kind: 'text',
-    color: 'muted',
+    color: 'leadText',
     surface: 'lead',
     box: 'leadInk'
   },
   { id: '概览序号 --jy-accent（纯雾底）', kind: 'text', color: 'accent', surface: 'plain', box: 'index' },
+  /* #13 / SPEC B1：条目标题编号 `#N` 改取 accent（无微光、不降 alpha），新增一行单独判 AA。
+     选择器形态（`.jynoct .juya-entry h3 .juya-index`）决定它与概览序号是**两个角色**：
+     概览序号带微光、本行不带；两者的对比度各自独立达标。
+     `color` 不写死：由 `BADGE_COLOR` **实读该规则的 color 声明**（token 或字面 rgba 均可），
+     否则把规则退回 muted / 降成半透明时，本行会继续报一个页面上并不存在的值。 */
+  {
+    id: `条目标题编号 #N ${BADGE_COLOR.label}（纯雾底）`,
+    kind: 'text',
+    color: BADGE_COLOR.key ?? BADGE_COLOR.rgb,
+    surface: 'plain',
+    box: 'content'
+  },
   {
     id: '概览行 hover：--jy-text（accent 0.06）',
     kind: 'text',
@@ -348,9 +397,9 @@ const ITEMS = [
     box: 'content'
   },
   {
-    id: `条目 hover ∩ 导语：--jy-muted（导语底 0.08 + hover ${ENTRY_HOVER_DARK}）`,
+    id: `条目 hover ∩ 导语：--jy-lead-text（导语底 0.08 + hover ${ENTRY_HOVER_DARK}）`,
     kind: 'text',
-    color: 'muted',
+    color: 'leadText',
     surface: 'leadHover',
     box: 'leadInk'
   },
@@ -427,7 +476,9 @@ const worstOf = (item, vw) => {
         const o = overlayOf(item.overlay)
         ratio = contrast(over(o.rgb, o.a, base), base)
       } else {
-        ratio = contrast(TOKEN[item.color], surfaceOf(item.surface, base))
+        // item.color 是 token 键（正常）或已合成的不透明 RGB（规则里写字面色值时，见 BADGE_COLOR）
+        const color = typeof item.color === 'string' ? TOKEN[item.color] : item.color
+        ratio = contrast(color, surfaceOf(item.surface, base))
       }
       if (ratio < worst.ratio) worst = { ratio, x, y }
     }
@@ -443,7 +494,7 @@ const padL = (s, n) => String(s).padStart(n, ' ')
 line('nocturne-dark 叠加态对比度全量实算（issue #9）')
 line(`取值来源：${CSS_PATH.replace(ROOT + '\\', '').replace(ROOT + '/', '')}（实读，非手抄）`)
 line(`视口高度 VH=${VH}px；正文列 max-width=${ISSUE_MAX}px，水平内边距=${geometry(1280).pad.l}px（≤520px 时 ${ISSUE_PAD_NARROW.l}px）`)
-line(`token：bg ${hexOf(TOKEN.bg)} / text ${hexOf(TOKEN.text)} / muted ${hexOf(TOKEN.muted)} / link ${hexOf(TOKEN.link)} / heading ${hexOf(TOKEN.heading)} / accent ${hexOf(TOKEN.accent)} / focus ${hexOf(TOKEN.focus)}`)
+line(`token：bg ${hexOf(TOKEN.bg)} / text ${hexOf(TOKEN.text)} / muted ${hexOf(TOKEN.muted)} / leadText ${hexOf(TOKEN.leadText)} / link ${hexOf(TOKEN.link)} / heading ${hexOf(TOKEN.heading)} / accent ${hexOf(TOKEN.accent)} / focus ${hexOf(TOKEN.focus)}`)
 line(`导语底 --jy-lead-bg = rgba(255,255,255,${TOKEN.leadBg.a})；阅读窗遮罩 = rgba(${(MASK.rgb >> 16) & 0xff},${(MASK.rgb >> 8) & 0xff},${MASK.rgb & 0xff},${MASK.a}) 宽 ${geometry(700).maskW}px`)
 line()
 
@@ -515,12 +566,12 @@ if (!QUIET) {
     }
   ]
   line(
-    `  ${pad('面', 44)}${padL('text', 10)}${padL('muted', 10)}${padL('link', 10)}${padL('heading', 10)}${padL('muted/导语底', 14)}  可达`
+    `  ${pad('面', 44)}${padL('text', 10)}${padL('muted', 10)}${padL('link', 10)}${padL('heading', 10)}${padL('lead/导语底', 14)}  可达`
   )
   for (const face of refFaces) {
     const b = face.base()
     const row = [TOKEN.text, TOKEN.muted, TOKEN.link, TOKEN.heading].map((c) => f1(contrast(c, b)))
-    const lead = f1(contrast(TOKEN.muted, over(0xffffff, TOKEN.leadBg.a, b)))
+    const lead = f1(contrast(TOKEN.leadText, over(0xffffff, TOKEN.leadBg.a, b)))
     line(
       `  ${pad(face.name, 44)}${row.map((r) => padL(r, 10)).join('')}${padL(lead, 14)}  ${face.reachable ? '是' : '否'}`
     )
@@ -572,10 +623,11 @@ if (fails.length === 0) {
   }
 }
 line()
-line('参考：上表「导语 --jy-muted（导语底 0.08）」行是**默认态**（鼠标不在条目上）的可达最坏面。')
+line('参考：上表「导语 --jy-lead-text（导语底 0.08）」行是**默认态**（鼠标不在条目上）的可达最坏面。')
 line('「条目 hover ∩ 导语」行是鼠标悬停在条目上时的同一像素面 —— 经 #9 G-1 修复后，暗侧 hover')
 line('不再叠背景微亮（改走 border-bottom-color 提亮，边框不参与文字背景合成），故两行取值一致。')
 line('vw≤520 行的「导语」项走 #2 的窄窗 nebula 退化分支（单条顶部窄带，同样视口锚定）：')
-line('  经 #9 G-2 修复后窄窗峰值 alpha 单独收到 0.055（vw=480 → 4.6046，余量 0.1046 ≥ 0.05）。')
+line('  经 #9 G-2 修复后窄窗峰值 alpha 单独收到 0.055（同面 muted 档 vw=480 → 4.6046，余量 0.1046）；')
+line('  #13 起导语改读专用记号 --jy-lead-text，同一面随之为 7.1870（契约值，见行内实算）。')
 line('栅格化交叉验证：tests/e2e/contrast.spec.ts（可复现，实测 4.6567 @700 / 4.7303 @800）。')
 process.exit(fails.length === 0 ? 0 : 1)

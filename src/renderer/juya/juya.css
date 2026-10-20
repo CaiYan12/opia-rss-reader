@@ -1696,6 +1696,21 @@
   --jy-accent: #6e7bff;
   --jy-on-accent: #0a0a0c;
   --jy-link: #93a1ff;
+  /* 导语专用文字记号（#13 / SPEC 批次 B1）：导语原先复用次要文字档 --jy-muted，比正文暗一档多，
+     读者要费力分辨，且对比度离 AA 只剩薄余量。本记号取 muted 与 text **之间**的第三档，色相沿用
+     同一中性灰阶（与 --jy-heading #f4f4f6 / --jy-muted #8a8b94 同源，零新增色相），只在亮度上取整。
+     计算面（票面口径「页面底 + 8% 白底 + 可透出层最亮情形」）：可透出层取**最亮单层雾峰值** ——
+     三层雾的支撑域两两不相交（#2 守卫④已证），任何像素最多被一层覆盖，故最亮单层即最亮情形：
+       --jy-bg #0a0a0c → + n1 峰值 rgba(110,123,255,0.07) = #11121d
+                       → + 导语底 rgba(255,255,255,0.08) = #24252f
+     该合成面上 WCAG 实算（与 scripts/nocturne-contrast-audit.mjs 同一套 lum / contrast / source-over）：
+       #adb0b8 = rgb(173,176,184) → **7.0104:1**（目标 ≈7:1）；
+       对照 ① 正文 --jy-text #c4c5cc → 8.8402:1（仍比导语高一档）；
+       对照 ② 现状 --jy-muted #8a8b94 → **4.4915:1**（本记号修的就是这一档）；
+       窄窗雾峰值面 #23232b 上 → 7.1870:1；纯导语底 #1e1e1f 上 → 7.6776:1。
+     取整：173/176/184。再暗一档 #acafb7 只有 6.9313（< 7），再亮一档 #aeb1b9 为 7.0901（偏离目标），
+     故取本值 —— 在 7.0 目标上留 0.0104 余量。 */
+  --jy-lead-text: #adb0b8;
   /* 导语高亮窗底色（#6，需求 §6 决策 10）：原 4% 白在暗侧几乎隐形，13.5px 小字与普通段落零区分度。
      取值 **8%** —— 决策授权区间 0.08–0.10 的**下界**。合并复核（真实浏览器实测，非推理）证明原 0.09
      在「导语滚到滚动口顶端」的**可达最坏面**上只有 4.2563:1（< AA 4.5）：`.juya-scene` 是
@@ -2210,6 +2225,10 @@
   /* 底色显式重申（与基层同源，token 已在变体块提到 0.08）：把「本风格导语窗底色」钉在本规则上，
      将来基层若改取值，nocturne 不会被动跟随。 */
   background: var(--jy-lead-bg);
+  /* 导语文字改用专用记号（#13 / SPEC B1）：不再复用次要文字档 --jy-muted —— 该档在本合成面上只有
+     4.4915:1，正是票面说的「导语比正文暗一倍、离 AA 只剩薄余量」。新记号同面 7.0104:1，比正文
+     （8.8402:1）低一档，层级仍由底块 + 左侧竖线承担，不靠压暗文字。亮侧不声明、仍走基层 muted。 */
+  color: var(--jy-lead-text);
 }
 
 /* 左侧发光竖线（仅暗侧）：取色来源 = --jy-focus #8b97ff —— 该风格既有的焦点色，
@@ -2348,6 +2367,25 @@
   text-align: left;
   font-variant-numeric: tabular-nums;
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
+}
+
+/* ---- 条目标题编号 `#N` 取强调色相（2026-10-20，#13 / SPEC 批次 B1）----
+   **同一个 .juya-index 类名的第三种上下文**：概览序号（无 #、带微光）与条目标题徽章（带 #）。
+   票面要求两个编号角色改用**有无微光**区分，而不是用亮度 —— 故本条只换色相、**零光辉**。
+   **选择器必须是后代形态 `.juya-entry h3 .juya-index`，严禁 `>`**：`EntrySplit` 把 h3 嵌在
+   `.juya-entry-row > .juya-entry-body` 里，子选择器的直接父是 `.juya-entry-body` 而非 `.juya-entry`，
+   打不中（共享层与 y2k 已各踩过一次，见 AGENTS.md「变体覆盖选择器约定」与 y2k 审计④）。
+   **不降 alpha**：不写 rgba 字面量、不叠 opacity。降 alpha 会直接把 accent 推出 AA
+   （accent #6e7bff 对 --jy-bg #0a0a0c 只有 5.5953:1、余量 1.09，任何透明度都会成比例压分母）。
+   特异性：本条 (0,4,1) 压过既有 `.jynoct .juya-index` (0,2,0) 取 muted 的那条（该条**不动**，
+   它承载 min-width / 等宽 / 表格式对齐等几何职责）；概览规则多一层 `.juya-overview` 且与
+   `.juya-entry` 不在同一子树上，两者互不命中。
+   取色来源：本变体 --jy-accent #6e7bff（与刊头 neon、概览序号同源，零新增色相）。
+   WCAG 对比度实算（scripts/nocturne-contrast-audit.mjs 同一套数学）：对页面底 #0a0a0c **5.5953:1**、
+   对最亮单层雾峰值合成面 #11121d **5.2657:1**，均 ≥ AA 4.5（编号承载条目序号信息 ⇒ 文本门槛）。
+   静态规则（无 animation / transition / filter），故不产生 reduced-motion 义务。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {
+  color: var(--jy-accent);
 }
 
 /* ---- 概览目录（2026-10-12，#7）：序号 accent 微光 + 条目间极淡发丝线 + hover 整行微亮 ----

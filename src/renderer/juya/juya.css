@@ -2310,8 +2310,63 @@
   width: 200px;
 }
 
+/* 阅读页图片统一圆角记号（2026-10-20，#14）：只服务阅读页图片（图文并排右列 + 回流带），
+   **不动共享 --jy-radius** —— 该 token 被全部 16 个变体消费，改它会波及所有风格。
+   写成共享 `.jynoct` 作用域而非变体 token：亮暗两侧沿用同一 8px（既有图版圆角就是 8px，
+   抽成记号后计算值不变 ⇒ 亮侧渲染逐字节不变；回流通栏图由本记号统一为 8px，原先走基层 12px）。 */
+.jynoct {
+  --jy-media-radius: 8px;
+}
+
 .jynoct .juya-entry-figure img {
-  border-radius: 8px;
+  border-radius: var(--jy-media-radius);
+}
+
+/* ---- 阅读页图片：压暗 + 发丝描边（2026-10-20，#14 / SPEC 批次 B2）----
+   **命名**：这叫**发丝描边**，不叫「装裱」——后者是 folio / editorial 带衬底与题注装框的概念
+   （`.juya-plate` 那套），两者不能混用措辞。
+   **范围**：仅暗侧阅读页（`.juya-issue` 内，含右列图版与回流通栏带）。订阅页封面走
+   `.juya-feed-*`，刻意不压暗（`nocturne-dark-订阅页-1280.png` 归档须逐字节不变）；
+   `nocturne-light` 按需求 §9「任何改动」不做。
+   **前置检查（本票实做）**：
+    ① 图片自身有没有烘焙圆角 —— 下载线上当期 5 张正文图 + 1 张封面（assets.juya.uk）逐张读通道：
+       全部 RGBA 但 alpha 恒 255（min=max=255，零半透明像素）⇒ 图片是**不透明方角截图**，没有烘焙
+       圆角/透明角。故发丝描边贴 border-box 与图形边缘几何一致（测试图源同样是满幅 SVG rect）。
+    ② 祖先有没有 `overflow: hidden` 裁掉光晕 —— 全文件仅 3 处 `overflow: hidden`
+       （`.juya-feed-summary` / `.juya-feed-item` / `.juya-scene`），均不在阅读页图片祖先链上；
+       最近的裁剪者是滚动容器 `.view-scroll`（`overflow-y: auto`），而图落在 `.juya-issue` 24px
+       内衬之内、外发光半径 8px ⇒ 光晕不被切（窄窗内衬收到 14px，仍大于 8px）。
+   **压暗**：SPEC B2 明写统一 `brightness(.88)`；代价是图片色彩略偏移、图表类有取舍，已接受。
+   `.88` 同时会把元素自身的 box-shadow 压暗 12% ⇒ 发光有效强度 = 0.16 × 0.88 = 0.1408。
+   **发丝描边为什么用 box-shadow**：它按规范只画在边框盒**之外**，不参与盒模型 ⇒ 右列图片的
+   200px 列宽与满宽回流带的容器宽度逐像素不变。绝不占用 `outline` —— 那是焦点环的专属属性
+   （`.juya-root :is(a, button):focus-visible`），两者语义与可达性要求不同。
+   **既有 1px 边框的处理**：基层 `.juya-media img { border: 1px solid var(--jy-border) }` 已占 1px
+   边框盒（border-box 下改宽度会改变图片**内容**宽度 = 几何变化），故**保留占位、只把绘制置透明**；
+   可见的发丝线改由 box-shadow 画在边框盒之外。这样只有一条 1px 线，不会与既有边框叠成 2px。
+   **取色来源**：
+    发丝线 `var(--jy-border)`（白 8% token，零新增色相）。
+    外发光 `rgba(110, 123, 255, 0.16)` ← 本变体 `--jy-accent` #6e7bff 的 alpha 变体（与刊头 neon、
+    概览序号同源，零新增色相）。alpha 取 **0.16 = 导语竖线 0.35 的不到一半**，SPEC B2 要求「明显低于
+    导语竖线」；压暗后有效 0.1408。
+   **对比度**（对 `--jy-bg` #0a0a0c 实算，与 `scripts/nocturne-contrast-audit.mjs` 同一套 lum/alphaOver）：
+    发丝线合成 #1e1e1f ⇒ **1.19:1**；外发光峰值合成 #1a1c33 ⇒ **1.18:1**。
+    两者均为装饰性描边（不承载信息，同条目分隔线 / dust 口径），刻意低于非文本 UI 的 3:1 ——
+    抬到 3:1 会亮成描边框，与需求 §7.1「克制」红线冲突。发光峰值比发丝线本身还淡，故整体读作
+    「一圈细线 + 极淡晕」，不会变成色块。
+   **不做** `--jy-card` 衬边：右列与正文间隙 24px（视觉 20px），加衬边会让间隙被吃掉、失去呼吸感。
+   **圆角**：走统一记号 `--jy-media-radius`（上方共享 `.jynoct` 规则），不碰共享 `--jy-radius`。
+   **lightbox 义务（T10，本票不建）**：图片放大视图落地时，其大图必须 `filter: none` ——
+   放大就是为了看原图，压暗只属于正文流里的缩略形态。本票只留注释，不新增任何 lightbox 规则。
+   **零动效**：静态声明（无 animation / transition），故本规则不产生 reduced-motion 义务。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue img {
+  filter: brightness(.88);
+  border-radius: var(--jy-media-radius);
+  /* 保留既有 1px 边框占位、只撤绘制：几何不变，且避免两条线 */
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px var(--jy-border),
+    0 0 8px rgba(110, 123, 255, 0.16);
 }
 
 .jynoct .juya-plate {

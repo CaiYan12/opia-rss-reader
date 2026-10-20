@@ -51,3 +51,6 @@ test-results/
 # CodeGraph index. The dir carries its own .gitignore that ignores everything
 # except itself; the entry here keeps the stray file out of git status too.
 .codegraph/
+
+# DSH 文件工具的更新锁（写盘时生成的 0 字节锁文件，非项目产物）
+.dsh-ops-update-*.lock

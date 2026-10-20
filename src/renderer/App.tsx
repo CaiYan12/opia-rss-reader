@@ -12,6 +12,7 @@ import { Toast } from './components/Toast'
 import { getStableTabOrder } from './components/tabContentOrder'
 import { TAB_LIFECYCLE_DURATION_MS } from './components/tabMotion'
 import { getTabTitle } from './tabTitle'
+import { startVisibilityPause } from './visibilityPause'
 
 /** 解析组合串（如 "Ctrl+Shift+Tab"）为修饰键 + 主键 */
 function parseCombo(combo: string): { ctrl: boolean; shift: boolean; alt: boolean; key: string } {
@@ -77,6 +78,10 @@ export default function App(): JSX.Element {
     void init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 页面不可见（最小化 / 切后台）时暂停内容区动画（#22 / T11）。
+  // 最小实现：只读 `document.hidden`，标记挂文档根元素（不碰内容根容器）。
+  useEffect(() => startVisibilityPause(), [])
 
   // 将活动标签的页面标题同步到主进程，由主进程更新任务栏/原生窗口标题。
   useEffect(() => {

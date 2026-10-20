@@ -2814,6 +2814,36 @@
   background: linear-gradient(90deg, transparent, var(--jy-link), transparent);
 }
 
+/* ---- 页面不可见时暂停动画（2026-10-20，#22 / SPEC 批次 B6）----
+   问题：内容区有多条**持续**动画（尘埃漂移 96s、刊头呼吸 9s、极光幕帘 24s/31s），
+   窗口最小化或切到后台后仍在跑，白耗 CPU 与电。
+   做法：渲染层监听 `visibilitychange`（只读 `document.hidden`），在
+   **`document.documentElement`** 上置 `data-app-hidden`；本段只做暂停，不改任何可见取值。
+   为什么挂文档根元素：`.juya-root`「永无 animation」是结构不变量（reduced-motion E2E 断言依赖），
+   把可见性开关挂到内容根容器会打穿那条断言；文档根元素在内容根之外，选择器仍从它向下命中内容。
+   为什么逐一列举而不是对 `*` 通配统一设置：
+     · `animation-play-state` **不继承**，伪元素上的动画是独立的 Animation 对象；
+     · 作用域必须限定在本变体（且 §9 明确 nocturne-light 本轮范围外），不能用全局通配。
+   载体清单（与本文件 animation 声明一一对应，缺一即漏）：
+     ① `.juya-scene-dust`      —— dust 预设（jy-dust-drift，96s alternate）；
+     ② `.juya-masthead h1`     —— 刊头呼吸（jy-noct-glow，9s，只动 filter 的 drop-shadow alpha）；
+     ③ `.juya-masthead::before`—— 极光前层（jy-noct-aurora-near，24s，只动 opacity）；
+     ④ `.juya-masthead::after` —— 极光后层（jy-noct-aurora-far，31s，只动 opacity）；
+     ⑤ `.juya-feed-item`       —— 订阅页入场（jy-enter，220ms 一次性）；
+     ⑥ `.jynoct-lightbox img`  —— 放大视图入场（jy-noct-lightbox-in，160ms；dialog portal 到 body，
+       变体标记挂在 dialog 自身，故不是 `.jynoct` 的后代）。
+   为什么不改成透明度动画：**不做**动画 `filter`→`opacity` 重构（无实测数据支撑）。
+   只声明 `animation-play-state`：计算样式中的 opacity / filter 保持冻结当帧值，
+   回到前台动画从原 currentTime 继续，不会有可见跳变（E2E 逐项断言）。 */
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::before,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-feed-item,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct-lightbox img {
+  animation-play-state: paused;
+}
+
 /* ---- 杂志编辑式（2026-09-24 重设计新增） ----
    与 newsprint90s 的市井报刊对照的高端杂志：纯平留白，刊物感靠排版 */
 [data-juya-variant='editorial-light'] {

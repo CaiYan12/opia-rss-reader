@@ -7,6 +7,7 @@ import {
   cycleSeconds,
   extremeTimes
 } from '../../scripts/nocturne-aurora-phase.mjs'
+import { APP_HIDDEN_ATTR } from '../../src/renderer/visibilityPause'
 
 // juya.css 静态守卫（与 ipcContract 静态守卫同思路，不渲染、纯文本断言）：
 // 1) 变体覆盖必须写成复合选择器（[data-juya-variant='x'].jyY…）。
@@ -2407,6 +2408,9 @@ describe('Scene 预设守卫（2026-10-12，#1）', () => {
         const remainder = part
           .replace(/\.juya-scene-(?:dust|nebula)/g, '')
           .replace(/\[data-juya-variant='[^']*'\]/g, '')
+          // 允许 `[data-app-hidden]` 状态门（#22 页面不可见暂停规则）：它挂在文档根元素上、
+          // 不是内容选择器，也不命中场景层以外的元素；逐条锁定见「不可见暂停动画守卫」组
+          .replace(/\[data-app-hidden\]/g, '')
           .replace(/\.jy[\w-]*/g, '')
           .replace(/[\s>+~]/g, '')
         expect(remainder, `「${part}」不得引入场景层以外的选择器`).toBe('')
@@ -2753,7 +2757,12 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
     // 本守卫的原意（测试名）是「不覆写点色 token」，不是「一条 dust 规则都不许有」；故收窄为：
     // 规则恰好一条、且其全部声明只能是 background-size —— token / 动画 / 透明度仍是零放行。
     const dustRules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(
-      ([, sel]) => sel.includes("data-juya-variant='nocturne-dark'") && sel.includes('.juya-scene-dust')
+      ([, sel, body]) =>
+        sel.includes("data-juya-variant='nocturne-dark'") &&
+        sel.includes('.juya-scene-dust') &&
+        // 排除 #22 的不可见暂停规则：它只声明 animation-play-state（不碰点色/透明度），
+        // 逐条锁定在「不可见暂停动画守卫」组，不属于「点阵破除」覆写
+        !/(?:^|[;\s])animation-play-state\s*:/.test(body)
     )
     expect(dustRules.length, '暗侧 dust 覆写规则恰好一条（#20 点阵破除）').toBe(1)
     const body = dustRules[0][2]
@@ -3212,14 +3221,17 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       )
     }
 
-    // 变体前缀的**非选择器开头**出现处：只允许滚动条 :has() 规则（各自列在滚动条守卫组里）
-    // + #12 的配色方案 :has() 规则（列在「暗侧原生件配色守卫」组里，同上不可写成选择器开头）
-    // 该弹坑是既有死形态守卫拦不住的（`[data-juya-variant='x'] .view-scroll` 不以 .jy 开头）
+    // 变体前缀的**非选择器开头**出现处：只允许三种已登记形态——
+    //   ① 滚动条 :has() 规则（各自列在滚动条守卫组里）；
+    //   ② #12 的配色方案 :has() 规则（列在「暗侧原生件配色守卫」组里）；
+    //   ③ #22 的 6 条不可见暂停规则（`[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct …`，
+    //      祖先先行是为把状态门挂在文档根元素上；变体前缀与 .jynoct 仍是紧贴的复合形态，
+    //      列在「不可见暂停动画守卫」组里）。该弹坑是既有死形态守卫拦不住的（`[data-juya-variant='x'] .view-scroll` 不以 .jy 开头）
     const occurrences = (masked.match(new RegExp(`\\[${NOCT}`, 'g')) ?? []).length
     expect(
       occurrences - prefixed.length,
-      '非选择器开头处只允许 :has() 滚动条规则与 #12 配色规则（改这里须同步对应守卫组）'
-    ).toBe(3)
+      '非选择器开头处只允许 :has() 滚动条规则 / #12 配色规则 / #22 不可见暂停规则（改这里须同步对应守卫组）'
+    ).toBe(9)
   })
 
   /** 规则体内的字面色值（剔除注释；含自定义属性声明——`--x: rgba()` 同样是构成色） */
@@ -3970,5 +3982,96 @@ describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20
     // 且 top 为负 ⇒ 线在行盒之外，不会被行底色覆盖；焦点规则不得另画/隐藏分隔线。
     expect(ruleOf(FOCUS_ROW), '焦点行规则不得触碰分隔线伪元素').not.toContain('::after')
     expect(ruleOf(FOCUS_ROW), '焦点行规则不得改用 outline 之外的元素做环').not.toContain('outline')
+  })
+})
+
+describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 B6）', () => {
+  // 剥注释后的 CSS 代码（注释里引用选择器形态/属性名不算实现）
+  const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const HIDDEN = `[${APP_HIDDEN_ATTR}]`
+  const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
+
+  /** 本变体全部动画承载者（含伪元素）—— 逐一列举；新增动画必须同步加入本清单。
+   *  · `.juya-scene-dust`：Scene 的 dust 预设（96s 尘埃漂移）；
+   *  · `.juya-masthead h1`：刊头呼吸（9s）；
+   *  · `.juya-masthead::before` / `::after`：极光幕帘两层（24s / 31s，伪元素必须单独选中）；
+   *  · `.juya-feed-item`：订阅页入场（220ms，共享规则但本变体订阅页同样命中）；
+   *  · `.jynoct-lightbox img`：放大视图入场（160ms，dialog portal 到 body，变体标记挂 dialog 自身）。 */
+  const CARRIERS = [
+    `${DARK} .juya-scene-dust`,
+    `${DARK} .juya-masthead h1`,
+    `${DARK} .juya-masthead::before`,
+    `${DARK} .juya-masthead::after`,
+    `${DARK} .juya-feed-item`,
+    "[data-juya-variant='nocturne-dark'].jynoct-lightbox img"
+  ]
+
+  /** 非 nocturne 场景层（太阳/透视网格/星空只有 dreamcore 与 y2k 暗挂载，本变体模板不渲染） */
+  const FOREIGN_SCENE = ['.juya-scene-sun', '.juya-scene-grid-persp', '.juya-scene-stars']
+
+  /** 全 css 的叶规则（花括号内的声明块；媒体查询/@keyframes 外壳天然不匹配） */
+  const rules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, s, b]) => ({
+    sels: s
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean),
+    body: b
+  }))
+  const pauseRules = rules.filter((r) =>
+    /(?:^|[;\s])animation-play-state\s*:\s*paused/.test(r.body)
+  )
+  const pausedSels = pauseRules.flatMap((r) => r.sels)
+
+  it('① 暂停规则逐一选中全部动画载体（含 ::before / ::after），且只声明 animation-play-state', () => {
+    expect(pauseRules.length, '应恰有一条不可见暂停规则块').toBe(1)
+    const declarations = pauseRules[0]!.body
+      .split(';')
+      .map((d) => d.trim())
+      .filter(Boolean)
+    expect(declarations, '暂停态只能改动画播放状态，不得夹带 opacity/filter/animation 等可见属性').toEqual([
+      'animation-play-state: paused'
+    ])
+    expect([...pausedSels].sort(), '暂停选择器集合须与载体清单逐一对应').toEqual(
+      CARRIERS.map((c) => `${HIDDEN} ${c}`).sort()
+    )
+  })
+
+  it('② 完整性：本变体可出现的每一条 animation 声明都被暂停规则覆盖（漏一个即红，并报出漏项）', () => {
+    const animationRules = rules.filter((r) => /(?:^|[;\s])animation\s*:/.test(r.body))
+    const pausedSet = new Set(pausedSels)
+    const covered = (sel: string): boolean => {
+      if (FOREIGN_SCENE.some((f) => sel === f || sel.endsWith(` ${f}`))) return true
+      if (sel.includes("data-juya-variant='nocturne-light'")) return false
+      // 暗侧复合形态直接用；共享类名（.juya-scene-dust / .juya-feed-item）必须挂上暗侧作用域
+      const scoped = sel.includes("data-juya-variant='nocturne-dark'") ? sel : `${DARK} ${sel}`
+      return pausedSet.has(`${HIDDEN} ${scoped}`)
+    }
+    const uncovered = animationRules.flatMap((r) => r.sels).filter((s) => !covered(s))
+    expect(uncovered, '动画载体必须逐一暂停（animation-play-state 不继承）——上面列出漏项').toEqual(
+      []
+    )
+    // 扫描面非空：dust + 呼吸 + 两条极光 + 订阅页入场 + 放大视图入场
+    expect(animationRules.length, 'animation 声明扫描面非空').toBeGreaterThanOrEqual(5)
+  })
+
+  it('③ 状态标记挂 documentElement，不挂内容根容器（.juya-root 的结构不变量）', () => {
+    const hook = readFileSync(join(process.cwd(), 'src/renderer/visibilityPause.ts'), 'utf-8')
+    const hookCode = hook.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(hookCode, '只在文档根元素上置/清标记').toContain('document.documentElement')
+    expect(hookCode, '属性名必须与守卫同源').toContain(`APP_HIDDEN_ATTR = '${APP_HIDDEN_ATTR}'`)
+    expect(hookCode, '必须监听 visibilitychange').toContain('visibilitychange')
+    expect(hookCode, '只做 document.hidden 判据').toContain('document.hidden')
+    expect(hookCode, '不得把标记挂到内容根容器（.juya-root）上').not.toContain('.juya-root')
+    expect(noctSection(), '暂停规则必须落在 nocturne 段内（不改共享层）').toContain(HIDDEN)
+    for (const s of pausedSels) {
+      expect(s, '暂停选择器不得命中内容根容器本身').not.toContain('.juya-root')
+      expect(s, '只做暗侧；nocturne-light 本轮范围外（§9）').not.toContain('nocturne-light')
+    }
+  })
+
+  it('④ 项目文档写明「不做动画 filter→opacity 重构」及其理由', () => {
+    const agents = readFileSync(join(process.cwd(), 'AGENTS.md'), 'utf-8')
+    expect(agents, 'AGENTS.md 须记录本次不做该重构').toContain('`filter`→`opacity` 重构')
+    expect(agents, '须写明理由：无实测数据').toContain('无实测数据')
   })
 })

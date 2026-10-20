@@ -201,3 +201,67 @@ test('nocturne 图文回流（真实图源）：右列限 2 张、其余回流�
   expect(geo.overflowH, '回流带自身有高度（2 张通栏图）').toBeGreaterThan(100)
 })
 
+test('nocturne 窄窗单列回落：图宽跟随内容列、两图竖向堆叠（#15 / SPEC B2 附，560 视口）', async ({
+  page
+}) => {
+  // 病根见 juya.css 的复位规则头：宽屏 200px 的图列宽度在 ≤640px 单列回落时没有同步重置，
+  // 于是单列里图仍占 200px、右侧留空白，与满宽回流带并置成两种图宽。
+  // 本断言用 `getBoundingClientRect` 的**相对关系**（图/正文列/栏目标题线三者对齐），
+  // 不锁绝对坐标 —— zoom、滚动条宽度、窗口内衬变化都不该让它变红。
+  await page.setViewportSize({ width: 560, height: 800 })
+  await loadApp(page, 'nocturneSvg')
+  await openFirstArticle(page)
+
+  const entry = activeTab(page).locator('article.juya-entry').first()
+  await expect(entry).toBeVisible()
+
+  const geo = await entry.evaluate((el) => {
+    const box = (n: Element): { left: number; right: number; width: number; top: number; height: number } => {
+      const r = n.getBoundingClientRect()
+      return { left: r.left, right: r.right, width: r.width, top: r.top, height: r.height }
+    }
+    const row = el.querySelector('.juya-entry-row') as HTMLElement
+    const body = el.querySelector('.juya-entry-body') as HTMLElement
+    const fig = el.querySelector('.juya-entry-figure') as HTMLElement
+    const h2 = el.closest('.juya-section')?.querySelector('h2') ?? null
+    const imgs = [...el.querySelectorAll('.juya-entry-figure img')]
+    return {
+      direction: getComputedStyle(row).flexDirection,
+      body: box(body),
+      fig: box(fig),
+      h2: h2 ? box(h2) : null,
+      imgs: imgs.map(box)
+    }
+  })
+
+  // eslint-disable-next-line no-console
+  console.log(
+    `[T4 560 实测] direction=${geo.direction} 图列=${geo.fig.width.toFixed(2)} 内容列=${geo.body.width.toFixed(2)} ` +
+      `h2线=${geo.h2 ? geo.h2.width.toFixed(2) : 'n/a'} 图宽=${geo.imgs.map((i) => i.width.toFixed(2)).join('/')} ` +
+      `左缘(图/内容/h2)=${geo.fig.left.toFixed(2)}/${geo.body.left.toFixed(2)}/${geo.h2 ? geo.h2.left.toFixed(2) : 'n/a'}`
+  )
+
+  expect(geo.direction, '≤640px 应回落为单列纵排').toBe('column')
+
+  // ① 图列左右缘 == 正文列左右缘（内容列）
+  expect(geo.fig.left, '图列左缘应与内容列左缘一致').toBeCloseTo(geo.body.left, 1)
+  expect(geo.fig.right, '图列右缘应与内容列右缘一致').toBeCloseTo(geo.body.right, 1)
+  // ② 与栏目标题线一致（票面验收「左右缘与栏目标题线一致」）。
+  // 容差 2px 的**唯一**来源是既有的 `.jynoct .juya-entry { padding: 4px 2px 18px }`（#8 期就有的
+  // 条目内衬，正文段落同样吃这 2px），不是本票引入的几何 —— 本票只复位图宽，不碰条目内衬。
+  expect(geo.h2, '栏目 h2 应可取到').toBeTruthy()
+  expect(Math.abs(geo.fig.left - geo.h2!.left), '图列左缘与栏目标题线左端应在条目内衬 2px 内一致').toBeLessThanOrEqual(2)
+  expect(Math.abs(geo.fig.right - geo.h2!.right), '图列右缘与栏目标题线右端应在条目内衬 2px 内一致').toBeLessThanOrEqual(2)
+  // ③ 两张图竖向堆叠且都铺满内容列（票面「两张竖向堆叠、铺满可用宽度」）
+  expect(geo.imgs, '右列仍是 2 张').toHaveLength(2)
+  for (const [i, img] of geo.imgs.entries()) {
+    expect(img.width, `第 ${i + 1} 张图宽应等于内容列宽`).toBeCloseTo(geo.body.width, 1)
+    expect(img.left, `第 ${i + 1} 张图左缘应贴内容列左缘`).toBeCloseTo(geo.body.left, 1)
+  }
+  // 竖向堆叠：第二张的顶边在第一张底边之下（容 1px 取整误差）
+  expect(geo.imgs[1].top, '两张图应竖向堆叠（不再是并排两列）').toBeGreaterThanOrEqual(
+    geo.imgs[0].top + geo.imgs[0].height - 1
+  )
+})
+
+

@@ -3121,3 +3121,97 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
   })
 })
 
+describe('nocturne 窄窗单列回落图宽守卫（2026-10-20，#15 / SPEC 批次 B2 附）', () => {
+  // 病根（票面已 git blame 查证）：`.jynoct .juya-entry-row .juya-entry-figure { width: 200px }`
+  // 来自 `3e8b9e9`，提交信息只写「图文并排」、从未涉及窄窗；基层在 ≤640px 把 `.juya-entry-row`
+  // 改纵排时写的是 `.juya-entry-row .juya-entry-figure { width: 100% }`（特异性 0,2,0），
+  // 输给 200px 那条（0,3,0）⇒ 断点处只换了排布方向、没重置宽度，单列里图仍占 200px，
+  // 同屏与满宽回流带并置出两种图宽。判定为布局模式切换后的残留，无设计意图。
+  // 本组锁三件事：宽屏 200px 一字节不动、断点内确有暗侧复合形态的复位、复位值严格等于 100%
+  // （不放宽成「任意非 auto 值」——那会放过 width: 320px 这类新的错误取值）。
+  const stripComments = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const FIG = 'juya-entry-row .juya-entry-figure'
+  /** 暗侧窄窗复位选择器的字面量（复合形式：AGENTS「变体覆盖选择器约定」硬形态） */
+  const DARK_RESET = `[data-juya-variant='nocturne-dark'].jynoct .${FIG}`
+  /** 全部 ≤640px 媒体块（按花括号配平提取，剥注释；同名媒体查询可能分散多处） */
+  const narrowBlocks = (): string[] =>
+    extractBlocks(css, /@media \(max-width: 640px\) \{/).map(stripComments)
+  /** 含 nocturne 图宽复位的那个窄窗媒体块 */
+  const resetBlock = (): string =>
+    narrowBlocks().find((b) => b.includes('.jynoct') && b.includes(FIG)) ?? ''
+  /** 从块内抠出指定选择器的完整规则块 */
+  const ruleOf = (block: string, selector: string): string =>
+    block.match(new RegExp(`${esc(selector)}\\s*\\{[^}]*\\}`))?.[0] ?? ''
+
+  it('① 宽屏并排宽度不变：`.jynoct` 图列仍是 200px，且只有这一条声明（无旁路覆写）', () => {
+    const wide = css.match(/(?:^|\n)\.jynoct \.juya-entry-row \.juya-entry-figure \{([^}]*)\}/) ?? []
+    expect(wide[1], '宽屏（>640px）图恒在右的 200px 列宽应原样保留').toBeTruthy()
+    expect(decl(wide[1], 'width'), '宽屏图列必须是 200px（本票不得改宽屏行为）').toBe('200px')
+    // 复位只允许出现在媒体块内：媒体块之外不得再出现 figure 宽度的变体覆写
+    let outside = css
+    for (const b of extractBlocks(css, /@media \(max-width: 640px\) \{/)) outside = outside.split(b).join('\n')
+    outside = stripComments(outside)
+    outside = outside.replace(/(?:^|\n)\.jynoct \.juya-entry-row \.juya-entry-figure \{[^}]*\}/, '\n')
+    expect(
+      outside,
+      '媒体块之外不得有 [data-juya-variant=…].jynoct 的 figure 宽度覆写（宽屏几何零变化）'
+    ).not.toMatch(/\[data-juya-variant='[^']+'\]\.jynoct \.juya-entry-row \.juya-entry-figure\s*\{/)
+  })
+
+  it('② 断点内存在暗侧复合形态的复位规则（不是空格后代死形态）', () => {
+    const block = resetBlock()
+    expect(block, '≤640px 媒体块内应有 nocturne 图宽复位').toBeTruthy()
+    expect(ruleOf(block, DARK_RESET), `断点内应有规则：${DARK_RESET}`).toBeTruthy()
+    // 复位必须只挂暗侧：块内不得出现共享 `.jynoct` 形态（那会把 nocturne-light 一并改掉，§9 不做）
+    expect(block, '块内不得出现共享 `.jynoct` 图宽复位（亮侧不在本票范围）').not.toMatch(
+      /(?:^|[;{}\s])\.jynoct \.juya-entry-row \.juya-entry-figure\s*\{/
+    )
+    // 非死形态：变体前缀与风格类必须复合（空格后代形式永不匹配，见 AGENTS 约定）
+    expect(css, '不得写 [data-juya-variant=…] 后带空格再接 .jynoct 的死形态').not.toMatch(
+      /\[data-juya-variant='nocturne-dark'\]\s+\.jynoct \.juya-entry-row/
+    )
+  })
+
+  it('③ 复位值严格等于 100%（不放宽成任意值），特异性高于宽屏 200px 那条', () => {
+    const block = resetBlock()
+    const reset = ruleOf(block, DARK_RESET)
+    expect(reset, '复位规则应存在').toBeTruthy()
+    const body = reset.slice(reset.indexOf('{') + 1)
+    // 严格相等：既拦「没写 / auto」，也拦 width: 320px 这类新的错误取值
+    expect(decl(body, 'width'), '单列回落的图宽必须严格是 100%').toBe('100%')
+    expect(body, '复位不得夹带 px 定宽（那等于把残留换成另一个定宽）').not.toMatch(/\d+px/)
+    // 特异性对照：复位选择器含 4 个类/属性记号（0,4,0），宽屏那条是 3 个（0,3,0）
+    const weight = (sel: string): number => (sel.match(/\[[^\]]+\]|\.[\w-]+/g) ?? []).length
+    expect(weight(DARK_RESET), '复位特异性（类/属性记号数）须高于宽屏规则').toBeGreaterThan(
+      weight(`.jynoct .${FIG}`)
+    )
+    expect(ruleOf(block, DARK_RESET)).toMatch(/width:\s*100%/m)
+  })
+
+  it('④ 图本体也铺满：暗侧窄窗内图列 img 宽度严格 100%（只命中图列，不波及回流带）', () => {
+    // 为什么图也要管：固有宽（480px）在 560 视口下**小于**内容列（实测 508px），而基层只给
+    // `.juya-root img { max-width: 100% }`（上限而非填充）⇒ 仅复位 figure 仍会在右侧留 26px 空白。
+    const block = resetBlock()
+    const DARK_IMG = `[data-juya-variant='nocturne-dark'].jynoct .juya-entry-figure img`
+    const rule = ruleOf(block, DARK_IMG)
+    expect(rule, `断点内应有规则：${DARK_IMG}`).toBeTruthy()
+    expect(decl(rule.slice(rule.indexOf('{') + 1), 'width'), '图宽必须严格是 100%').toBe('100%')
+    // 回流带 / 通用图（.juya-media img / .jynoct .juya-entry-figure img）不得被这条窄窗规则连带改掉
+    expect(rule, '选择器只允许锚在图列上（不得写到 .juya-media 或裸 img）').not.toMatch(
+      /\.juya-media\s+img|(?:^|[^.\w-])img\s*\{$/
+    )
+  })
+
+  it('⑤ 复位块只锁暗侧窄窗：媒体查询必须是 max-width: 640px，与基层断点同档', () => {
+    const narrow = narrowBlocks()
+    expect(narrow.length, '既有基层 ≤640px 块应仍在（断点不得被本票挪动）').toBeGreaterThan(0)
+    expect(css, '基层断点保持 640px 未改').toMatch(/@media \(max-width: 640px\) \{/)
+    const block = resetBlock()
+    // 复位块本身是 ≤640px 块（由 narrowBlocks 提取，天然满足）；此处锁「块内不再夹带第二个
+    // 媒体/支持查询条件」——把复位藏进嵌套条件会让上面三条静态断言脱离真实生效语境
+    const inner = block.replace(/^@media \(max-width: 640px\) \{/, '')
+    expect(inner, '复位块不得夹带 prefers-reduced-motion 等额外条件').not.toMatch(/@media|@supports/)
+  })
+})
+

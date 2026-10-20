@@ -506,6 +506,19 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
   /** 导语区（暗侧两个复合规则块的合并文本）：发光规则须在此区间内 */
   const leadArea = (): string => leadDarkBlocks().join('\n')
 
+  /** 把渐变里的 `var(--jy-*)` 解析成 rgb 三元组文本（色相来源断言用：token 解析后仍须命中具体通道值）。
+   *  只解析本组用到的 6 位 hex token；解析不到的原样保留（断言会因此转红，不会静默放过）。 */
+  const resolveGradientHues = (grad: string, token: string): string => {
+    let out = grad
+    for (const m of grad.matchAll(/var\((--jy-[\w-]+)\)/g)) {
+      const hex = tokenHex(token, m[1])
+      if (Number.isNaN(hex)) continue
+      const rgb = `rgba(${(hex >> 16) & 0xff}, ${(hex >> 8) & 0xff}, ${hex & 0xff})`
+      out = out.split(m[0]).join(rgb)
+    }
+    return out
+  }
+
   it('① 导语底色 alpha 从 4% 白提到 0.08–0.10（从规则抠真值，非注释）', () => {
     // 缺陷 B 修正后导语规则是暗侧复合形态（原共享 `.jynoct` 会把内衬一并施加到 nocturne-light）
     const lead = decl(darkRule('\\.juya-lead'), 'background')
@@ -524,35 +537,64 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
       '导语底色对 --jy-bg 应可分辨（>1）').toBeGreaterThan(1)
   })
 
-  it('② 导语左侧发光竖线：颜色取该风格 --jy-focus，辉光走外阴影（禁 text-shadow / 禁块级 drop-shadow）', () => {
+  it('② 导语左侧渐变竖线：3px 进边框区、靛蓝→品红→透明（禁 text-shadow / 禁块级 drop-shadow / 禁外发光）', () => {
+    // 2026-10-20 #18 / SPEC 批次 B4：竖线由「单色实线 + 外发光」改为「一条渐变光」，
+    // 外发光移除（设计决策：避免渐变竖线与外发光两套光语言；与文字对比度无关）。
+    // 方案 (d)：保留 3px 透明边框承载渐变，渐变用 background-image 画进 border 区，
+    // origin 与 clip 同为 border-box（绝不用 padding-box —— 那会让竖线上下淡出端露出裸页面底）。
     const rule = darkRule('\\.juya-lead')
-    const focusRule = leadDarkBlocks()[1] ?? ''
-    const left = decl(rule, 'border-left') || decl(focusRule, 'border-left-color')
-    expect(left, '基层已有 border-left，本条票须把它换成 focus 色').toBeTruthy()
-    expect(left, '左侧竖线颜色须走 var(--jy-focus)（#8b97ff）').toContain('var(--jy-focus)')
-    // 竖线宽度以基层声明为真值（3px）：本票允许「只覆写 color」的写法，故宽度从基层读
+    const barRule = leadDarkBlocks().find((b) => /border-left|background-image/.test(b)) ?? ''
+    expect(barRule, '导语竖线规则（暗侧复合形态）应存在').toBeTruthy()
+    const body = stripComments(barRule)
+    // 几何不变：基层 3px 边框宽度保留，只把颜色换成 transparent
     const baseLeft = decl(css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? '', 'border-left')
-    expect(px(baseLeft)[0] || px(left)[0], '竖线宽度应保持基层 3px').toBe(3)
-    // 辉光形态：外阴影 box-shadow（裁决 2026-10-12）—— 只画在边框盒之外，不洗涤矩形内部
-    expect(leadArea(), '导语区（暗侧两个复合规则块）应可提取').toBeTruthy()
-    const body = stripComments(leadArea())
-    expect(body, '导语区须有外阴影辉光（box-shadow）').toContain('box-shadow')
+    expect(px(baseLeft)[0], '基层竖线宽度应保持 3px').toBe(3)
+    const left = decl(body, 'border-left')
+    expect(left, '暗侧须保留 border-left（几何由边框宽度承载）').toBeTruthy()
+    expect(px(left)[0], '竖线宽度应保持 3px').toBe(3)
+    expect(left, '边框本体须为 transparent（颜色由渐变绘制）').toContain('transparent')
+    // 渐变只占边框条：3px 宽 × 100% 高，贴左上；origin+clip 同 border-box
+    const grad = decl(body, 'background-image')
+    expect(grad, '竖线渐变应写在 background-image').toContain('linear-gradient')
+    expect(grad, '渐变走向应为纵向（to bottom / 180deg）').toMatch(/to bottom|180deg/)
+    expect(decl(body, 'background-size'), '渐变尺寸应为 3px × 100%（只占边框条）').toMatch(/3px\s+100%/)
+    expect(decl(body, 'background-position'), '渐变应贴左边框外侧').toMatch(/left top|0 0/)
+    expect(decl(body, 'background-origin'), '渐变的绘制原点须为 border-box').toBe('border-box')
+    expect(
+      decl(body, 'background-clip'),
+      '渐变的裁剪须为 border-box（底色铺进边框区，上下淡出两端才不会露出裸页面底）'
+    ).toBe('border-box')
+    expect(css, '绝不得用 padding-box（会让竖线上下淡出两端露出 3px 裸页面底）').not.toMatch(
+      /background-(?:clip|origin)\s*:\s*padding-box/
+    )
+    // 色相来源：靛蓝 --jy-focus #8b97ff = 139,151,255（token 解析后核对）+ 品红字面 rgba(200,90,180,α)
+    const hues = resolveGradientHues(grad, variantBlock(NIGHT))
+    expect(hues, '渐变须含靛蓝色相来源 139,151,255（--jy-focus）').toContain('139, 151, 255')
+    expect(grad, '渐变须含品红粉色相来源字面 rgba(200,90,180,…)').toMatch(
+      /rgba\(\s*200\s*,\s*90\s*,\s*180\s*,/
+    )
+    const magentaAlpha = Number.parseFloat(
+      grad.match(/rgba\(\s*200\s*,\s*90\s*,\s*180\s*,\s*([\d.]+)\s*\)/)?.[1] ?? 'NaN'
+    )
+    expect(Number.isNaN(magentaAlpha), '品红端应为字面 rgba 且带 alpha').toBe(false)
+    expect(
+      magentaAlpha,
+      `品红端 alpha 实测 ${magentaAlpha}：复用色相但不复用 n3 雾记号 0.025（直接用几乎不可见）`
+    ).toBeGreaterThanOrEqual(0.5)
+    expect(magentaAlpha, '品红端仍须克制（≤0.6，不抢正文）').toBeLessThanOrEqual(0.6)
+    // 两端透明：首行/末行回到「8% 白叠底」（= 导语底 token），而非裸页面底
+    expect(grad, '渐变须从透明起（首行回到 8% 白叠底）').toMatch(/transparent\s+0%/)
+    expect(grad, '渐变须以透明收（末行回到 8% 白叠底）').toMatch(/transparent\s+100%/)
+    // 外发光移除：只禁「非 inset」的投影（保留将来加 inset 内顶高光的空间）
+    const shadows = [...body.matchAll(/box-shadow\s*:\s*([^;}]+)/g)].map((m) => m[1].trim())
+    for (const s of shadows) {
+      expect(s, `导语规则体内不得有非 inset 的 box-shadow（实测：${s}）`).toContain('inset')
+    }
     // 块级 drop-shadow 会按元素 alpha 轮廓（含导语 0.08 半透明底）整片垫在矩形底下 ——
     // 既是「整框泛光」而非票面要的「竖线发光」，也是把 muted 压到 4.4744（<AA 4.5）的唯一分量。
     expect(body, '导语规则体内不得出现 filter: drop-shadow').not.toMatch(/filter\s*:\s*drop-shadow/)
     expect(body, '导语规则体内不得出现 drop-shadow() 调用').not.toMatch(/drop-shadow\(/)
     expect(body, '导语区禁用 text-shadow').not.toMatch(/text-shadow\s*:\s*[^n\s]/)
-    // 发光强度克制：模糊半径 ≤ 8px，且 alpha ≤ 0.6（不得抢正文）
-    const glow = decl(body, 'box-shadow')
-    expect(glow, '导语区应有 box-shadow 声明').toBeTruthy()
-    expect(glow, '辉光应带取色来源（focus 色通道 139,151,255）').toContain('139, 151, 255')
-    const glowLen = glow.replace(/rgba\([^)]*\)/, '').trim()
-    const blur = px(glowLen)
-    expect(blur[blur.length - 1], '发光模糊半径应克制（≤8px）').toBeLessThanOrEqual(8)
-    // alpha 值从 rgba 的参数里按逗号切出（不用嵌套正则：`[^)]*?` 在 `[^)]*` 已吃掉右括号的场景下语义绕）
-    const glowAlpha = Number.parseFloat(glow.split(',').pop()?.trim() ?? 'NaN')
-    expect(Number.isNaN(glowAlpha), `box-shadow 末位参数应为 alpha（实测 ${glowAlpha}）`).toBe(false)
-    expect(glowAlpha, '发光 alpha 应克制（≤0.6）').toBeLessThanOrEqual(0.6)
     // 文字色：本票（#6）不改，但 #13（SPEC 批次 B1）已把暗侧导语提亮到**专用记号** --jy-lead-text，
     // 故断言随之指向新记号，并**明确禁止**再退回 muted —— 那正是 #13 要修的「导语比正文暗一倍」。
     // （口径未放宽：仍锁死一个具体 token，且多一条反向断言。）
@@ -581,55 +623,67 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     ).toMatch(/font-size:\s*14\.5px/)
   })
 
-  it('④ 栏目 h2：padding-bottom 8px + 1px 发丝线，线 alpha 单独提到 ≈0.22（实测对比度留档）', () => {
+  it('④ 栏目 h2：padding-bottom 8px + 1px 渐变发丝线（青白→靛蓝→透明，右端淡出，几何不变）', () => {
+    // 2026-10-20 #18 / SPEC 批次 B4：栏目线改为渐变并从右端淡出，与刊头极光呼应。
+    // 几何不变：仍是 1px 下边框 + 8px 下内衬（nocturne-geometry.spec 以 borderBottomWidth=1px 为对齐基准）。
     const rule = darkRule('\\.juya-section > h2')
     expect(rule, "[data-juya-variant='nocturne-dark'].jynoct .juya-section > h2 规则应存在").toBeTruthy()
-    expect(decl(rule, 'padding-bottom'), 'h2 下内边距应为 8px').toBe('8px')
+    expect(decl(rule, 'padding-bottom'), 'h2 下内边距应为 8px（几何不变）').toBe('8px')
     const border = decl(rule, 'border-bottom')
     expect(border, 'h2 下边框应为 1px 发丝线').toBeTruthy()
-    expect(px(border)[0], '发丝线宽度 1px').toBe(1)
-    const rgba = border.match(/rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/)
-    expect(rgba, '栏目线应为字面 rgba（须带注释与对比度）').toBeTruthy()
-    const ruleColor = {
-      rgb: (Number(rgba![1]) << 16) | (Number(rgba![2]) << 8) | Number(rgba![3]),
-      alpha: Number(rgba![4])
-    }
-    // 需求 §7.1 决策值：栏目线 alpha 单独提到 ≈0.22（白线；与 --jy-border 同源只提 alpha）
-    expect(ruleColor.rgb, '栏目线取色来源应为白（与 --jy-border 同源）').toBe(0xffffff)
-    expect(ruleColor.alpha, `栏目线 alpha 实测 ${ruleColor.alpha} 应 ≈0.22`).toBeCloseTo(0.22, 2)
-    // 实算：线合成到 --jy-bg 后的对比度（票面实测口径：全局 0.08 仅 1.19:1）
+    expect(px(border)[0], '发丝线宽度仍为 1px（几何不变）').toBe(1)
+    expect(border, '边框本体透明，颜色由渐变绘制').toContain('transparent')
+    // 渐变：只占 1px 边框条（100% × 1px，贴左下），origin+clip 同 border-box
+    const body = stripComments(rule)
+    const grad = decl(body, 'background-image')
+    expect(grad, '栏目线渐变应写在 background-image').toContain('linear-gradient')
+    expect(grad, '栏目线为横向渐变').toMatch(/to right|90deg/)
+    expect(decl(body, 'background-size'), '渐变尺寸应为 100% × 1px（只占下边框条）').toMatch(
+      /100%\s+1px/
+    )
+    expect(decl(body, 'background-position'), '渐变应贴底边').toMatch(/left bottom|0 100%/)
+    expect(decl(body, 'background-origin'), '渐变的绘制原点须为 border-box').toBe('border-box')
+    expect(decl(body, 'background-clip'), '渐变的裁剪须为 border-box').toBe('border-box')
+    // 色相：青白（刊头极光亮脊 rgba(214,236,255)）→ 靛蓝（--jy-accent 色相 110,123,255）→ 透明
+    expect(grad, '起点须为青白色相 rgba(214,236,255,…)').toMatch(
+      /rgba\(\s*214\s*,\s*236\s*,\s*255\s*,/
+    )
+    const startAlpha = Number.parseFloat(
+      grad.match(/rgba\(\s*214\s*,\s*236\s*,\s*255\s*,\s*([\d.]+)\s*\)/)?.[1] ?? 'NaN'
+    )
+    expect(Number.isNaN(startAlpha), '起点 alpha 应可解析').toBe(false)
+    expect(startAlpha, `起点 alpha 实测 ${startAlpha}：不得高于现有 0.22（保持发丝感）`).toBeLessThanOrEqual(
+      0.22
+    )
+    expect(grad, '中段须为靛蓝色相 rgba(110,123,255,…)').toMatch(
+      /rgba\(\s*110\s*,\s*123\s*,\s*255\s*,/
+    )
+    expect(grad, '右端须淡出至透明').toMatch(/transparent\s+100%/)
+    // h2 不得把背景裁剪到文字形状（否则渐变会被裁成字形而不是一条线）
+    expect(stripComments(noctSection()), '栏目 h2 相关规则不得出现 background-clip: text').not.toMatch(
+      /juya-section[^{}]*\{[^}]*background-clip:\s*text/
+    )
+    // 实测留档：起点青白叠 --jy-bg 后仍可见但克制（不是 3:1 分隔件而是装饰发丝线，口径同 §7.1）
     const block = variantBlock(NIGHT)
     const bg = tokenHex(block, '--jy-bg')
-    const borderToken = tokenRgba(block, '--jy-border')
-    expect(borderToken.alpha, '--jy-border 应为 rgba').not.toBeNaN()
-    const oldLine = over(borderToken, bg)
-    expect(contrast(oldLine, bg), '全局 0.08 老线的实测基线应≈1.19（对照面，防漂移）').toBeCloseTo(1.19, 1)
-    const newLine = over(ruleColor, bg)
-    const measured = contrast(newLine, bg)
-    // 实测差额留档（票面验收标准写「达 3:1」）：alpha 0.22 的白线合成到 #0a0a0c 得 #404041，实算仅
-    // **1.91:1** —— 数学上达不到 3:1。真正够 3:1 需 alpha ≈0.34（合成 #5d5d5f ⇒ 3.01:1），但那样栏目线
-    // 会比条目线（0.08）亮一倍以上，直接违反需求 §7.1「只对栏目线提 alpha…提了与『克制』冲突」的红线。
-    // 故按票面明写的决策值 0.22 落地，并把「相对老线的可见度提升倍数」锁进守卫（1.91/1.19 ≈ 1.61）：
-    // 这条断言把实测值钉死，任何想把 alpha 往 3:1 抬的动作都会同时撞红本断言与「克制」红线。
-    expect(measured, `栏目线 alpha ${ruleColor.alpha} 对 --jy-bg 实测 ${measured.toFixed(2)}`).toBeGreaterThan(1.9)
-    expect(measured, '实测值锁定带宽 ±0.02，防静默改 alpha').toBeCloseTo(1.91, 2)
-    expect(measured / contrast(oldLine, bg), '相对全局 0.08 老线的可见度提升 ≈1.61 倍').toBeCloseTo(1.61, 2)
-    // 反证：0.22 确实达不到 3:1；够 3:1 的最小 alpha ≥0.33（证明取舍是数学事实而非疏漏）
-    for (const a of [0.22, 0.3, 0.32]) {
-      expect(contrast(over({ rgb: 0xffffff, alpha: a }, bg), bg), `alpha ${a} 应仍 <3`).toBeLessThan(3)
-    }
-    expect(contrast(over({ rgb: 0xffffff, alpha: 0.34 }, bg), bg), 'alpha 0.34 才够 3:1').toBeGreaterThanOrEqual(3)
-    // 最坏叠加面（三层 nebula 全重叠 #18192a）留档：同一 alpha 在此面上约 2.05，明确低于 3 —— 见 CSS 注释
-    const nebula = [
-      { rgb: 0x6e7bff, alpha: 0.07 },
-      { rgb: 0x5aa0ff, alpha: 0.04 },
-      { rgb: 0xc85ab4, alpha: 0.025 }
-    ]
-    const nebulaComp = [nebula[2], nebula[1], nebula[0]].reduce((acc, l) => over(l, acc), bg)
-    expect(nebulaComp, '三层 nebula 全重叠合成底应为 #18192a（与 #2 守卫同值）').toBe(0x18192a)
-    const stacked = contrast(over(ruleColor, nebulaComp), nebulaComp)
-    expect(stacked, '最坏叠加面上栏目线约 2.05（低于 3，已注释留档）').toBeGreaterThan(2)
-    expect(stacked, '最坏叠加面上栏目线约 2.05（低于 3）').toBeLessThan(3)
+    const startStop = { rgb: 0xd6ecff, alpha: startAlpha }
+    const startLine = over(startStop, bg)
+    const startContrast = contrast(startLine, bg)
+    expect(startContrast, `青白起点对 --jy-bg 实测 ${startContrast.toFixed(3)} 应可分辨`).toBeGreaterThan(1)
+    expect(
+      startContrast,
+      '栏目渐变线仍是装饰发丝线（<3:1，需求 §7.1 的克制口径，已留档）'
+    ).toBeLessThan(3)
+    // 反证：起点青白（0xd6ecff）叠到 --jy-bg 上需 alpha ≈0.40 才够 3:1 —— 那会破坏发丝感，
+    // 故把上限锁在 0.22（现取值 1.78:1，与旧 0.22 白线的 1.91:1 同量级、同属装饰分隔件）。
+    expect(
+      contrast(over({ rgb: 0xd6ecff, alpha: 0.34 }, bg), bg),
+      'alpha 0.34 仍 <3（证明 0.22 上限是取舍而非疏漏）'
+    ).toBeLessThan(3)
+    expect(
+      contrast(over({ rgb: 0xd6ecff, alpha: 0.4 }, bg), bg),
+      'alpha 0.40 才够 3:1'
+    ).toBeGreaterThanOrEqual(3)
   })
 
   it('⑤ 反证：条目分隔线仍用 --jy-border 0.08，未被一并提到 0.22（票面红线）', () => {
@@ -692,17 +746,20 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     const n1 = tokenRgba(neb, '--jy-nebula-1')
     expect(n1.alpha, '--jy-nebula-1 应为 rgba').not.toBeNaN()
 
-    // ---- 前提 3（裁决 2026-10-12 新增的防回退断言）：导语规则体内不得出现块级 `filter: drop-shadow`。
-    //      它按元素渲染结果的 alpha 轮廓取形状，而 `.juya-lead` 带 0.08 半透明底 ⇒ 阴影以
-    //      0.35×0.08 的 alpha **整片垫在矩形底下**被透出：既是「整框泛光」而非票面要的「左侧竖线发光」，
-    //      也把导语 muted 压到 4.4744（< AA）。改回该写法必须同时撞红本断言与⑥的对比度断言。 ----
+    // ---- 前提 3（#18 改写后的防回退断言）：外发光已移除（设计决策：避免渐变竖线与外发光
+    //      两套光语言；与文字对比度无关 —— 外阴影按规范只绘在 border-box 之外，从不进入文字背景）。
+    //      竖线是一条画进边框区的渐变光；块级 `filter: drop-shadow` 仍禁用（取元素 alpha 轮廓，
+    //      会把矩形整片垫在底下被半透明底透出）。 ----
     const leadBody = stripComments(leadArea())
-    expect(leadBody, '导语规则体内不得出现 filter: drop-shadow（须走外阴影/伪元素竖线局部发光）').not.toMatch(
+    expect(leadBody, '导语规则体内不得出现 filter: drop-shadow（须走边框区渐变竖线）').not.toMatch(
       /filter\s*:\s*drop-shadow/
     )
     expect(leadBody, '导语规则体内不得出现 drop-shadow() 调用').not.toMatch(/drop-shadow\(/)
-    // 外阴影只画在边框盒之外 ⇒ 不在文字所落的背景里 → 静态模型里**没有**辉光层
-    expect(leadBody, '局部发光应为 box-shadow（外阴影）').toContain('box-shadow')
+    // 只禁「非 inset」的投影：外发光回归会转红，将来加内顶高光（inset 0 1px 0 …）仍可写
+    const leadShadows = [...leadBody.matchAll(/box-shadow\s*:\s*([^;}]+)/g)].map((m) => m[1].trim())
+    for (const s of leadShadows) {
+      expect(s, `导语规则体内不得有非 inset 的 box-shadow（实测：${s}）`).toContain('inset')
+    }
 
     // ---- 可达最坏面几何（浏览器实测口径：六档视口里 vw=700 最坏；导语文字左缘 = 47px，
     //      由 .juya-issue(≤700px 居中 / 24px 内衬) + .juya-entry(2px) + 3px 竖线 + 18px 左内衬 推出）----
@@ -1765,23 +1822,27 @@ describe('nocturne 阅读页图片压暗与发丝描边守卫（2026-10-20，#14
     )
   })
 
-  it('③ 光强明显低于导语左侧竖线（#13 的 0.35）', () => {
-    const leadGlow =
+  it('③ 外发光克制：图片 0.16 < 0.2；导语侧已无外发光（#18 起不再拿 0.35 当参照物）', () => {
+    // 2026-10-20 #18：导语竖线改为边框区渐变光，其外发光被移除（避免两套光语言）。
+    // 因此「图片发光强度低于导语竖线」的旧参照物已不存在；改为两条结构 + 数值断言：
+    //  ① 导语侧确实没有外发光（光只落在 3px 边框条内，不形成整框泛光）；
+    //  ② 图片外发光保持在既有克制带宽（0.16，< 0.2）。
+    const leadBar =
       extractBlocks(css, /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-lead \{/).find((b) =>
-        b.includes('box-shadow')
+        b.includes('background-image')
       ) ?? ''
-    expect(leadGlow, '导语竖线发光规则应存在（#13 对照组）').toBeTruthy()
-    const leadAlpha = rgbaOf(splitTop(decl(strip(leadGlow), 'box-shadow'))[0]).alpha
-    expect(leadAlpha, '导语竖线 alpha（对照组真值）').toBeCloseTo(0.35, 2)
+    expect(leadBar, '导语渐变竖线规则应存在（#18 实现）').toBeTruthy()
+    expect(leadBar, '导语侧不得再有外发光 box-shadow（#18 已移除）').not.toContain('box-shadow')
+    expect(decl(strip(leadBar), 'background-size'), '导语的光只占 3px 边框条').toMatch(/3px\s+100%/)
 
     const glowLayer = splitTop(decl(strip(imgRule()), 'box-shadow'))[1]
     const glowAlpha = rgbaOf(glowLayer).alpha
     expect(glowAlpha, '图片外发光必须有可感知强度').toBeGreaterThan(0)
-    expect(glowAlpha, '光强必须低于导语竖线（SPEC B2 红线）').toBeLessThan(leadAlpha)
-    expect(glowAlpha, '且须留出可读差距：不超过对照组一半').toBeLessThanOrEqual(leadAlpha / 2)
-    expect(pxValues(glowLayer)[0], '发光半径不得超过导语竖线的 8px（克制）').toBeLessThanOrEqual(8)
+    expect(glowAlpha, 'SPEC B2 决策值 0.16（改动须同步本守卫）').toBeCloseTo(0.16, 2)
+    expect(glowAlpha, '光强须保持克制（<0.2）').toBeLessThan(0.2)
+    expect(pxValues(glowLayer)[0], '发光半径 ≤8px（克制）').toBeLessThanOrEqual(8)
     // filter: brightness 会把元素自身的 box-shadow 一并压暗 12% ⇒ 有效光强更低（记录，不另取参数）
-    expect(glowAlpha * 0.88, '压暗后的有效光强仍须低于对照组').toBeLessThan(leadAlpha)
+    expect(glowAlpha * 0.88, '压暗后的有效光强仍须 <0.2').toBeLessThan(0.2)
   })
 
   it('④ 描边不参与盒模型：只画在边框盒之外，既有 1px 边框的占位保留', () => {

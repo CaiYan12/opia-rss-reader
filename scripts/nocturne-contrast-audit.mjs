@@ -15,8 +15,8 @@
  *
  * 口径与分类：
  *  · text  —— 承载信息的文字（正文/导语/标题/链接/序号/元信息）：门槛 4.5:1
- *  · ui    —— 非文本 UI 件（导语左侧发光竖线等）：门槛 3:1
- *  · decor —— 装饰件（尘埃微粒 / 阅读窗渐隐遮罩 / 发丝分隔线 / hover 描边）：
+ *  · ui    —— 非文本 UI 件（导语渐变竖线的**不透明峰值段**等）：门槛 3:1
+ *  · decor —— 装饰件（尘埃微粒 / 阅读窗渐隐遮罩 / 渐变分隔线 / 发丝分隔线 / hover 描边）：
  *             不承载信息、WCAG 1.4.11 不适用（本仓既有裁决：需求 §7.1 与 F-7 已留痕），
  *             仅打印数值 + 取色来源，不计入 PASS/FAIL。
  *
@@ -26,10 +26,14 @@
  * 与栅格化实测的关系（可复现）：`tests/e2e/contrast.spec.ts` 在真实像素上量同一口径的最坏面
  * （把导语滚到滚动口顶端 → 截图 → 逐列取中位数滤掉 dust → 算导语文字对比度）。实测比本脚本的
  * 解析式**高 0.05~0.12**（本脚本取雾峰像素并逐层取整 ⇒ 偏保守）：
- *   vw=700 默认态：解析式 4.5995 / 实测 **4.6567**；vw=800：4.6617 / 4.7303；
- *   vw=1280：4.8504 / 4.9105（#6 时代的 muted 档留档；#13 起导语行改读 --jy-lead-text，见下）。
+ *   #18 复测（--jy-lead-text 档）：vw=700 解析式 7.1790 / 实测 **7.2682**；vw=800：7.2761 / 7.3831；
+ *     vw=480：7.1870 / 7.2865。#6 时代的 muted 档（4.6567 / 4.7303 / 4.9105）仅作历史留档。
  * #13 / SPEC 批次 B1（2026-10-20）：导语改用**专用**文字记号 `--jy-lead-text`（不再复用 --jy-muted），
  *   本脚本的导语行（含 hover 变体）**实读该 token**；另新增「条目标题编号 #N 对页面底」一行。
+ * #18 / SPEC 批次 B4（2026-10-20）：导语竖线与栏目分隔线都改为**渐变**（竖线：靛蓝 → 品红 → 透明；
+ *   栏目线：青白 → 靛蓝 → 透明），旧脚本按单一 rgba 取数已失真。现改为**解析每条渐变的色标**
+ *   （实读 CSS，不手抄）：竖线 UI 行只对**不透明峰值段**判 3:1（两端是设计要的淡出，逐点取最小会恒为 1:1、
+ *   不承载判定），品红半透明端与栏目线最亮停靠点各列 decor 行如实打印数值。
  * 已修缺口（2026-10-12，本脚本现判 PASS，退出码 0）：
  *   ① 「条目 hover ∩ 导语」：原 `.jynoct .juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg
  *      ⇒ 悬停时导语像素叠两层 0.08 白，muted 掉到 3.53~3.82（8/8 档 < 4.5）。
@@ -223,16 +227,64 @@ const MASK_W_NARROW = must(
   ),
   '窄窗遮罩宽度'
 )
-const SECTION_LINE = must(
-  rgba(
-    must(
-      block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-section > h2\s*\{[^}]*\}/),
-      'nocturne-dark 栏目 h2 规则'
-    ),
-    'border-bottom'
-  ),
-  '栏目发丝线色（rgba）'
+/** 栏目标题 h2 规则（2026-10-20 #18 / SPEC B4 起承载渐变线） */
+const SECTION_RULE = must(
+  block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-section > h2\s*\{[^}]*\}/),
+  'nocturne-dark 栏目 h2 规则'
 )
+/** 导语渐变竖线规则（#18）：同选择器有多块，取带 background-image 的那块 */
+const LEAD_BAR_RULE = must(
+  [...CSS.matchAll(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-lead\s*\{[^}]*\}/g)]
+    .map((m) => m[0])
+    .find((r) => decl(r, 'background-image')) ?? '',
+  'nocturne-dark 导语渐变竖线规则（background-image）'
+)
+/** 抠一条 `background-image: linear-gradient(…)` 的色标（实读 CSS，不手抄）。
+ *  支持三种写法：`var(--jy-*)`（解析成 token，hex 或 rgba 均可）、`transparent`、字面 rgba()。
+ *  返回按声明顺序的 [{ label, rgb, a, pos }]；首个方向段（to bottom / to right）跳过。
+ *  #18：竖线与栏目线都不再是单色（旧脚本对 border-bottom rgba 的取值已失真），故此处按色标全量读。 */
+const gradientStops = (src, prop) => {
+  const inner = must(
+    (decl(src, prop).match(/linear-gradient\(([\s\S]*)\)/) ?? [])[1] ?? '',
+    `linear-gradient 主体（${prop}）`
+  )
+  return inner
+    .split(/,(?![^(]*\))/)
+    .slice(1)
+    .map((raw) => {
+      const stop = raw.trim()
+      const posM = stop.match(/([\d.]+)%\s*$/)
+      const pos = posM ? Number(posM[1]) : Number.NaN
+      const tokM = stop.match(/var\((--jy-[\w-]+)\)/)
+      if (tokM) {
+        const h = hex(DARK, tokM[1])
+        if (!Number.isNaN(h)) return { label: tokM[1], rgb: h, a: 1, pos }
+        const c = rgba(DARK, tokM[1])
+        return c ? { label: tokM[1], rgb: c.rgb, a: c.a, pos } : null
+      }
+      if (/^transparent\b/.test(stop)) return { label: 'transparent', rgb: TOKEN.bg, a: 0, pos }
+      const m = stop.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/)
+      if (!m) return null
+      const rgb = (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3])
+      return {
+        label: `#${rgb.toString(16).padStart(6, '0')}`,
+        rgb,
+        a: m[4] === undefined ? 1 : Number(m[4]),
+        pos
+      }
+    })
+    .filter(Boolean)
+}
+const SECTION_STOPS = gradientStops(SECTION_RULE, 'background-image')
+const LEAD_BAR_STOPS = gradientStops(LEAD_BAR_RULE, 'background-image')
+if (SECTION_STOPS.length < 3) {
+  console.error('[fatal] 栏目线渐变停靠点少于 3 个（青白 → 靛蓝 → 透明）—— 本脚本拒绝用失真值继续')
+  process.exit(2)
+}
+if (LEAD_BAR_STOPS.length < 3) {
+  console.error('[fatal] 导语竖线渐变停靠点少于 3 个（靛蓝 → 品红 → 透明）—— 本脚本拒绝用失真值继续')
+  process.exit(2)
+}
 const OVERVIEW_HOVER = must(
   rgba(
     must(
@@ -300,6 +352,29 @@ const over = (rgb, alpha, base) =>
   )
 const hexOf = (rgb) => `#${rgb.toString(16).padStart(6, '0')}`
 const f1 = (n) => n.toFixed(4)
+
+/** 渐变线「最具可见度」的停靠点（叠 --jy-bg 后对比度最大者）。
+ *  渐变的端点按设计渐隐到透明，逐点取最小对比度只会恒为 1:1、不承载任何判定；
+ *  故装饰件报最亮停靠点，UI 行报不透明峰值（见下）。 */
+const brightestStop = (stops) =>
+  stops.reduce(
+    (acc, s) =>
+      contrast(over(s.rgb, s.a, TOKEN.bg), TOKEN.bg) > contrast(over(acc.rgb, acc.a, TOKEN.bg), TOKEN.bg)
+        ? s
+        : acc,
+    stops[0]
+  )
+/** 栏目渐变线的最亮停靠点（青白起点）——装饰分隔件，只打印数值 */
+const SECTION_LINE = brightestStop(SECTION_STOPS)
+/** 导语竖线的不透明峰值（靛蓝段）：非文本 UI 门槛 3:1 只对这一档有意义 ——
+ *  两端按设计渐隐到导语底，做 UI 门槛判定会把「设计要的淡出」误判成缺陷。 */
+const LEAD_BAR_PEAK = LEAD_BAR_STOPS.reduce((acc, s) => (s.a > acc.a ? s : acc), LEAD_BAR_STOPS[0])
+/** 品红端（半透明停靠点）：装饰光语言的另一极，打印数值但不计判定 */
+const LEAD_BAR_MAGENTA = LEAD_BAR_STOPS.find((s) => s.a > 0 && s.a < 1) ?? LEAD_BAR_STOPS[0]
+if (LEAD_BAR_PEAK.a !== 1) {
+  console.error('[fatal] 导语竖线渐变峰值不是不透明色 —— 本脚本的 UI 行按不透明色建模，拒绝失真值')
+  process.exit(2)
+}
 
 // ---------------------------------------------------------------- 场景雾模型
 const layersFor = (vw) => (vw <= 520 ? NEBULA_NARROW : NEBULA_MAIN)
@@ -403,8 +478,31 @@ const ITEMS = [
     surface: 'leadHover',
     box: 'leadInk'
   },
-  { id: '导语左侧发光竖线 --jy-focus（非文本 UI）', kind: 'ui', color: 'focus', surface: 'lead', box: 'leadBar' },
-  { id: '栏目发丝线 0.22（装饰分隔件）', kind: 'decor', overlay: 'sectionLine', box: 'content' },
+  {
+    /* #18 / SPEC B4：竖线由单色换成渐变（靛蓝 → 品红 → 透明），外发光移除。
+       旧行写死 `color: 'focus'` 已失真：渐变端点的实际像素只有导语底（8% 白叠底）。
+       改为「不透明峰值段」判 UI 门槛 3:1（两端是设计要的淡出，不参与判定），
+       品红半透明端另列 decor 行如实打印。 */
+    id: `导语竖线渐变峰值 ${LEAD_BAR_PEAK.label} α${LEAD_BAR_PEAK.a}（非文本 UI）`,
+    kind: 'ui',
+    color: LEAD_BAR_PEAK.rgb,
+    surface: 'lead',
+    box: 'leadBar'
+  },
+  {
+    id: `导语竖线品红端 α${LEAD_BAR_MAGENTA.a}（装饰淡出段，不计判定）`,
+    kind: 'decor',
+    overlay: 'leadBarMagenta',
+    box: 'leadBar'
+  },
+  {
+    /* #18 / SPEC B4：栏目线改为「青白 → 靛蓝 → 透明」横向渐变，逐像素取值不同；
+       旧行按单色 rgba(255,255,255,0.22) 取数已失真。改为报最亮停靠点（青白起点）并如实标注。 */
+    id: `栏目渐变线最亮停靠点 ${SECTION_LINE.label} α${SECTION_LINE.a}（装饰分隔件）`,
+    kind: 'decor',
+    overlay: 'sectionLine',
+    box: 'content'
+  },
   { id: '概览条目发丝线 0.05（装饰分隔件）', kind: 'decor', overlay: 'overviewSep', box: 'content' },
   { id: '条目 hover 描边 0.16（装饰描边）', kind: 'decor', overlay: 'feedHoverBorder', box: 'content' },
   { id: '尘埃微粒 dust 0.16（纯装饰层）', kind: 'decor', overlay: 'dust', box: 'content' },
@@ -429,6 +527,8 @@ const overlayOf = (name) => {
   switch (name) {
     case 'sectionLine':
       return SECTION_LINE
+    case 'leadBarMagenta':
+      return LEAD_BAR_MAGENTA
     case 'overviewSep':
       return OVERVIEW_SEP
     case 'feedHoverBorder':
@@ -629,5 +729,5 @@ line('不再叠背景微亮（改走 border-bottom-color 提亮，边框不参�
 line('vw≤520 行的「导语」项走 #2 的窄窗 nebula 退化分支（单条顶部窄带，同样视口锚定）：')
 line('  经 #9 G-2 修复后窄窗峰值 alpha 单独收到 0.055（同面 muted 档 vw=480 → 4.6046，余量 0.1046）；')
 line('  #13 起导语改读专用记号 --jy-lead-text，同一面随之为 7.1870（契约值，见行内实算）。')
-line('栅格化交叉验证：tests/e2e/contrast.spec.ts（可复现，实测 4.6567 @700 / 4.7303 @800）。')
+line('栅格化交叉验证：tests/e2e/contrast.spec.ts（可复现；#18 复测，--jy-lead-text 档实测 7.2682 @700 / 7.3831 @800）。')
 process.exit(fails.length === 0 ? 0 : 1)

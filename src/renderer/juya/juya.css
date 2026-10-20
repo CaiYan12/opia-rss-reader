@@ -2166,6 +2166,19 @@
   padding: 4px 2px 18px;
 }
 
+/* ---- 条目水平内衬在暗侧置 0（2026-10-20，#16 / SPEC 批次 B2b）----
+   那 2px 水平内衬与上方 `border-bottom` 同批写下（`3e8b9e9`），**不承载任何 hover 效果**：
+   暗侧 hover 已改为 `border-bottom-color` 提亮（见下条），`border-radius` 在暗侧被置 0，
+   故水平内衬没有功能用途，只是让正文文字右缘比栏目 h2 线内缩 2px。
+   **为什么置 0**：票面基准是栏目 h2 横线右缘（= 正文文字右缘）；图片（右列图版 / 回流带）
+   与概览分隔线都对齐到该边界，条目内衬若留 2px，图片右缘就会比基准内缩 2px（三视口实测一致）。
+   收 0 后文本列横向变宽 4px（左右各 2px），换行位置可能变化、归档须重生 —— 已按票面记录。
+   作用域写成变体专属复合形态（AGENTS「变体覆盖选择器约定」）：需求 §9 明确 nocturne-light
+   不做任何改动，故共享那条 `4px 2px 18px` 一字未动，仅暗侧覆写。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-entry {
+  padding: 4px 0 18px;
+}
+
 .jynoct .juya-entry:hover {
   background: var(--jy-lead-bg);
   border-radius: 8px;
@@ -2490,13 +2503,28 @@
   filter: drop-shadow(0 0 6px rgba(110, 123, 255, 0.32));
 }
 
+/* ---- 右边缘对齐记号（2026-10-20，#16 / SPEC 批次 B2b）----
+   **病根**：概览条目的 li 用 `margin: 0 -8px` 抵消 `padding: 2px 8px`，行宽不变，但绝对定位的
+   分隔线 `li + li::after { left: 0; right: 0 }` 贴的是 **li 的 padding box** —— 于是线随负外边距
+   一起向外凸出 8px，比栏目 h2 横线（正文文字右缘）多出 10px；图片右缘又因条目 2px 内衬内缩 2px。
+   三处边界各走各的，跨 560/800/1320 三视口偏移量完全一致（结构性固定偏移，不是渲染抖动）。
+   **修法**：把这个「外扩量」抽成一个自定义记号，同时驱动三处 ——
+     li 内衬 = +记号（hover 底色/呼吸空间仍外溢）
+     li 负外边距 = -记号（行宽不变，不产生横向溢出）
+     分隔线左右内缩 = 记号（线回到内容栏边界）
+   改一处不会漂移。窄窗（≤520px）把记号本身收到 0 即可复用既有退化语义（见该断点）。
+   作用域是变体专属复合形态（AGENTS「变体覆盖选择器约定」），亮侧取值不受影响。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview {
+  --jy-ov-bleed: 8px;
+}
+
 /* 概览条目行：加行内衬（hover 底色/发丝线才有呼吸感，不让高亮块贴着字边），
-   并作下面绝对定位发丝线的定位上下文。横向用等量负外边距抵消内衬，
+   并作下面绝对定位发丝线的定位上下文。横向用**同一记号**的等量负外边距抵消内衬，
    行宽不变 → 不产生横向溢出（480px 视口的 scrollWidth 红线不受影响）。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-overview li {
   position: relative;
-  padding: 2px 8px;
-  margin: 0 -8px;
+  padding: 2px var(--jy-ov-bleed);
+  margin: 0 calc(-1 * var(--jy-ov-bleed));
   border-radius: 6px;
   /* 行高约 23px，半径比条目 hover 的 8px 更收，避免小行读成胶囊 */
 }
@@ -2509,12 +2537,14 @@
    线色 rgba(255,255,255,0.05)：取色来源 = 本变体 --jy-border rgba(255,255,255,0.08) 的**更弱一档**
    —— 需求要「极淡」，且 #6 已把栏目线单独提到 0.22 做非文本 UI 的 3:1，概览条目线刻意更低，
    两张票的线值不互相打架。合成到 #18192a 上为 #242535，WCAG 对比度 1.15:1：装饰性分隔线、
-   不承载信息、不适用 3:1 门槛（同 dust 的处理口径）。 */
+   不承载信息、不适用 3:1 门槛（同 dust 的处理口径）。
+   **左右内缩（#16）**：线贴的是 li 的 padding box，若 left/right 取 0 会随负外边距外凸 8px；
+   改取同一个 `--jy-ov-bleed` ⇒ 线与栏目 h2 横线（正文文字右缘）同一条内容栏边界。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  left: var(--jy-ov-bleed);
+  right: var(--jy-ov-bleed);
   top: -3.5px;
   height: 1px;
   background: rgba(255, 255, 255, 0.05);
@@ -2537,6 +2567,12 @@
    窄窗那条微光的取色来源与 WCAG 对比度同 ① （accent #6e7bff / 4.90:1），只收半径与 alpha。
    与 #5 的阅读窗渐隐遮罩无叠加面（那只作用于正文列左右边缘，本区块在概览区）。 */
 @media (max-width: 520px) {
+  /* #16：窄窗退化 = 把同一个记号收到 0（内衬 / 负外边距 / 分隔线内缩三处同时归零），
+     仍保持「改一处不漂移」；下方 li 规则是既有退化取值，保留作双保险。 */
+  [data-juya-variant='nocturne-dark'].jynoct .juya-overview {
+    --jy-ov-bleed: 0px;
+  }
+
   [data-juya-variant='nocturne-dark'].jynoct .juya-overview li {
     padding: 2px 0;
     margin: 0;

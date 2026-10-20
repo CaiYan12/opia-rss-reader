@@ -3215,3 +3215,97 @@ describe('nocturne 窄窗单列回落图宽守卫（2026-10-20，#15 / SPEC 批�
   })
 })
 
+
+describe('nocturne 右边缘对齐记号守卫（2026-10-20，#16 / SPEC 批次 B2b）', () => {
+  // 票面要求：概览的「负外边距 / 内衬 / 分隔线左右内缩」由**同一个自定义记号**驱动，
+  // 改一处不会漂移；基准是栏目 h2 横线右缘（= 正文文字右缘），不是 issue 外缘。
+  // 条目容器的水平内衬（`4px 2px 18px` 的 2px，来自 `3e8b9e9`）在暗侧置 0 —— 已查证不承载
+  // 任何 hover 效果（暗侧 hover 走 border-bottom-color 提亮、border-radius 已置 0）。
+  // 本组只锁暗侧复合形态（AGENTS「变体覆盖选择器约定」），亮侧取值一字不动。
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const stripComments = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const ruleOf = (selector: string): string => extractBlock(css, new RegExp(esc(selector)))
+  const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
+  const TOKEN_RULE = `${DARK} .juya-overview {`
+  const ROW_RULE = `${DARK} .juya-overview li {`
+  const SEP_RULE = `${DARK} .juya-overview li + li::after {`
+  const ENTRY_RULE = `${DARK} .juya-entry {`
+  const body = (rule: string): string => rule.slice(rule.indexOf('{') + 1, rule.lastIndexOf('}'))
+
+  it('① 概览三处由同一记号 --jy-ov-bleed 驱动，且三处都不再写字面 8px', () => {
+    const token = body(ruleOf(TOKEN_RULE))
+    expect(token, '概览记号的声明规则应存在').toBeTruthy()
+    expect(decl(token, '--jy-ov-bleed'), '记号取值应为 8px（SPEC B2b）').toBe('8px')
+
+    const row = body(ruleOf(ROW_RULE))
+    expect(row, '概览条目行规则应存在').toBeTruthy()
+    // li 内衬与负外边距必须吃同一个记号：内衬 = +bleed，margin = -bleed（两者等量 ⇒ 行宽不变）
+    expect(decl(row, 'padding'), 'li 内衬须由记号驱动').toContain('var(--jy-ov-bleed)')
+    expect(decl(row, 'margin'), 'li 负外边距须由同一记号驱动（等量负值）').toContain(
+      'calc(-1 * var(--jy-ov-bleed))'
+    )
+
+    const sep = body(ruleOf(SEP_RULE))
+    expect(sep, '概览分隔线规则应存在').toBeTruthy()
+    expect(decl(sep, 'left'), '分隔线左内缩须由同一记号驱动').toBe('var(--jy-ov-bleed)')
+    expect(decl(sep, 'right'), '分隔线右内缩须由同一记号驱动').toBe('var(--jy-ov-bleed)')
+
+    // 漂移防线：三处的**横向**数值不得再写字面量（否则改记号时这些数值会被落下）。
+    // 纵向 2px 内衬是既有形态、与本记号无关，不在漂移面内。
+    for (const [name, value] of [
+      ['margin', decl(row, 'margin')],
+      ['left', decl(sep, 'left')],
+      ['right', decl(sep, 'right')]
+    ] as const) {
+      expect(value, `${name} 不得写字面 px（须全部走 --jy-ov-bleed）`).not.toMatch(/\d+px/)
+    }
+    expect(decl(row, 'padding'), 'padding 的横向分量不得写字面 8px').not.toMatch(/-?8px/)
+  })
+
+  it('② 条目容器水平内衬在暗侧置 0，亮侧与基层一字不改', () => {
+    const entry = body(ruleOf(ENTRY_RULE))
+    expect(entry, "[data-juya-variant='nocturne-dark'].jynoct .juya-entry 覆写应存在").toBeTruthy()
+    expect(decl(entry, 'padding'), '暗侧条目内衬应为 4px 0 18px（水平 0）').toBe('4px 0 18px')
+
+    // 基层（共享）那条仍是 2px：它是亮侧 / 其他分支的取值，本票不碰
+    const base = extractBlock(css, /(?:^|\n)\.jynoct \.juya-entry \{/).replace(/^\n/, '')
+    expect(decl(body(base), 'padding'), '既有共享 .jynoct .juya-entry 内衬应保持 4px 2px 18px').toBe(
+      '4px 2px 18px'
+    )
+    // 亮侧不得出现条目内衬覆写（§9：nocturne-light 任何改动都不做）
+    expect(css, '不得出现 nocturne-light 的 .juya-entry 内衬覆写').not.toMatch(
+      /\[data-juya-variant='nocturne-light'\]\.jynoct \.juya-entry\s*\{/
+    )
+    // 也不得新增共享形态的条目内衬覆写（那会连带改亮侧）
+    expect(css, '不得新增共享 .jynoct .juya-entry 的第二条覆写').not.toMatch(
+      /(?:^|\n)\.jynoct \.juya-entry \{[^}]*padding:[^;}]*\b0\b/
+    )
+  })
+
+  it('③ 窄窗退化保留：同一记号收到 0，既有 li 退化为零外扩', () => {
+    const narrow = extractBlocks(css, /@media \(max-width: 520px\) \{/)
+      .map(stripComments)
+      .find((b) => b.includes('nocturne-dark') && b.includes('.juya-overview'))
+    expect(narrow, '应存在含概览目录的 nocturne ≤520px 退化媒体块').toBeTruthy()
+    // 退化 = 把记号本身收到 0 ⇒ 三处（内衬 / 负外边距 / 分隔线内缩）同时归零，仍「改一处不漂移」
+    expect(decl(narrow!, '--jy-ov-bleed'), '窄窗须把同一记号收到 0').toBe('0px')
+    // 既有退化规则（li padding 2px 0 / margin 0）保留，避免窄窗出现横向外扩贴屏边
+    expect(narrow, '既有窄窗 li 退化规则应保留').toMatch(/\.juya-overview li \{[^}]*margin: 0/)
+    expect(narrow, '既有窄窗 li 退化规则应保留（padding 2px 0）').toMatch(
+      /\.juya-overview li \{[^}]*padding: 2px 0/
+    )
+  })
+
+  it('④ 分隔线内缩方向为正、hover 底色仍由 li 盒外溢（「底色比线宽」形态）', () => {
+    const token = body(ruleOf(TOKEN_RULE))
+    expect(Number.parseFloat(decl(token, '--jy-ov-bleed')), '记号必须是正值（负值会反向溢出）').toBeGreaterThan(0)
+    const sep = body(ruleOf(SEP_RULE))
+    // 分隔线内缩不可能是负值：必须使用记号本身，而不是 calc(-1 * …)
+    expect(decl(sep, 'left'), '分隔线左缘朝内').not.toContain('-1 *')
+    expect(decl(sep, 'right'), '分隔线右缘朝内').not.toContain('-1 *')
+    // li 仍是 hover 底色承载者（底色外溢 8px 的交互反馈保留）
+    const hover = ruleOf(`${DARK} .juya-overview li:hover {`)
+    expect(hover, 'hover 整行底色规则应保留').toBeTruthy()
+    expect(decl(body(hover), 'background'), 'hover 底色应存在').toBeTruthy()
+  })
+})

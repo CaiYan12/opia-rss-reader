@@ -247,8 +247,9 @@ test('nocturne 窄窗单列回落：图宽跟随内容列、两图竖向堆叠�
   expect(geo.fig.left, '图列左缘应与内容列左缘一致').toBeCloseTo(geo.body.left, 1)
   expect(geo.fig.right, '图列右缘应与内容列右缘一致').toBeCloseTo(geo.body.right, 1)
   // ② 与栏目标题线一致（票面验收「左右缘与栏目标题线一致」）。
-  // 容差 2px 的**唯一**来源是既有的 `.jynoct .juya-entry { padding: 4px 2px 18px }`（#8 期就有的
-  // 条目内衬，正文段落同样吃这 2px），不是本票引入的几何 —— 本票只复位图宽，不碰条目内衬。
+  // 容差 2px 的来源曾是 `.jynoct .juya-entry { padding: 4px 2px 18px }`（#8 期就有的条目内衬）；
+  // #16 已把暗侧该内衬的水平分量置 0（T5 右边缘对齐），故此处实测为 0.00px。
+  // 断言保留 ≤2 作取整余量，不放宽也不收紧 —— 它锁的仍是「图列与栏目线同一内容栏边界」。
   expect(geo.h2, '栏目 h2 应可取到').toBeTruthy()
   expect(Math.abs(geo.fig.left - geo.h2!.left), '图列左缘与栏目标题线左端应在条目内衬 2px 内一致').toBeLessThanOrEqual(2)
   expect(Math.abs(geo.fig.right - geo.h2!.right), '图列右缘与栏目标题线右端应在条目内衬 2px 内一致').toBeLessThanOrEqual(2)

@@ -3273,13 +3273,13 @@
 }
 
 .view-scroll:has([data-juya-variant='newsprint90s-light'])::-webkit-scrollbar-thumb {
-  /* newsprint90s-light 报刊红 accent #8b1a1a，对旧纸底 #ece2c6 对比 7.19（纸纹最不利行约 6.9）；直角随 --jy-radius 0 */
+  /* newsprint90s-light 报刊红 accent #8b1a1a，对旧纸底 #ece2c6 对比 7.19（纸纹最不利行 6.62）；直角随 --jy-radius 0 */
   background: #8b1a1a;
   border-radius: 0;
 }
 
 .view-scroll:has([data-juya-variant='newsprint90s-dark'])::-webkit-scrollbar-thumb {
-  /* newsprint90s-dark 报刊红 accent #d05555，对暖暗纸底 #1e1913 对比 4.25（纸纹最不利行约 4.1，非文本件 ≥3）；直角随 --jy-radius 0 */
+  /* newsprint90s-dark 报刊红 accent #d05555，对暖暗纸底 #1e1913 对比 4.25（纸纹最不利行 3.92，非文本件 ≥3）；直角随 --jy-radius 0 */
   background: #d05555;
   border-radius: 0;
 }

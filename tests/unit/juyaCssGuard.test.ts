@@ -4095,3 +4095,127 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
     expect(docs, '须写明理由：无实测数据').toContain('无实测数据')
   })
 })
+
+describe('newsprint90s 旧纸面守卫（#27：纸纹最不利行 AA，链接墨色）', () => {
+  // 本票已确认的取值集合（grilling 结论，SPEC 2026-10-21 §「字体与颜色」）。
+  // 断言取值而非规则文本：改色必须同步改这里，避免纸面被静默改回纯色。
+  const EXPECTED = {
+    'newsprint90s-light': {
+      bg: 0xece2c6,
+      card: 0xf0e7cf,
+      text: 0x33301f,
+      heading: 0x211d14,
+      muted: 0x5f5747,
+      link: 0x2b2620,
+      accent: 0x8b1a1a,
+      leadAlpha: 0.07
+    },
+    'newsprint90s-dark': {
+      bg: 0x1e1913,
+      card: 0x262019,
+      text: 0xd6cbb2,
+      heading: 0xefe6cf,
+      muted: 0xa2997b,
+      link: 0x9fb4e8,
+      accent: 0xd05555,
+      leadAlpha: 0.12
+    }
+  } as const
+
+  /** 变体块背景层里的全部 rgba() 纹理层（纤维噪点 / 暗角 / 3px 横纹） */
+  const textureLayers = (block: string): { rgb: number; alpha: number }[] =>
+    [...decl(block, 'background-image').matchAll(/rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/g)].map(
+      (m) => ({
+        rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+        alpha: Number(m[4])
+      })
+    )
+
+  /** 「最不利纸纹行」：所有纹理层叠到纸底色上（各层可同处一行，取上界；比单层更保守）。
+   *  WCAG 不定义半透明色，故先按 source-over 合成再算对比度。 */
+  const worstPaper = (variant: keyof typeof EXPECTED): number => {
+    const block = variantBlock(variant)
+    return textureLayers(block).reduce(
+      (surface, layer) => alphaOver(layer.rgb, layer.alpha, surface),
+      EXPECTED[variant].bg
+    )
+  }
+
+  it('rgba 纹理层解析 helper 自身可用（颜色 + alpha 逐个还原）', () => {
+    const layers = textureLayers(
+      "[data-juya-variant='x'] { background-image: repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.035) 0 1px, transparent 1px 3px); }"
+    )
+    expect(layers).toEqual([{ rgb: 0x78643c, alpha: 0.035 }])
+  })
+
+  it('纸色 / 卡片 / 正文 / 标题 / 次要文字 / 链接 / accent 均取本轮决定的集合', () => {
+    for (const [variant, want] of Object.entries(EXPECTED)) {
+      const block = variantBlock(variant)
+      expect(tokenHex(block, '--jy-bg'), `${variant} --jy-bg`).toBe(want.bg)
+      expect(tokenHex(block, '--jy-card'), `${variant} --jy-card`).toBe(want.card)
+      expect(tokenHex(block, '--jy-text'), `${variant} --jy-text`).toBe(want.text)
+      expect(tokenHex(block, '--jy-heading'), `${variant} --jy-heading`).toBe(want.heading)
+      expect(tokenHex(block, '--jy-muted'), `${variant} --jy-muted`).toBe(want.muted)
+      expect(tokenHex(block, '--jy-link'), `${variant} --jy-link`).toBe(want.link)
+      expect(tokenHex(block, '--jy-accent'), `${variant} --jy-accent`).toBe(want.accent)
+    }
+  })
+
+  it('链接为墨色而非 Web 蓝（亮侧 #1a3c8b 已退役）', () => {
+    const light = variantBlock('newsprint90s-light')
+    expect(tokenHex(light, '--jy-link'), '亮侧链接应改墨色').toBe(0x2b2620)
+    expect(light, '旧 Web 蓝 #1a3c8b 不应残留').not.toContain('#1a3c8b')
+    // 墨色：R>G>B 且彩度（max-min）≤ 0x20，排除任何高饱和蓝
+    const link = tokenHex(light, '--jy-link')
+    const [r, g, b] = [(link >> 16) & 0xff, (link >> 8) & 0xff, link & 0xff]
+    expect(Math.max(r, g, b) - Math.min(r, g, b), '墨色彩度应很低').toBeLessThanOrEqual(0x20)
+    expect(tokenHex(variantBlock('newsprint90s-dark'), '--jy-link'), '暗侧灯下链接').toBe(0x9fb4e8)
+  })
+
+  it('次要文字对纸纹最不利行 / 卡片 / 导语底均 ≥ 4.5（两变体）', () => {
+    for (const [variant, want] of Object.entries(EXPECTED)) {
+      const block = variantBlock(variant)
+      const paper = worstPaper(variant as keyof typeof EXPECTED)
+      const leadSurface = alphaOver(want.accent, want.leadAlpha, paper)
+      expect(contrast(want.muted, paper), `${variant} muted/纸纹最不利行`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.muted, want.card), `${variant} muted/卡片`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.muted, leadSurface), `${variant} muted/导语底`).toBeGreaterThanOrEqual(4.5)
+      // 正文与标题不得低于次要文字（层级不倒挂）
+      expect(contrast(want.text, paper), `${variant} text/纸纹`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.heading, paper), `${variant} heading/纸纹`).toBeGreaterThanOrEqual(4.5)
+      // 导语底必须是 accent 的同色相半透明层，而不是另一种灰
+      const lead = decl(block, '--jy-lead-bg')
+      expect(lead, `${variant} --jy-lead-bg 应为 accent 色相`).toContain(
+        `rgba(${(want.accent >> 16) & 0xff}, ${(want.accent >> 8) & 0xff}, ${want.accent & 0xff}, ${want.leadAlpha})`
+      )
+    }
+  })
+
+  it('纸纹只存在于背景层：3px 横纹 + 纤维噪点 + 暗角，零 filter、零动画', () => {
+    for (const variant of Object.keys(EXPECTED)) {
+      const block = variantBlock(variant)
+      const image = decl(block, 'background-image')
+      expect(image, `${variant} 须保留 3px 横纹`).toMatch(/repeating-linear-gradient\(\s*0deg/)
+      expect(image, `${variant} 横纹仍为 3px 周期`).toContain('transparent 3px')
+      expect(image, `${variant} 须叠加纤维噪点/暗角（radial-gradient）`).toContain('radial-gradient')
+      expect(textureLayers(block).length, `${variant} 纹理层数 ≥ 3`).toBeGreaterThanOrEqual(3)
+      expect(block, `${variant} 不得用 filter 作用于文字`).not.toContain('filter:')
+      expect(block, `${variant} 不新增动画`).not.toMatch(/animation|@keyframes/)
+    }
+  })
+
+  it('滚动条字面 thumb 色注释按新纸色更新（亮 7.19 / 暗 4.25，均 ≥3）', () => {
+    // 用 indexOf 切片取规则块：选择器含 `::`/`-` 与 `:has()`，正则转义易错且无收益
+    const thumb = (variant: string): string => {
+      const at = css.indexOf(`[data-juya-variant='${variant}'])::-webkit-scrollbar-thumb`)
+      return at < 0 ? '' : css.slice(at, css.indexOf('}', at) + 1)
+    }
+    expect(thumb('newsprint90s-light'), '亮侧注释须引用新纸色').toContain('#ece2c6')
+    expect(thumb('newsprint90s-light'), '亮侧旧纸色注释应退役').not.toContain('#f2ecd9')
+    expect(thumb('newsprint90s-dark'), '暗侧注释须引用新纸色').toContain('#1e1913')
+    expect(thumb('newsprint90s-dark'), '暗侧旧纸色注释应退役').not.toContain('#221f19')
+    // 字面色本身不变，仍对纯纸底 ≥3（非文本件）
+    expect(contrast(0x8b1a1a, 0xece2c6), '亮 thumb/纸').toBeGreaterThanOrEqual(3)
+    expect(contrast(0xd05555, 0x1e1913), '暗 thumb/纸').toBeGreaterThanOrEqual(3)
+  })
+})

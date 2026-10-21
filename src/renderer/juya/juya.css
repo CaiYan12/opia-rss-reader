@@ -1216,23 +1216,35 @@
 }
 
 /* ---- 90 年代报刊式 ---- */
+/* 纸面（#27）：中度泛黄的旧新闻纸。纹理全部是 .juya-root 的背景层——
+   极轻暗角（四角）+ 两道错位纤维噪点（7px / 11px 平铺）+ 3px 横纹；
+   零 DOM、零动画、不用 filter（filter 会作用于文字）。对比度以「纸纹最不利行」
+   （全部纹理层叠到 --jy-bg 上）实算，守卫见 tests/unit/juyaCssGuard.test.ts。 */
 [data-juya-variant='newsprint90s-light'] {
-  --jy-bg: #f2ecd9;
-  background-image: repeating-linear-gradient(
-    0deg,
-    rgba(120, 100, 60, 0.035) 0px,
-    rgba(120, 100, 60, 0.035) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  --jy-card: #f7f2e2;
+  --jy-bg: #ece2c6;
+  background-image:
+    radial-gradient(115% 85% at 50% 35%, transparent 58%, rgba(86, 68, 38, 0.016) 100%),
+    radial-gradient(circle at 32% 38%, rgba(104, 86, 52, 0.010) 0.5px, transparent 1px),
+    radial-gradient(circle at 68% 62%, rgba(104, 86, 52, 0.010) 0.5px, transparent 1px),
+    repeating-linear-gradient(
+      0deg,
+      rgba(120, 100, 60, 0.018) 0px,
+      rgba(120, 100, 60, 0.018) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  background-size: auto, 7px 7px, 11px 11px, auto;
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  --jy-card: #f0e7cf;
   --jy-border: #2f2a20;
   --jy-heading: #211d14;
   --jy-text: #33301f;
-  --jy-muted: #6d6350;
+  /* 一个 muted token 同时管日期线 / 来源 / 导语：对纸纹最不利行 ≥4.5，换色须过守卫 */
+  --jy-muted: #5f5747;
   --jy-accent: #8b1a1a;
-  --jy-on-accent: #f7f2e2;
-  --jy-link: #1a3c8b;
+  --jy-on-accent: #f0e7cf;
+  /* 链接改墨色（原 Web 蓝已退役）；下划线由模板层负责 */
+  --jy-link: #2b2620;
   --jy-lead-bg: rgba(139, 26, 26, 0.07);
   --jy-focus: #8b1a1a;
   --jy-radius: 0px;
@@ -1240,23 +1252,31 @@
   --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
 }
 
+/* 灯下读报的暖暗纸（#27）：纹理层为极轻黑角 + 两道暖纸纤维 + 极淡白噪点。 */
 [data-juya-variant='newsprint90s-dark'] {
-  --jy-bg: #221f19;
-  background-image: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.028) 0px,
-    rgba(255, 255, 255, 0.028) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  --jy-card: #2a261e;
+  --jy-bg: #1e1913;
+  background-image:
+    radial-gradient(115% 85% at 50% 35%, transparent 58%, rgba(0, 0, 0, 0.025) 100%),
+    radial-gradient(circle at 32% 38%, rgba(107, 92, 60, 0.02) 0.5px, transparent 1px),
+    radial-gradient(circle at 68% 62%, rgba(107, 92, 60, 0.016) 0.5px, transparent 1px),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.015) 0px,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  background-size: auto, 7px 7px, 11px 11px, auto;
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  --jy-card: #262019;
   --jy-border: #c9bfa4;
-  --jy-heading: #ece4cd;
-  --jy-text: #cfc7ae;
-  --jy-muted: #8f8668;
+  --jy-heading: #efe6cf;
+  --jy-text: #d6cbb2;
+  --jy-muted: #a2997b;
   --jy-accent: #d05555;
-  --jy-on-accent: #221f19;
-  --jy-link: #8fa8e8;
+  --jy-on-accent: #1e1913;
+  /* 暗侧链接为灯下蓝墨（对纸 8.45），非 Web 蓝 */
+  --jy-link: #9fb4e8;
   --jy-lead-bg: rgba(208, 85, 85, 0.12);
   --jy-focus: #e8b4b4;
   --jy-radius: 0px;
@@ -3253,13 +3273,13 @@
 }
 
 .view-scroll:has([data-juya-variant='newsprint90s-light'])::-webkit-scrollbar-thumb {
-  /* newsprint90s-light 报刊红 accent #8b1a1a，对米报底 #f2ecd9 对比 7.86；直角随 --jy-radius 0 */
+  /* newsprint90s-light 报刊红 accent #8b1a1a，对旧纸底 #ece2c6 对比 7.19（纸纹最不利行约 6.9）；直角随 --jy-radius 0 */
   background: #8b1a1a;
   border-radius: 0;
 }
 
 .view-scroll:has([data-juya-variant='newsprint90s-dark'])::-webkit-scrollbar-thumb {
-  /* newsprint90s-dark 报刊红 accent #d05555，对暗报底 #221f19 对比 4.00；直角随 --jy-radius 0 */
+  /* newsprint90s-dark 报刊红 accent #d05555，对暖暗纸底 #1e1913 对比 4.25（纸纹最不利行约 4.1，非文本件 ≥3）；直角随 --jy-radius 0 */
   background: #d05555;
   border-radius: 0;
 }

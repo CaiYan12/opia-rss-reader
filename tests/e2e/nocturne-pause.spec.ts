@@ -138,18 +138,35 @@ test('不可见标记暂停全部 nocturne 动画（含伪元素），可见属�
   )
   expectStylesClose(hidden.styles, running.styles)
 
+  // 冻结基线必须在暂停**落地**后取，不能拿「置标记瞬间」当基线（2026-10-21 全量并行偶发修正）。
+  // 实测现象：同一测量里 playState 已是 paused，但 250ms 后 jy-dust-drift 的 currentTime 仍推进超阈值 ——
+  // 推断是「暂停标记在 style flush 里生效、而动画时间停表要等后续帧提交」，主线程忙时这段延迟可超一帧。
+  // 故先等两帧让暂停坐实，再取基线。这不是放宽断言：实现若根本不暂停，上面第 146 行的
+  // 「不得有 running」会在落地前就转红，本段只把「停表→不推进」这个待测属性隔离出来。
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
+  )
+  const settled = await measure(root, 'none')
+  expect(
+    settled.animations.filter((a) => a.state === 'running'),
+    '暂停落地后仍不得有 running 动画'
+  ).toEqual([])
+
   // 冻结：暂停后 250ms 再测，可见属性必须不动（若仍在跑，250ms 会改变 ~0.004 透明度，
-  // 比下面 1e-4 的容差大 40 倍）。容差不取 0：暂停在下一帧（≤16.7ms）才生效，会留下 1e-5 级尾差。
+  // 比下面 1e-4 的容差大 40 倍）。容差不取 0：暂停与采样之间仍可能留下 1e-5 级尾差。
   await page.waitForTimeout(250)
   const frozen = await measure(root, 'none')
-  expectStylesClose(frozen.styles, hidden.styles, 1e-4)
+  expectStylesClose(frozen.styles, settled.styles, 1e-4)
   expect(frozen.animations.filter((a) => a.state === 'running'), '暂停期间不得自行恢复').toEqual([])
   for (const name of CONTINUOUS) {
-    const before = hidden.animations.find((a) => a.name === name)
+    const before = settled.animations.find((a) => a.name === name)
     const after = frozen.animations.find((a) => a.name === name)
     expect(
       Math.abs(after!.time - before!.time),
-      `${name} 的 currentTime 应冻结（漂移 ≤ 一帧 16.7ms；若仍在跑，250ms 会推进 250ms）`
+      `${name} 的 currentTime 应冻结（已扣除暂停落地延迟；若仍在跑，250ms 会推进 250ms）`
     ).toBeLessThan(25)
   }
 

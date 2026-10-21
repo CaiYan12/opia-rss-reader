@@ -1284,24 +1284,71 @@
   --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
 }
 
-/* 报头（刊头+日期线+双细线）、栏目栏、正文两栏（宽窗口） */
+/* 刊头（三栏报头）+ 栏目栏 + 正文两栏（宽窗口）。
+   版心 800（内容宽 752 = 800 − 2×24 内衬，双栏每栏约 362）。 */
+.jynews .juya-issue {
+  max-width: 800px;
+}
+
+/* 三栏刊头（#26）：左日期 / 中期号标题 / 右星期。两侧等宽轨道（minmax(0,1fr)）把
+   auto 列的期号顶到版心中线，且元信息过宽时可收缩而不撑破版心。
+   上沿 1px 细线、下沿 4px double；刊头楷体，期号 38px / 6px 字距。 */
 .jynews .juya-masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  column-gap: 12px;
   text-align: center;
-  border-bottom: 3px double var(--jy-border);
-  padding-bottom: 14px;
-  margin-bottom: 18px;
+  font-family: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 4px double var(--jy-border);
+  padding: 10px 0 12px;
+  margin-bottom: 20px;
 }
 
 .jynews .juya-masthead h1 {
-  font-size: 34px;
-  letter-spacing: 4px;
+  font-family: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
+  font-size: 38px;
+  letter-spacing: 6px;
+  line-height: 1.15;
 }
 
+/* 日期与星期：宋体 11px / 1px 字距，次要文字色；宽窗分居左右两端。 */
 .jynews .juya-date-line {
-  font-size: 12px;
+  justify-self: start;
+  text-align: left;
+  font-family: var(--jy-font-body);
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1.4;
   color: var(--jy-muted);
-  letter-spacing: 2px;
-  margin-top: 6px;
+}
+
+.jynews .juya-masthead-weekday {
+  justify-self: end;
+  text-align: right;
+  font-family: var(--jy-font-body);
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1.4;
+  color: var(--jy-muted);
+}
+
+/* ≤900：刊头回落单列居中堆叠（日期 → 期号 → 星期），期号 30px / 4px 字距。 */
+@media (max-width: 900px) {
+  .jynews .juya-masthead {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
+  .jynews .juya-date-line,
+  .jynews .juya-masthead-weekday {
+    justify-self: center;
+    text-align: center;
+  }
+  .jynews .juya-masthead h1 {
+    font-size: 30px;
+    letter-spacing: 4px;
+  }
 }
 
 .jynews .juya-section > h2 {

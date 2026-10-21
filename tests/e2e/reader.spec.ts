@@ -78,6 +78,128 @@ test('90 年代报刊式：报头日期线与分栏容器', async ({ page }) => 
   await expect(root.locator('.juya-entry-columns').first()).toBeVisible()
 })
 
+/** 刊头三栏几何（#26）：返回日期/期号标题/星期的包围盒与刊头自身盒子。 */
+async function mastheadBoxes(masthead: import('@playwright/test').Locator) {
+  return masthead.evaluate((el) => {
+    const box = (n: Element) => {
+      const r = n.getBoundingClientRect()
+      return {
+        left: r.left,
+        right: r.right,
+        top: r.top,
+        bottom: r.bottom,
+        cx: (r.left + r.right) / 2,
+        cy: (r.top + r.bottom) / 2
+      }
+    }
+    const self = box(el)
+    const date = el.querySelector('.juya-date-line')
+    const title = el.querySelector('h1')
+    const weekday = el.querySelector('.juya-masthead-weekday')
+    if (!date || !title || !weekday) return null
+    return { self, date: box(date), title: box(title), weekday: box(weekday) }
+  })
+}
+
+test('90 年代报刊式刊头（#26）：1280 三栏——日期最左、期号居中、星期最右，互不重叠', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.juya-masthead')
+  const date = masthead.locator('.juya-date-line')
+  const title = masthead.locator('h1')
+  const weekday = masthead.locator('.juya-masthead-weekday')
+
+  await expect(date).toBeVisible()
+  await expect(weekday).toBeVisible()
+
+  // 日期与星期来自同一真实发布日期（夹具 pubDate 2026-08-28T01:31:42Z），不编造期号/版次
+  await expect(date).toHaveText('2026年8月28日')
+  await expect(weekday).toHaveText('星期五')
+  await expect(title).toHaveText('AI 早报 2026-08-28')
+
+  // 版心 800（内容宽 752 = 800 − 2×24 内衬）
+  await expect(root.locator('.juya-issue')).toHaveCSS('max-width', '800px')
+
+  // 刊头楷体 + 38px / 6px
+  await expect(masthead).toHaveCSS('font-family', /KaiTi/)
+  await expect(title).toHaveCSS('font-size', '38px')
+  await expect(title).toHaveCSS('letter-spacing', '6px')
+
+  // 上沿 1px 细线、下沿 4px double
+  await expect(masthead).toHaveCSS('border-top-width', '1px')
+  await expect(masthead).toHaveCSS('border-top-style', 'solid')
+  await expect(masthead).toHaveCSS('border-bottom-width', '4px')
+  await expect(masthead).toHaveCSS('border-bottom-style', 'double')
+
+  const assertWide = (boxes: Awaited<ReturnType<typeof mastheadBoxes>>) => {
+    expect(boxes, '刊头三栏元素必须齐备').not.toBeNull()
+    const g = boxes!
+    // 横向顺序：日期区 < 期号标题 < 星期区，且相邻两栏不重叠
+    expect(g.date.cx, '日期应在期号左侧').toBeLessThan(g.title.left)
+    expect(g.title.cx, '期号应居中于日期与星期之间').toBeLessThan(g.weekday.cx)
+    expect(g.date.right, '日期与期号不得重叠').toBeLessThanOrEqual(g.title.left)
+    expect(g.title.right, '期号与星期不得重叠').toBeLessThanOrEqual(g.weekday.left)
+    // 同一行：三者纵向范围与刊头正文区相交（不是被挤到上下两行）
+    expect(Math.max(g.date.cy, g.weekday.cy) - Math.min(g.date.cy, g.weekday.cy)).toBeLessThan(
+      g.self.bottom - g.self.top
+    )
+    // 期号大致居于版心中线（三栏中的 auto 列）
+    expect(Math.abs(g.title.cx - g.self.cx), '期号标题应居中').toBeLessThan(12)
+  }
+
+  assertWide(await mastheadBoxes(masthead))
+
+  // 暗侧：变体只替换调色板 token（结构、几何与亮侧一致），故按变体属性翻转后复测同一组几何，
+  // 并验证刊头线取暗侧纸纹色 #c9bfa4（亮侧为 #2f2a20）。
+  await expect(masthead).toHaveCSS('border-bottom-color', 'rgb(47, 42, 32)')
+  await root.evaluate((el) => el.setAttribute('data-juya-variant', 'newsprint90s-dark'))
+  await expect(masthead).toHaveCSS('border-bottom-color', 'rgb(201, 191, 164)')
+  await expect(title).toHaveCSS('font-size', '38px')
+  assertWide(await mastheadBoxes(masthead))
+})
+
+test('90 年代报刊式刊头（#26）：560 宽度回落居中堆叠、页面无横向溢出', async ({ page }) => {
+  await page.setViewportSize({ width: 560, height: 800 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.juya-masthead')
+  const title = masthead.locator('h1')
+
+  await expect(title).toHaveCSS('font-size', '30px')
+  await expect(title).toHaveCSS('letter-spacing', '4px')
+
+  const g = await mastheadBoxes(masthead)
+  expect(g, '刊头三栏元素必须齐备').not.toBeNull()
+  // 竖向堆叠：日期 → 期号 → 星期，逐段不重叠
+  expect(g!.date.bottom, '日期应在期号之上').toBeLessThanOrEqual(g!.title.top + 1)
+  expect(g!.title.bottom, '期号应在星期之上').toBeLessThanOrEqual(g!.weekday.top + 1)
+  // 居中：三者水平中心与刊头中线一致（容 2px 取整）
+  for (const [name, b] of [
+    ['日期', g!.date],
+    ['期号', g!.title],
+    ['星期', g!.weekday]
+  ] as const) {
+    expect(Math.abs(b.cx - g!.self.cx), `${name}应居中`).toBeLessThanOrEqual(2)
+  }
+
+  // 无横向溢出：滚动容器与刊头都不产生横向滚动（scrollWidth ≤ clientWidth）
+  const overflow = await root.evaluate((el) => {
+    const scroller = el.closest('.view-scroll') as HTMLElement | null
+    const boxes = [el as HTMLElement, scroller].filter((n): n is HTMLElement => !!n)
+    return boxes.map((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
+  })
+  for (const { sw, cw } of overflow) {
+    expect(sw, '横向溢出（scrollWidth 超出 clientWidth）').toBeLessThanOrEqual(cw + 1)
+  }
+})
+
 test('千禧网页式：结构类 jyy2k 挂载', async ({ page }) => {
   await loadApp(page, 'y2k')
   await openFirstArticle(page)

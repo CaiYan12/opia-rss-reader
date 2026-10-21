@@ -10,21 +10,26 @@ import { EntryBlocks, OverviewItems } from './shared'
  *  伪元素做不到；概览、栏目、条目仍走共享语义构件，视觉由 juya.css 的 jynews 段承担。 */
 const factory = makeJuyaTemplate({ variantClass: 'jynews', entryColumns: true })
 
+/** 刊头三段文字全部取自真实发布字段：日期与星期来自同一 pubDate（不编造期号/版次）。 */
+function mastheadParts(pubDate: string): { date: string; weekday: string } {
+  const d = new Date(pubDate)
+  return {
+    date: d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+    weekday: d.toLocaleDateString('zh-CN', { weekday: 'long' })
+  }
+}
+
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
+  const { date, weekday } = mastheadParts(article.pubDate)
   return (
     <div className="juya-root jynews" data-juya-variant={variantId}>
       <div className="juya-issue">
+        {/* 刊头三栏：左日期 / 中期号标题 / 右星期；≤900 由 CSS 回落为居中堆叠。
+            日期线语义类保留：既有端到端用例以 .juya-date-line 定位日期行 */}
         <header className="juya-masthead">
-          <h1>{issue.heading || article.title}</h1>
-          {/* 日期线语义类保留：既有端到端用例以 .juya-date-line 定位日期行 */}
-          <div className="juya-date-line">
-            {new Date(article.pubDate).toLocaleDateString('zh-CN', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long'
-            })}
-          </div>
+          <div className="juya-date-line">{date}</div>
+          <h1 className="juya-masthead-title">{issue.heading || article.title}</h1>
+          <div className="juya-masthead-weekday">{weekday}</div>
         </header>
         {issue.overview && <OverviewItems overview={issue.overview} onOpenLink={onOpenLink} />}
         {issue.sections.map((section) => (

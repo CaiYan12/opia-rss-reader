@@ -1248,8 +1248,9 @@
   --jy-lead-bg: rgba(139, 26, 26, 0.07);
   --jy-focus: #8b1a1a;
   --jy-radius: 0px;
-  --jy-font-heading: 'Noto Serif SC', SimSun, 'Songti SC', serif;
-  --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+  /* #28 字面：正文宋体优先（印刷正文），标题与栏目条黑体优先（报眼题字） */
+  --jy-font-heading: SimHei, 'Noto Sans SC', sans-serif;
+  --jy-font-body: SimSun, 'Noto Serif SC', 'Songti SC', serif;
 }
 
 /* 灯下读报的暖暗纸（#27）：纹理层为极轻黑角 + 两道暖纸纤维 + 极淡白噪点。 */
@@ -1280,8 +1281,8 @@
   --jy-lead-bg: rgba(208, 85, 85, 0.12);
   --jy-focus: #e8b4b4;
   --jy-radius: 0px;
-  --jy-font-heading: 'Noto Serif SC', SimSun, 'Songti SC', serif;
-  --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+  --jy-font-heading: SimHei, 'Noto Sans SC', sans-serif;
+  --jy-font-body: SimSun, 'Noto Serif SC', 'Songti SC', serif;
 }
 
 /* 刊头（三栏报头）+ 栏目栏 + 正文两栏（宽窗口）。
@@ -1355,9 +1356,10 @@
   background: var(--jy-heading);
   color: var(--jy-bg);
   display: inline-block;
-  padding: 2px 12px;
+  padding: 3px 14px;
+  font-family: SimHei, 'Noto Sans SC', sans-serif;
   font-size: 16px;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
 }
 
 .jynews .juya-entry {
@@ -1367,6 +1369,16 @@
 
 .jynews .juya-entry > h3 {
   font-size: 18px;
+  letter-spacing: 0.5px;
+}
+
+/* 序号徽章（#28）：方角标签，标题色底 + 纸色字（与栏目条同一套印刷语言，不再用 accent 胶囊）。
+   概览序号与条目标题徽章共用 .juya-index，故只写一条覆盖两类上下文。 */
+.jynews .juya-index {
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+  border-radius: 0;
+  padding: 1px 7px;
 }
 
 .jynews .juya-lead {
@@ -1374,11 +1386,31 @@
   border-top: 1px solid var(--jy-border);
   border-bottom: 1px solid var(--jy-border);
   background: var(--jy-lead-bg);
+  color: var(--jy-muted);
   font-style: normal;
 }
 
-.jynews .juya-entry p {
+/* 正文（#28）：2em 首行缩进 + 收紧段距（不靠空行分段的印刷惯例）；两端对齐保留。 */
+.jynews .juya-entry p:not(.juya-links-label) {
+  margin: 0 0 6px;
+  text-indent: 2em;
   text-align: justify;
+}
+
+/* 相关链接资料条（#28）：上沿 1px 细线隔开正文，小标由共享 LinksBlock 提供；
+   链接为墨色常驻下划线（条目标题链接仍只在 hover 时下划线）。 */
+.jynews .juya-links-label {
+  margin: 14px 0 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--jy-border);
+  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  letter-spacing: 1px;
+}
+
+.jynews .juya-links a {
+  color: var(--jy-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 @media (min-width: 900px) {

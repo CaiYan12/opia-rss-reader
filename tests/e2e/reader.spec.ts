@@ -200,6 +200,53 @@ test('90 年代报刊式刊头（#26）：560 宽度回落居中堆叠、页面�
   }
 })
 
+test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋体正文 / 黑体标题、相关链接资料条', async ({
+  page
+}) => {
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+
+  // 序号徽章：方角、标题色底（#211d14）、纸色字（#ece2c6）——概览与条目标题同一套
+  for (const badge of [
+    root.locator('.juya-overview .juya-index').first(),
+    root.locator('.juya-entry .juya-index').first()
+  ]) {
+    await expect(badge).toBeVisible()
+    await expect(badge).toHaveCSS('border-radius', '0px')
+    await expect(badge).toHaveCSS('background-color', 'rgb(33, 29, 20)')
+    await expect(badge).toHaveCSS('color', 'rgb(236, 226, 198)')
+  }
+
+  // 正文：2em 首行缩进（14.5px × 2 = 29px）、段距 6px、宋体优先
+  const para = root.locator('.juya-entry p:not(.juya-links-label)').first()
+  await expect(para).toHaveCSS('text-indent', '29px')
+  await expect(para).toHaveCSS('margin-bottom', '6px')
+  await expect(para).toHaveCSS('font-family', /SimSun/)
+
+  // 条目标题与栏目条：黑体优先；栏目条仍黑底反白
+  await expect(root.locator('.juya-entry h3').first()).toHaveCSS('font-family', /SimHei/)
+  const h2 = root.locator('.juya-section > h2').first()
+  await expect(h2).toHaveCSS('font-family', /SimHei/)
+  await expect(h2).toHaveCSS('background-color', 'rgb(33, 29, 20)')
+  await expect(h2).toHaveCSS('letter-spacing', '4px')
+
+  // 导语：上下 1px 细线 + 次要文字色
+  const lead = root.locator('.juya-lead').first()
+  await expect(lead).toHaveCSS('border-top-width', '1px')
+  await expect(lead).toHaveCSS('border-bottom-width', '1px')
+  await expect(lead).toHaveCSS('color', 'rgb(95, 87, 71)')
+
+  // 相关链接资料条：上沿 1px 细线 + 墨色常驻下划线（无需 hover）
+  const label = root.locator('.juya-links-label').first()
+  await expect(label).toHaveCSS('border-top-width', '1px')
+  await expect(label).toHaveCSS('border-top-style', 'solid')
+  const link = root.locator('.juya-links a').first()
+  await expect(link).toHaveCSS('color', 'rgb(43, 38, 32)')
+  await expect(link).toHaveCSS('text-decoration-line', 'underline')
+})
+
 test('千禧网页式：结构类 jyy2k 挂载', async ({ page }) => {
   await loadApp(page, 'y2k')
   await openFirstArticle(page)

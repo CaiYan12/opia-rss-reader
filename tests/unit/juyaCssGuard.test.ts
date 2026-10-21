@@ -4221,3 +4221,69 @@ describe('newsprint90s 旧纸面守卫（#27：纸纹最不利行 AA，链接墨
     expect(contrast(0xd05555, 0x1e1913), '暗 thumb/纸').toBeGreaterThanOrEqual(3)
   })
 })
+
+describe('newsprint90s 条目版式守卫（#28：字体栈 / 方角徽章 / 2em 缩进 / 资料条）', () => {
+  // 只锁 #28 票面的印刷记号：字体栈顺序、方角徽章、2em 首行缩进与收紧段距、
+  // 导语上下细线、相关链接上沿细线 + 常驻下划线、1px 栏线。不锁规则文本之外的实现细节。
+  const newsSection = (): string =>
+    css.slice(css.indexOf('90 年代报刊式'), css.indexOf('蒸汽梦核式'))
+  /** 首条形如 `.jynews <rest> { … }` 的规则块（行首锚定，同 y2kRule） */
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jynews ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  it('字体栈：正文宋体优先（SimSun），条目标题与栏目条黑体优先（SimHei）', () => {
+    for (const variant of ['newsprint90s-light', 'newsprint90s-dark']) {
+      const block = variantBlock(variant)
+      expect(decl(block, '--jy-font-body'), `${variant} 正文宋体优先`).toMatch(
+        /^SimSun,\s*'Noto Serif SC',\s*'Songti SC',\s*serif$/
+      )
+      expect(decl(block, '--jy-font-heading'), `${variant} 标题黑体优先`).toMatch(
+        /^SimHei,\s*'Noto Sans SC',\s*sans-serif$/
+      )
+    }
+    // 栏目条自身显式挂黑体栈（不只依赖 token，标题与栏目条同一条字体语言）
+    const sectionH2 = newsRule('\\.juya-section > h2')
+    expect(sectionH2, '栏目条应显式声明黑体栈').toMatch(/font-family:\s*SimHei,\s*'Noto Sans SC',\s*sans-serif/)
+  })
+
+  it('序号徽章方角：标题色底、纸色字，且 newsprint 段不再出现 999px 胶囊', () => {
+    const badge = newsRule('\\.juya-index')
+    expect(badge, '徽章规则应存在（概览与条目标题共用 .juya-index）').toBeTruthy()
+    expect(decl(badge, 'border-radius'), '徽章必须方角').toBe('0')
+    expect(decl(badge, 'background'), '徽章底改为标题色').toBe('var(--jy-heading)')
+    expect(decl(badge, 'color'), '徽章字改为纸色').toBe('var(--jy-bg)')
+    expect(newsSection(), '段内不得残留 999px 胶囊').not.toContain('999px')
+  })
+
+  it('正文 2em 首行缩进、段距收紧（不靠空行），且保留两端对齐', () => {
+    const para = newsRule('\\.juya-entry p:not\\(\\.juya-links-label\\)')
+    expect(para, '正文段落规则应存在').toBeTruthy()
+    expect(decl(para, 'text-indent'), '首行缩进 2em').toBe('2em')
+    expect(decl(para, 'margin'), '段距应比基类 10px 收紧').toBe('0 0 6px')
+    expect(decl(para, 'text-align'), '正文仍两端对齐').toBe('justify')
+  })
+
+  it('导语保留上下 1px 细线与浅底、文字走 --jy-muted', () => {
+    const lead = newsRule('\\.juya-lead')
+    expect(decl(lead, 'border-top')).toBe('1px solid var(--jy-border)')
+    expect(decl(lead, 'border-bottom')).toBe('1px solid var(--jy-border)')
+    expect(decl(lead, 'background')).toBe('var(--jy-lead-bg)')
+    expect(decl(lead, 'color'), '导语文字用次要文字色').toBe('var(--jy-muted)')
+  })
+
+  it('相关链接：上沿 1px 细线 + 小标 + 墨色常驻下划线', () => {
+    const label = newsRule('\\.juya-links-label')
+    expect(label, '相关链接小标规则应存在').toBeTruthy()
+    expect(decl(label, 'border-top'), '资料条上沿细线').toBe('1px solid var(--jy-border)')
+    const link = newsRule('\\.juya-links a')
+    expect(decl(link, 'color'), '链接走墨色 token').toBe('var(--jy-link)')
+    expect(decl(link, 'text-decoration'), '相关链接常驻下划线').toContain('underline')
+  })
+
+  it('1px 栏线保持（双栏与条目分隔）', () => {
+    const columns = css.match(/\.jynews \.juya-entry-columns \{[^}]*\}/)?.[0] ?? ''
+    expect(decl(columns, 'column-rule'), '双栏 1px 栏线不回退').toBe('1px solid var(--jy-border)')
+    const entry = newsRule('\\.juya-entry')
+    expect(decl(entry, 'border-bottom'), '条目分隔线仍为 1px').toBe('1px solid var(--jy-border)')
+  })
+})

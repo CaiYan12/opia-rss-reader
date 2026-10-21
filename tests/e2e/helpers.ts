@@ -60,6 +60,20 @@ const SVG_ISSUE_HTML = `<div style="max-width:760px">
 <ul><li><a href="https://example.com/m/1" rel="noopener noreferrer">https://example.com/m/1</a></li></ul>
 </div>`
 
+/** lightbox 专用期（#21 / SPEC B5b）：一张裸图 + 一张被 `<a>` 包裹的图。
+ *  与 `nocturneSvg` 分开建场景，**不改**后者 —— 5 张视觉走查归档的像素必须逐字节不变
+ *  （`scripts/nocturne-visual-walkthrough.mjs --verify`）。 */
+const LIGHTBOX_ISSUE_HTML = `<div style="max-width:760px">
+<h1>AI 早报 2026-10-20</h1>
+<h2>要闻</h2>
+<h3>图片放大条目 <code>#1</code></h3>
+<blockquote>导语占位：用于验证点击裸图打开放大视图。</blockquote>
+<p>正文占位文本。</p>
+<p><img src="${svgImage(480, 320, '3b4a8f', 'bare')}" alt="裸图"></p>
+<p><a href="https://example.com/linked-image" rel="noopener noreferrer"><img src="${svgImage(480, 320, '7a3f6b', 'linked')}" alt="链接图"></a></p>
+<p><img src="${svgImage(480, 320, '2f6f6a', 'bare-2')}" alt="裸图二"></p>
+</div>`
+
 export function juyaArticle(overrides: Partial<Article> = {}): Article {
   return {
     guid: 'https://daily.juya.uk/issues/2026-08-28/',
@@ -95,6 +109,7 @@ export type Scenario =
   | 'y2k'
   | 'nocturne'
   | 'nocturneSvg'
+  | 'nocturneLightbox'
   | 'editorial'
   | 'wabi'
   | 'system'
@@ -146,6 +161,11 @@ export function makeStubScript(scenario: Scenario): string {
     settings.themeMode = 'dark'
     settings.juyaDarkStyleId = 'nocturne'
     articles = [juyaArticle({ contentHtml: SVG_ISSUE_HTML })]
+  } else if (scenario === 'nocturneLightbox') {
+    // 点击图片放大查看（#21 / SPEC B5b）：nocturne 暗侧 + 裸图/链接图各一
+    settings.themeMode = 'dark'
+    settings.juyaDarkStyleId = 'nocturne'
+    articles = [juyaArticle({ contentHtml: LIGHTBOX_ISSUE_HTML })]
   } else if (scenario === 'editorial') {
     settings.juyaLightStyleId = 'editorial'
   } else if (scenario === 'wabi') {

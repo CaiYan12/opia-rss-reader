@@ -1696,6 +1696,21 @@
   --jy-accent: #6e7bff;
   --jy-on-accent: #0a0a0c;
   --jy-link: #93a1ff;
+  /* 导语专用文字记号（#13 / SPEC 批次 B1）：导语原先复用次要文字档 --jy-muted，比正文暗一档多，
+     读者要费力分辨，且对比度离 AA 只剩薄余量。本记号取 muted 与 text **之间**的第三档，色相沿用
+     同一中性灰阶（与 --jy-heading #f4f4f6 / --jy-muted #8a8b94 同源，零新增色相），只在亮度上取整。
+     计算面（票面口径「页面底 + 8% 白底 + 可透出层最亮情形」）：可透出层取**最亮单层雾峰值** ——
+     三层雾的支撑域两两不相交（#2 守卫④已证），任何像素最多被一层覆盖，故最亮单层即最亮情形：
+       --jy-bg #0a0a0c → + n1 峰值 rgba(110,123,255,0.07) = #11121d
+                       → + 导语底 rgba(255,255,255,0.08) = #24252f
+     该合成面上 WCAG 实算（与 scripts/nocturne-contrast-audit.mjs 同一套 lum / contrast / source-over）：
+       #adb0b8 = rgb(173,176,184) → **7.0104:1**（目标 ≈7:1）；
+       对照 ① 正文 --jy-text #c4c5cc → 8.8402:1（仍比导语高一档）；
+       对照 ② 现状 --jy-muted #8a8b94 → **4.4915:1**（本记号修的就是这一档）；
+       窄窗雾峰值面 #23232b 上 → 7.1870:1；纯导语底 #1e1e1f 上 → 7.6776:1。
+     取整：173/176/184。再暗一档 #acafb7 只有 6.9313（< 7），再亮一档 #aeb1b9 为 7.0901（偏离目标），
+     故取本值 —— 在 7.0 目标上留 0.0104 余量。 */
+  --jy-lead-text: #adb0b8;
   /* 导语高亮窗底色（#6，需求 §6 决策 10）：原 4% 白在暗侧几乎隐形，13.5px 小字与普通段落零区分度。
      取值 **8%** —— 决策授权区间 0.08–0.10 的**下界**。合并复核（真实浏览器实测，非推理）证明原 0.09
      在「导语滚到滚动口顶端」的**可达最坏面**上只有 4.2563:1（< AA 4.5）：`.juya-scene` 是
@@ -1710,9 +1725,15 @@
   /* 三档无衬线分工（#3，需求 §2）：等线标题 + Noto Sans SC 正文 + 元信息/序号等宽。
      原栈首选 Inter / SF Pro * 在本机均未安装（Fonts 注册表 596 条实测），整体落回
      Segoe UI + Noto Sans SC —— 与应用 UI 字体无差别，风格识别度归零。可用中文黑体只有
-     Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选只能取等线（八风格无人占用）。 */
-  --jy-font-body: 'Noto Sans SC', 'Segoe UI', sans-serif;
-  --jy-font-heading: 'DengXian', 'Noto Sans SC', 'Segoe UI', sans-serif;
+     Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选只能取等线（八风格无人占用）。
+     **拉丁在前、CJK 在后（#17 / SPEC B3）**：字体族按字符逐个解析，若 CJK 族写在最前，
+     拉丁字母与数字就由该 CJK 族自带的拉丁字形绘制 —— 那正是「拉丁字符回退到 CJK 字体」。
+     故把拉丁族 `'Segoe UI'` 提到最前，两个 CJK 族（DengXian / Noto Sans SC）仅在其缺字时接手：
+     中文观感不变（实测 30px 下「早报」两字宽 58.813 → 58.828px，Δ 0.015 属亚像素舍入），
+     只有拉丁与数字换到拉丁族（刊头 h1「AI 早报 2026-10-12」文本宽 259.031 → 259.859px，
+     其中拉丁段「AI」27.688 → 29.406、日期段 157.266 → 156.313 —— 两边都来自拉丁族字形本身）。 */
+  --jy-font-body: 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --jy-font-heading: 'Segoe UI', 'DengXian', 'Noto Sans SC', sans-serif;
 }
 
 /* ---- 场景氛围层接线（2026-10-12，#2）：dust（尘埃微粒）+ nebula（静态渐层雾）----
@@ -1759,6 +1780,26 @@
     radial-gradient(44% 50% at 0% 0%, var(--jy-nebula-1), transparent 76%),
     radial-gradient(44% 50% at 100% 0%, var(--jy-nebula-2), transparent 76%),
     radial-gradient(42% 44% at 0% calc(100% - 136px), var(--jy-nebula-3), transparent 78%);
+}
+
+/* ---- 星尘破除规则点阵（2026-10-20，#20 / SPEC 批次 B5）----
+   病根：共享 dust 预设的 6 层平铺尺寸是 3×44 + 3×132 —— 132 = 44×3，两组互为整数倍，六层相位
+   共锁进一个 132px 的大格点，暗侧背景读出可辨认的规则点阵。
+   修法：**只在暗侧作用域**覆写 background-size 为 6 个互不相同、任意两层之比都不贴近整数的尺寸；
+   共享 `.juya-scene-dust` 预设（y2k / dreamcore 也在用）一字节不改。
+   取值来源（脚本搜索，非随手填）：搜索空间 = 小尺寸 [38,60] × 大尺寸 [100,200] 中取 3+3，
+   共 295,137,150 组；判据「任意两层之比距最近整数 ≥0.1」+「1280×800 点数 ∈ [1000,2500]」
+   ⇒ 2,546,089 组解；取「最小两两余量」最大者（0.2241，是门槛 0.1 的两倍以上），
+   再按点数最接近共享原值 1764 定为：38 / 47 / 58 / 129 / 161 / 199 px（points = 1604.0）。
+   实算两两之比距最近整数：最小 0.2241（129/58 与 161/58），最大 0.4737（58/38）——无一贴近整数，
+   且六层尺寸互不相同（同尺寸的三层只是同一格点的偏移拷贝，周期仍等于该 size）。
+   **接缝**：jy-dust-drift 是 `infinite alternate` 往复（不是单向循环），终点位移无需为 size 整数倍，
+   故不改 keyframe、不改共享层的背景位置序列；RM 下共享层 `animation: none` 原样生效
+   （本条只声明 background-size，不碰 animation / transition / 点色 token）。
+   隔离：作用域写复合形态（AGENTS「变体覆盖选择器约定」）；共享预设一字节不改 ⇒ y2k / dreamcore
+   的 dust 完全不受影响（其模板也不挂本变体的复合选择器）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust {
+  background-size: 38px 38px, 47px 47px, 58px 58px, 129px 129px, 161px 161px, 199px 199px;
 }
 
 /* 窄窗（≤520px）退化：该断点下 .juya-issue 撑满全宽（padding 20px 14px 48px）、两侧零空隙，
@@ -1947,6 +1988,11 @@
   filter: drop-shadow(0 0 18px rgba(110, 123, 255, 0.28))
     drop-shadow(0 0 40px rgba(110, 123, 255, 0.12));
   animation: jy-noct-glow 9s ease-in-out infinite alternate;
+  /* 刊头日期等宽数字（#17 / SPEC B3）：h1 文本形如「AI 早报 2026-10-12」，是本页唯一的日期行。
+     实测 DengXian / Segoe UI / Noto Sans SC 三档字体的数字**本来就等宽**（1/8/0 的推进宽逐档相同），
+     故该声明是零像素变化的**意图锁死**（h1 文本宽 259.859 → 259.859px，Δ 0），
+     与 .juya-feed-meta / .juya-index 既有的 tabular-nums 取同一口径。 */
+  font-variant-numeric: tabular-nums;
 }
 
 /* 极光带的定位上下文：`.juya-masthead` 基层为 static，若不建立包含块，两条 absolute 伪元素会
@@ -2059,6 +2105,15 @@
    偏心（at 38%）是刻意的：两道同心弧会读作「同心圆环」而非极光层积；真实极光从不对称。
    品红是 Vista 极光的标志性下缘晕色，此处取自既有 --jy-nebula-3，非新增色相。
    取色来源：rgba(200,90,180) = 既有 --jy-nebula-3（§3.1 表格）、rgba(110,123,255) = --jy-accent。
+   **alpha 是自定字面量，不复用 token 的 alpha（#19 / T8）**：--jy-nebula-3 自身带 0.025（那是三层雾的
+   强度，直接消费会把幕帘压没），故此处写字面 rgba(200, 90, 180, α) 指定幕帘强度；改动只在品红端这一档。
+   为什么抬到 0.5（逐层隔离实测，scripts/nocturne-aurora-phase-probe.mjs；近/远层各只留一组）：
+     改前 0.36：只留远层 R−G 最大 16（rgb(44, 28, 53)）、Δ 32；只留近层 R−G = 0、Δ 153
+                ⇒ 压制比约 1:4.8，整体读作「一片蓝白」，冷 → 暖层次看不见；
+     改后 0.50：只留远层 R−G 最大 22（rgb(53, 31, 61)）、Δ 41；近层 R−G 仍为 0、Δ 153 不变
+                ⇒ 压制比约 1:3.7。
+   不碰 opacity 关键帧端点（1 → 0.52）与任何几何：逐层隔离已排除相位为成因（远层峰/谷两档 R−G
+   为 16/9、恰随 opacity 1/0.52 等比缩放），故补品红只能抬渐变本身的 alpha。
    WCAG 对比度：纯装饰层，由 z-index: -1 结构性落在文字之下，门槛不适用（同前层）。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after {
   top: -40px;
@@ -2066,7 +2121,7 @@
   background-image: radial-gradient(
     205% 140% at 38% 172%,
     transparent 76%,
-    rgba(200, 90, 180, 0.36) 88%,
+    rgba(200, 90, 180, 0.5) 88%,
     rgba(110, 123, 255, 0.18) 95%,
     transparent 100%
   );
@@ -2151,6 +2206,19 @@
   padding: 4px 2px 18px;
 }
 
+/* ---- 条目水平内衬在暗侧置 0（2026-10-20，#16 / SPEC 批次 B2b）----
+   那 2px 水平内衬与上方 `border-bottom` 同批写下（`3e8b9e9`），**不承载任何 hover 效果**：
+   暗侧 hover 已改为 `border-bottom-color` 提亮（见下条），`border-radius` 在暗侧被置 0，
+   故水平内衬没有功能用途，只是让正文文字右缘比栏目 h2 线内缩 2px。
+   **为什么置 0**：票面基准是栏目 h2 横线右缘（= 正文文字右缘）；图片（右列图版 / 回流带）
+   与概览分隔线都对齐到该边界，条目内衬若留 2px，图片右缘就会比基准内缩 2px（三视口实测一致）。
+   收 0 后文本列横向变宽 4px（左右各 2px），换行位置可能变化、归档须重生 —— 已按票面记录。
+   作用域写成变体专属复合形态（AGENTS「变体覆盖选择器约定」）：需求 §9 明确 nocturne-light
+   不做任何改动，故共享那条 `4px 2px 18px` 一字未动，仅暗侧覆写。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-entry {
+  padding: 4px 0 18px;
+}
+
 .jynoct .juya-entry:hover {
   background: var(--jy-lead-bg);
   border-radius: 8px;
@@ -2176,8 +2244,9 @@
 
 /* ---- 导语高亮窗（2026-10-12，#6，需求 §6 决策 10：深底 + 左侧发光竖线）----
    基层 `.juya-lead` 是 `padding: 8px 12px` + `border-left: 3px solid var(--jy-accent)` + `--jy-muted` 13.5px。
-   本票只做三件事：①底色提亮（走 --jy-lead-bg token，见变体块，0.04 → 0.08）；
-   ②左侧竖线换该风格 focus 色并加发光；③内边距加大，做出与正文段落（14.5px/1.8、零内衬）的层级差。
+   本票（#6 施工时）只做三件事：①底色提亮（走 --jy-lead-bg token，见变体块，0.04 → 0.08）；
+   ②左侧竖线换该风格 focus 色；③内边距加大，做出与正文段落（14.5px/1.8、零内衬）的层级差。
+   **#18 起竖线改为一条渐变光并移除 #6 的外发光（理由见下条规则头）**；本条的数值一律未动。
    特异性说明：`.juya-entry p:not(.juya-links-label)` 是 (0,2,1)，比 `.jynoct .juya-entry` (0,2,0) 高，
    故本区块凡涉及「条目内元素」的规则一律写到 ≥(0,2,1) 形态（本规则现为 (0,3,0)，更高）。
    padding 取 12px 18px 12px 18px：四边均大于基层 8px 12px，左内衬额外加宽 6px —— 竖线由 accent 换
@@ -2193,8 +2262,7 @@
    顶端（`.juya-scene` sticky ⇒ 场景盒与滚动口对齐），在 560/700/800/900/1024/1280 六档视口量
    导语文字行下缘的真实合成背景（场景雾 + 导语底；dust 为 1~1.6px 装饰微粒，中性化后取背景梯度真值；
    鼠标移出条目以免 `.juya-entry:hover` 的第二层同色底叠加）。下表是**合入 #5（正文列收窄 700px）后**
-   的同一口径复测值 —— 三行分别是「初版（0.09 + 块级 drop-shadow）」「仅降 alpha」「本实现（0.08 +
-   外阴影竖线发光）」；#5 之前 vw≥800 各档因文字更靠左、雾更强而略低，最坏档三次都是 vw=700：
+   的同一口径复测值 —— 三行分别是「初版（0.09 + 块级 drop-shadow）」「仅降 alpha」「0.08 + 外阴影竖线发光（#18 起已移除，见下条）」；#5 之前 vw≥800 各档因文字更靠左、雾更强而略低，最坏档三次都是 vw=700：
      lead-bg 0.09 + 块级辉光（修前）：4.2731 / 4.2563 / 4.3357 / 4.3984 / 4.4609 / 4.5642 ⇒ 最坏 **4.2563**
      lead-bg 0.08 + 块级辉光        ：4.4915 / 4.4744 / 4.5541 / 4.6164 / 4.6735 / 4.7801 ⇒ 最坏 **4.4744**
      lead-bg 0.08 + 外阴影竖线发光  ：4.6735 / 4.6567 / 4.7353 / 4.7966 / 4.8458 / 4.9105 ⇒ 最坏 **4.6567**
@@ -2204,59 +2272,122 @@
    `filter: drop-shadow` —— 它按元素渲染结果的 alpha 轮廓取形状，而本元素背景是半透明白（alpha 0.08），
    故阴影以 0.35×0.08 的 alpha **整片垫在导语矩形底下**并被半透明底透出（去掉该层后 0.08 的最坏面
    升到 4.6567、0.09 升到 4.4899）。它既不符合票面 §6 要的「竖线发光」（实际是整框泛光），也正是
-   压掉对比度的分量，故按 2026-10-12 裁决改为外阴影局部发光（见下条规则）。 */
+   压掉对比度的分量，故 2026-10-12 先改为外阴影局部发光，#18 再改为边框区渐变竖线（见下条规则）。
+   #18 移除外发光后本面不变：外阴影按规范只绘在 border-box 之外，从不进入文字所落的背景
+   （上方 4.6567 是 muted 档的旧口径；#13 起导语行实读 --jy-lead-text，e2e 复测
+   480/700/800 = 7.2865 / 7.2682 / 7.3831）。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-lead {
   padding: 12px 18px 12px 18px;
   /* 底色显式重申（与基层同源，token 已在变体块提到 0.08）：把「本风格导语窗底色」钉在本规则上，
      将来基层若改取值，nocturne 不会被动跟随。 */
   background: var(--jy-lead-bg);
+  /* 导语文字改用专用记号（#13 / SPEC B1）：不再复用次要文字档 --jy-muted —— 该档在本合成面上只有
+     4.4915:1，正是票面说的「导语比正文暗一倍、离 AA 只剩薄余量」。新记号同面 7.0104:1，比正文
+     （8.8402:1）低一档，层级仍由底块 + 左侧竖线承担，不靠压暗文字。亮侧不声明、仍走基层 muted。 */
+  color: var(--jy-lead-text);
 }
 
-/* 左侧发光竖线（仅暗侧）：取色来源 = --jy-focus #8b97ff —— 该风格既有的焦点色，
-   「焦点/高亮」语义同源，零新增色彩；对导语底 rgba(255,255,255,0.08) 叠在 --jy-bg #0a0a0c 上的合成面
-   #1e1e1f，该合成面的 WCAG 对比度实算 **6.32:1**（WCAG 非文本 UI 件门槛 3:1，远超；本条为取色溯源，竖线本体是装饰性锚点）。
-   **实现选择（2026-10-12 裁决落地）：外阴影 `box-shadow`，不用块级 `filter: drop-shadow`。**
-   理由（实测得出，非取向）：drop-shadow 取的是元素渲染结果的 **alpha 轮廓**，而 `.juya-lead` 自身带
-   半透明白底（alpha 0.08），于是阴影以 0.35×0.08 = 0.028 的 alpha **整片垫在矩形底下**、并被半透明底
-   透出 —— 「左侧竖线发光」实际呈现为「整框泛光 + 整框被提亮」，既不是票面 §6 要的竖线发光，也正是把
-   导语 muted 压到 4.4744（< AA 4.5）的**唯一剩余分量**（实测：去掉该层，0.08 的最坏面 4.4744 → 4.6567）。
-   box-shadow 的**外阴影按规范只画在边框盒之外**（落入 border-box 的部分被裁掉），几何上不可能洗涤矩形
-   内部 ⇒ 文字所落的像素背景回到「场景雾 + 导语底」两项，文字对比度不再被辉光分走。
-   为什么不用「专用伪元素竖线」：那需要给 `.juya-lead` 加 `position: relative` 并把基层 3px `border-left`
-   换成伪元素（否则竖线与光晕会双份），改动面从 1 个声明扩到结构 + 布局；外阴影是本票内的最小实现，
-   零结构改动、零布局改动。
-   x 偏移 -3px 把光晕压向左侧、贴住那条 3px 竖线；模糊 8px / alpha 0.35 与原量级持平（「克制微光」：
-   与 #4 刊头近层 18px/0.28 相比更短更淡）；多出的右侧溢出一律被元素自身裁掉，故整体读作一条发光竖线。
-   禁 text-shadow（仓库统一口径，background-clip:text 绘制顺序陷阱的同类）：本元素无渐变字，
-   但辉光语义一律走阴影，不用 text-shadow。 */
+/* 左侧渐变竖线（仅暗侧；2026-10-20 #18 / SPEC 批次 B4）。
+   **设计决策：避免渐变竖线与外发光两套光语言** —— 故 #6 引入的外阴影辉光随本条移除。
+   明确不是「为压对比度缺口」：外阴影按规范只绘在 border-box **之外**，从不进入文字所落的背景
+   （`f3211b8` 是把块级 `drop-shadow` 换成外阴影，与文字对比度无关）。
+   **实现（方案 (d)，已由实验通过；不引入伪元素、不加 position）**：保留基层 `border-left: 3px`，
+   把边框染成 transparent 只作几何占位；渐变写成 `background-image`，`background-size: 3px 100%`
+   让图只落在边框条上；`background-origin` 与 `background-clip` **同为 border-box**。
+   为什么绝不能写 padding-box：底色层不铺进边框区，竖线上下淡出的两端会各露出 3px 裸页面底
+   （实验反例：首/末行回到裸页面底 rgb(10,10,12)）。用 border-box 时首/末行是「8% 白叠底」。
+   端点：靛蓝 `--jy-focus` #8b97ff（139,151,255）→ 品红**复用既有 n3 色相的字面
+   rgba(200,90,180,0.55)**（复用色相、不复用该记号的 0.025 alpha —— 那值是为背景雾调的，
+   直接用几乎不可见）→ 透明。下半段若发闷，只调粉端 alpha（.5 → .6）与停靠位置，不换色相。
+   取色来源：靛蓝 = 本变体 `--jy-focus` #8b97ff（139,151,255，既有焦点色，零新增色相）；
+   品红 = 既有 `--jy-nebula-3` 色相（200,90,180），按字面写出（渐变直接消费，且避免误用雾记号的 0.025 alpha）。
+   WCAG 对比度：靛蓝段叠导语底 #1e1e1f 实算 6.32:1（非文本 UI 门槛 3:1，远超）；两端按设计渐隐到
+   8% 白叠底（1.78:1），属装饰性淡出、不承载信息。
+   盒模型零变化：文字位置 / 内边距 / 盒尺寸与改前逐值一致（只有边框颜色与背景图层变化）。
+   禁 text-shadow（同 background-clip:text 的绘制顺序陷阱）；外发光一律禁（守卫只放行 inset 内阴影，
+   给将来的内顶高光留空间）。实测像素见提交信息与 docs/juyathemesworks 走查归档。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-lead {
-  border-left-color: var(--jy-focus);
-  box-shadow: -3px 0 8px rgba(139, 151, 255, 0.35);
+  border-left: 3px solid transparent;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--jy-focus) 16%,
+    rgba(200, 90, 180, 0.55) 66%,
+    transparent 100%
+  );
+  background-size: 3px 100%;
+  background-position: left top;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  background-clip: border-box;
 }
 
-/* ---- 栏目 h2 发丝分隔线（2026-10-12，#6，需求 §7.1 决策 11）----
-   基层 `.juya-section > h2 { font-size: 20px; margin: 0 0 16px }` 无下边框——栏目之间没有任何层级标记。
-   **作用域（合并复核缺陷 B 修正）**：本条原写作共享 `.jynoct .juya-section > h2` (0,2,1)，会让
-   `nocturne-light` 也吃到 `padding-bottom: 8px` + 1px 白 0.22 线（对亮底 #fbfbfc 实算 1.0086:1，
-   视觉近零但依旧是对亮侧的改动）——需求 §0 声明范围仅暗侧、§9 把「nocturne-light 任何改动」列为不做，
-   同波 #7 亦全用暗侧专属复合前缀。现收窄为 `[data-juya-variant='nocturne-dark'].jynoct …`
-   （特异性升到 (0,3,1)，仍压过基层 (0,1,1)）；暗侧观感与数值零变化，亮侧回到基层无下边框形态。
-   线色 `rgba(255, 255, 255, 0.22)`：取色来源 = 白，与全局 `--jy-border: rgba(255,255,255,0.08)` 同源，
-   只提 alpha 不换色相。**为什么必须单独写而不复用 --jy-border**：该 token 同时供给条目分隔线、
-   图片发丝边、回流带（`border-top: 1px solid var(--jy-border)`）；把它整体提到 0.22 会把条目分隔线
-   一并抬高，与需求 §7.1「条目分隔线保持现状」的红线冲突（票面明写：提了会与「克制」冲突）。
-   WCAG 对比度实算（对 .juya-section 所落的 `--jy-bg` #0a0a0c）：线合成后 #404041 ⇒ **1.91:1**；
-   对照面：全局 0.08 老线合成为 #1e1e1f ⇒ **1.19:1**（与需求 §7.1 实测值一致），
-   故 0.22 相对老线的可见度提升 ≈1.61 倍，是本页唯一被抬高的分隔线。
-   **实测差额留档（票面验收标准写「使栏目线对变体 bg 达 3:1」，本实现达不到，是数学事实）**：
-   白线 alpha 0.22 合成到 #0a0a0c 只有 1.91:1；即便取票面写的 0.22 也是这个值。
-   经独立复算，够 3:1 需 alpha ≈0.34（合成 #5d5d5f ⇒ 3.01:1），那样栏目线会比条目线（0.08）亮一倍以上，
-   直接违反 §7.1 的「克制」红线。故**按明写的决策值 0.22 落地并留档差额**，两难取舍交上层裁决。
-   最坏叠加面备注：若栏目线所在像素恰好落在三层 nebula 全重叠处（合成底 #18192a，锚在左右边缘、
-   几何上不可达正文列中心），同一条线合成为 #4b4c59 ⇒ **2.05:1**。 */
+/* ---- 栏目 h2 发丝分隔线（2026-10-12 #6 引入；2026-10-20 #18 / SPEC 批次 B4 改为渐变）----
+   基层 `.juya-section > h2 { font-size: 20px; margin: 0 0 16px }` 无下边框——栏目之间没有层级标记。
+   **作用域（合并复核缺陷 B 修正）**：本条必须留在变体专属复合形态
+   `[data-juya-variant='nocturne-dark'].jynoct …`（特异性 (0,3,1) 压过基层 (0,1,1)）：共享 `.jynoct`
+   形态会让 `nocturne-light` 也吃到 8px 下内衬与这条线（需求 §0/§9 明确亮侧不做任何改动）。
+   **为什么必须单独写而不复用 --jy-border**：该 token 同时供给条目分隔线、图片发丝边、回流带
+   （`border-top: 1px solid var(--jy-border)`）；把栏目线颜色挂到它上面会把条目分隔线一并抬高，
+   与需求 §7.1「条目分隔线保持现状」的红线冲突。
+   **颜色历史与现状**：#6 为单色白 rgba(255,255,255,0.22)（对 --jy-bg 实算 1.91:1；够 3:1 需
+   alpha≈0.34，会破坏「克制」红线，当时已留档差额）。#18 改为「青白 → 靛蓝 → 透明」横向渐变、
+   右端淡出：起点 alpha 仍 0.22（不高于改前取值），靛蓝中段 0.40 让冷暖过渡不塌成灰
+   （对 --jy-bg 合成 #343972、实算 1.86:1）。渐变逐像素取值不同，故不再把单一 1.91:1 当作整条线
+   的对比度：起点 1.78:1、中段 1.86:1，都属装饰分隔件、<3:1 的口径与差额留档同 §7.1。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-section > h2 {
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  /* 2026-10-20 #18 / SPEC 批次 B4：栏目线由单色白 0.22 改为「青白 → 靛蓝 → 透明」的横向渐变，
+     右端淡出，与刊头极光呼应。几何不变：仍是 1px 下边框 + 8px 下内衬（nocturne-geometry.spec
+     以 borderBottomWidth=1px 为三处右缘的对齐基准）。边框本体透明，颜色由背景层画进边框条：
+     `background-size: 100% 1px` + `background-position: left bottom` + origin/clip border-box
+     ⇒ 渐变恰好落在下边框那 1px 内，不会在 h2 文字后面铺一层色（h2 无 background-clip:text，已核）。
+     取色来源（呼应刊头极光，复用既有色相）：青白 rgba(214,236,255) = 极光亮脊同色；
+     靛蓝 rgba(110,123,255) = 本变体 --jy-accent #6e7bff。起点 alpha 0.22 与改前白线持平（不高于
+     现有取值，保持发丝感）；靛蓝中段 0.40 让冷暖过渡不塌成灰（同亮度下饱和色需更高 alpha，
+     对 --jy-bg 合成 #343972、实算 1.86:1，仍属装饰分隔件、<3:1 的口径同 §7.1 留档）。 */
+  border-bottom: 1px solid transparent;
+  background-image: linear-gradient(
+    to right,
+    rgba(214, 236, 255, 0.22) 0%,
+    rgba(110, 123, 255, 0.4) 42%,
+    transparent 100%
+  );
+  background-size: 100% 1px;
+  background-position: left bottom;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  background-clip: border-box;
+}
+
+/* ---- 排印补齐（2026-10-20，#17 / SPEC 批次 B3）：避孤字 + 中西文自动间距 ----
+   **② text-autospace（中西文间距）**：需求「作用于条目标题 / 概览项 / 正文段落；h1 不单独排除，
+   但必须验证它不变」。故**不去逐个点名元素**（点名就得给 h1 写例外，正好是「单独排除」），
+   改为落在阅读页文本根 `.juya-issue` 上 —— 一处作用域同时覆盖三类目标，h1 也自然被包含。
+   实测语义（Chromium 150 目标内核 CSS.supports('text-autospace','normal') = true；Playwright 151 同）：
+   在 CJK 与拉丁字母/数字的**无空白相邻**处各插 0.125em（20px 字号下每侧 2.5px，如「第6天」+5px），
+   标点（，。、：（）「」）与拉丁的边界**不插**，拉丁与数字之间**不插**。
+   h1 不变的实测（1280×800，deviceScaleFactor=1，同一帧内注入开关对照，560/1280/1920 三档同值）：
+     `.juya-masthead h1` 文本宽 **259.859px → 259.859px（Δ 0）**、盒高 37.5px → 37.5px；
+     原因是 h1 文本「AI 早报 2026-10-12」两侧都有字面空格，按规范只在无空白相邻字符间插距 ⇒ 无作用点。
+     同一帧的**正对照**（.juya-issue 内注入「第6天」@20px）51.109 → 56.109px（Δ +5），证明规则确实生效、不是被丢弃。
+   零横向溢出：autospace 只改行内文字推进，不改任何盒宽（.juya-overview li 的 bleed 记号与 h2 横线边界不动）。
+   **① text-wrap（避孤字）**：只对导语启用 `pretty`（票面：正文暂不启用）。
+   实测对比（脚本 scripts/nocturne-typography-probe.mjs，560 / 1280 / 1920 三档 + 60 组长度切片）：
+     · `pretty` 把「末行只剩 1 字」的样本**全部**消除（三档各 2 组孤字 → 0 组），总行数不变；
+       改动只落在末尾 4 行窗口内（实测首个差异行恒 ≥ 行数−3），段落前部一字不动。
+     · `balance` 是短块算法：60 组里 54~57 组断行都变（把每行都拉齐，长段落会牺牲正常的参差感）。
+   结论：取 `pretty` —— 它只修末行短断（孤字），不重排整段，正是本票要的「最小介入」。
+   **③ line-break: strict 不启用（实测决定，不凭印象）**：目标内核支持该值（CSS.supports = true），
+   但对简体中文**没有可观测差异** —— 5 档视口（560/700/900/1280/1920）× 3 段含「」（）；：、——% 的
+   真实中文断行，加不加 strict 的每行字数与断点**完全相同**；再把样本按长度切片扫 156 组，差异仍为 **0 组**。
+   默认标点禁则已覆盖简体中文，故不落声明（加规则只增加内核分支与误伤风险）。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue {
+  text-autospace: normal;
+}
+
+[data-juya-variant='nocturne-dark'].jynoct .juya-lead {
+  text-wrap: pretty;
 }
 
 .jynoct .juya-feed-meta {
@@ -2291,8 +2422,89 @@
   width: 200px;
 }
 
+/* ---- 窄窗单列回落：图宽跟随内容列（2026-10-20，#15 / SPEC 批次 B2 附）----
+   **病根**：上面那条 200px 与「图恒在右的两列并排」同批写下（`3e8b9e9`，提交信息只提图文并排、
+   从未涉及窄窗）。基层在 ≤640px 把 `.juya-entry-row` 改纵排时写的是
+   `.juya-entry-row .juya-entry-figure { width: 100% }`（特异性 0,2,0），**输给** 200px 那条
+   （0,3,0）⇒ 断点处只换了排布方向、没重置宽度：单列里图仍占 200px，右侧留大片空白，
+   同屏与满宽回流带并置出两种图宽。判定为布局模式切换后的残留，无设计意图。
+   **修法**：同一断点内补一条**更高特异性**（0,4,0）的复位，宽度严格等于列宽，两张竖向堆叠铺满
+   内容列；宽屏（>640px）那条 200px **一字节不动** ⇒ 并排行为零变化。
+   **只暗侧**：需求 §9 明确 nocturne-light 不做任何改动；复合形式是本仓库「变体覆盖选择器约定」
+   的硬形态（变体属性与风格类恒挂同一根元素，空格后代形式永不匹配）。
+   复位同时是**特异性修正**而非新设计：若只把 200px 降级为 0,2,0，宽屏并排会一起塌成 100%，
+   故必须留在变体作用域内、只在该断点生效。 */
+@media (max-width: 640px) {
+  [data-juya-variant='nocturne-dark'].jynoct .juya-entry-row .juya-entry-figure {
+    width: 100%;
+  }
+  /* 图本体也要显式铺满：内联/真实图源固有宽（首条 4 张为 480px）在 560 视口下**小于**内容列
+     （实测内容列 508px、固有 482px 边框盒），而基层只给 `.juya-root img { max-width: 100% }`
+     ——那是**上限**不是填充，图会停在固有宽度、右侧留下 26px 空白，仍然「没有跟随内容列」。
+     width: 100% 走 border-box ⇒ 图边框盒 == 内容列宽（左右缘与图列、正文列一致），高度按固有纵横
+     比自动缩放，不发虚。只限图列内的图：回流带的网格图本来就铺满网格单元，不在本条作用域内。 */
+  [data-juya-variant='nocturne-dark'].jynoct .juya-entry-figure img {
+    width: 100%;
+  }
+}
+
+/* 阅读页图片统一圆角记号（2026-10-20，#14）：只服务阅读页图片（图文并排右列 + 回流带），
+   **不动共享 --jy-radius** —— 该 token 被全部 16 个变体消费，改它会波及所有风格。
+   写成共享 `.jynoct` 作用域而非变体 token：亮暗两侧沿用同一 8px（既有图版圆角就是 8px，
+   抽成记号后计算值不变 ⇒ 亮侧渲染逐字节不变；回流通栏图由本记号统一为 8px，原先走基层 12px）。 */
+.jynoct {
+  --jy-media-radius: 8px;
+}
+
 .jynoct .juya-entry-figure img {
-  border-radius: 8px;
+  border-radius: var(--jy-media-radius);
+}
+
+/* ---- 阅读页图片：压暗 + 发丝描边（2026-10-20，#14 / SPEC 批次 B2）----
+   **命名**：这叫**发丝描边**，不叫「装裱」——后者是 folio / editorial 带衬底与题注装框的概念
+   （`.juya-plate` 那套），两者不能混用措辞。
+   **范围**：仅暗侧阅读页（`.juya-issue` 内，含右列图版与回流通栏带）。订阅页封面走
+   `.juya-feed-*`，刻意不压暗（`nocturne-dark-订阅页-1280.png` 归档须逐字节不变）；
+   `nocturne-light` 按需求 §9「任何改动」不做。
+   **前置检查（本票实做）**：
+    ① 图片自身有没有烘焙圆角 —— 下载线上当期 5 张正文图 + 1 张封面（assets.juya.uk）逐张读通道：
+       全部 RGBA 但 alpha 恒 255（min=max=255，零半透明像素）⇒ 图片是**不透明方角截图**，没有烘焙
+       圆角/透明角。故发丝描边贴 border-box 与图形边缘几何一致（测试图源同样是满幅 SVG rect）。
+    ② 祖先有没有 `overflow: hidden` 裁掉光晕 —— 全文件仅 3 处 `overflow: hidden`
+       （`.juya-feed-summary` / `.juya-feed-item` / `.juya-scene`），均不在阅读页图片祖先链上；
+       最近的裁剪者是滚动容器 `.view-scroll`（`overflow-y: auto`），而图落在 `.juya-issue` 24px
+       内衬之内、外发光半径 8px ⇒ 光晕不被切（窄窗内衬收到 14px，仍大于 8px）。
+   **压暗**：SPEC B2 明写统一 `brightness(.88)`；代价是图片色彩略偏移、图表类有取舍，已接受。
+   `.88` 同时会把元素自身的 box-shadow 压暗 12% ⇒ 发光有效强度 = 0.16 × 0.88 = 0.1408。
+   **发丝描边为什么用 box-shadow**：它按规范只画在边框盒**之外**，不参与盒模型 ⇒ 右列图片的
+   200px 列宽与满宽回流带的容器宽度逐像素不变。绝不占用 `outline` —— 那是焦点环的专属属性
+   （`.juya-root :is(a, button):focus-visible`），两者语义与可达性要求不同。
+   **既有 1px 边框的处理**：基层 `.juya-media img { border: 1px solid var(--jy-border) }` 已占 1px
+   边框盒（border-box 下改宽度会改变图片**内容**宽度 = 几何变化），故**保留占位、只把绘制置透明**；
+   可见的发丝线改由 box-shadow 画在边框盒之外。这样只有一条 1px 线，不会与既有边框叠成 2px。
+   **取色来源**：
+    发丝线 `var(--jy-border)`（白 8% token，零新增色相）。
+    外发光 `rgba(110, 123, 255, 0.16)` ← 本变体 `--jy-accent` #6e7bff 的 alpha 变体（与刊头 neon、
+    概览序号同源，零新增色相）。alpha 取 **0.16 = 导语竖线 0.35 的不到一半**，SPEC B2 要求「明显低于
+    导语竖线」；压暗后有效 0.1408。
+   **对比度**（对 `--jy-bg` #0a0a0c 实算，与 `scripts/nocturne-contrast-audit.mjs` 同一套 lum/alphaOver）：
+    发丝线合成 #1e1e1f ⇒ **1.19:1**；外发光峰值合成 #1a1c33 ⇒ **1.18:1**。
+    两者均为装饰性描边（不承载信息，同条目分隔线 / dust 口径），刻意低于非文本 UI 的 3:1 ——
+    抬到 3:1 会亮成描边框，与需求 §7.1「克制」红线冲突。发光峰值比发丝线本身还淡，故整体读作
+    「一圈细线 + 极淡晕」，不会变成色块。
+   **不做** `--jy-card` 衬边：右列与正文间隙 24px（视觉 20px），加衬边会让间隙被吃掉、失去呼吸感。
+   **圆角**：走统一记号 `--jy-media-radius`（上方共享 `.jynoct` 规则），不碰共享 `--jy-radius`。
+   **lightbox 义务（T10，本票不建）**：图片放大视图落地时，其大图必须 `filter: none` ——
+   放大就是为了看原图，压暗只属于正文流里的缩略形态。本票只留注释，不新增任何 lightbox 规则。
+   **零动效**：静态声明（无 animation / transition），故本规则不产生 reduced-motion 义务。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue img {
+  filter: brightness(.88);
+  border-radius: var(--jy-media-radius);
+  /* 保留既有 1px 边框占位、只撤绘制：几何不变，且避免两条线 */
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px var(--jy-border),
+    0 0 8px rgba(110, 123, 255, 0.16);
 }
 
 .jynoct .juya-plate {
@@ -2350,6 +2562,25 @@
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
 }
 
+/* ---- 条目标题编号 `#N` 取强调色相（2026-10-20，#13 / SPEC 批次 B1）----
+   **同一个 .juya-index 类名的第三种上下文**：概览序号（无 #、带微光）与条目标题徽章（带 #）。
+   票面要求两个编号角色改用**有无微光**区分，而不是用亮度 —— 故本条只换色相、**零光辉**。
+   **选择器必须是后代形态 `.juya-entry h3 .juya-index`，严禁 `>`**：`EntrySplit` 把 h3 嵌在
+   `.juya-entry-row > .juya-entry-body` 里，子选择器的直接父是 `.juya-entry-body` 而非 `.juya-entry`，
+   打不中（共享层与 y2k 已各踩过一次，见 AGENTS.md「变体覆盖选择器约定」与 y2k 审计④）。
+   **不降 alpha**：不写 rgba 字面量、不叠 opacity。降 alpha 会直接把 accent 推出 AA
+   （accent #6e7bff 对 --jy-bg #0a0a0c 只有 5.5953:1、余量 1.09，任何透明度都会成比例压分母）。
+   特异性：本条 (0,4,1) 压过既有 `.jynoct .juya-index` (0,2,0) 取 muted 的那条（该条**不动**，
+   它承载 min-width / 等宽 / 表格式对齐等几何职责）；概览规则多一层 `.juya-overview` 且与
+   `.juya-entry` 不在同一子树上，两者互不命中。
+   取色来源：本变体 --jy-accent #6e7bff（与刊头 neon、概览序号同源，零新增色相）。
+   WCAG 对比度实算（scripts/nocturne-contrast-audit.mjs 同一套数学）：对页面底 #0a0a0c **5.5953:1**、
+   对最亮单层雾峰值合成面 #11121d **5.2657:1**，均 ≥ AA 4.5（编号承载条目序号信息 ⇒ 文本门槛）。
+   静态规则（无 animation / transition / filter），故不产生 reduced-motion 义务。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {
+  color: var(--jy-accent);
+}
+
 /* ---- 概览目录（2026-10-12，#7）：序号 accent 微光 + 条目间极淡发丝线 + hover 整行微亮 ----
    **作用域为什么收窄到 .juya-overview**：.juya-index 是同一个类名的两种上下文 —— 概览条目
    （shared.tsx `OverviewItems` 渲染裸序号 `{o.index}`，无 # 前缀）与条目标题徽章
@@ -2371,13 +2602,28 @@
   filter: drop-shadow(0 0 6px rgba(110, 123, 255, 0.32));
 }
 
+/* ---- 右边缘对齐记号（2026-10-20，#16 / SPEC 批次 B2b）----
+   **病根**：概览条目的 li 用 `margin: 0 -8px` 抵消 `padding: 2px 8px`，行宽不变，但绝对定位的
+   分隔线 `li + li::after { left: 0; right: 0 }` 贴的是 **li 的 padding box** —— 于是线随负外边距
+   一起向外凸出 8px，比栏目 h2 横线（正文文字右缘）多出 10px；图片右缘又因条目 2px 内衬内缩 2px。
+   三处边界各走各的，跨 560/800/1320 三视口偏移量完全一致（结构性固定偏移，不是渲染抖动）。
+   **修法**：把这个「外扩量」抽成一个自定义记号，同时驱动三处 ——
+     li 内衬 = +记号（hover 底色/呼吸空间仍外溢）
+     li 负外边距 = -记号（行宽不变，不产生横向溢出）
+     分隔线左右内缩 = 记号（线回到内容栏边界）
+   改一处不会漂移。窄窗（≤520px）把记号本身收到 0 即可复用既有退化语义（见该断点）。
+   作用域是变体专属复合形态（AGENTS「变体覆盖选择器约定」），亮侧取值不受影响。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview {
+  --jy-ov-bleed: 8px;
+}
+
 /* 概览条目行：加行内衬（hover 底色/发丝线才有呼吸感，不让高亮块贴着字边），
-   并作下面绝对定位发丝线的定位上下文。横向用等量负外边距抵消内衬，
+   并作下面绝对定位发丝线的定位上下文。横向用**同一记号**的等量负外边距抵消内衬，
    行宽不变 → 不产生横向溢出（480px 视口的 scrollWidth 红线不受影响）。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-overview li {
   position: relative;
-  padding: 2px 8px;
-  margin: 0 -8px;
+  padding: 2px var(--jy-ov-bleed);
+  margin: 0 calc(-1 * var(--jy-ov-bleed));
   border-radius: 6px;
   /* 行高约 23px，半径比条目 hover 的 8px 更收，避免小行读成胶囊 */
 }
@@ -2390,12 +2636,14 @@
    线色 rgba(255,255,255,0.05)：取色来源 = 本变体 --jy-border rgba(255,255,255,0.08) 的**更弱一档**
    —— 需求要「极淡」，且 #6 已把栏目线单独提到 0.22 做非文本 UI 的 3:1，概览条目线刻意更低，
    两张票的线值不互相打架。合成到 #18192a 上为 #242535，WCAG 对比度 1.15:1：装饰性分隔线、
-   不承载信息、不适用 3:1 门槛（同 dust 的处理口径）。 */
+   不承载信息、不适用 3:1 门槛（同 dust 的处理口径）。
+   **左右内缩（#16）**：线贴的是 li 的 padding box，若 left/right 取 0 会随负外边距外凸 8px；
+   改取同一个 `--jy-ov-bleed` ⇒ 线与栏目 h2 横线（正文文字右缘）同一条内容栏边界。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  left: var(--jy-ov-bleed);
+  right: var(--jy-ov-bleed);
   top: -3.5px;
   height: 1px;
   background: rgba(255, 255, 255, 0.05);
@@ -2411,13 +2659,48 @@
   background: rgba(110, 123, 255, 0.06);
 }
 
-/* ④ 窄窗（≤520px）退化：该断点基层把 .juya-issue 内边距收到 `20px 14px 48px`，行内 8px 的
+/* ④ 键盘焦点环与整行高亮（2026-10-20，#20 / SPEC 批次 B5）：
+   病根：概览目录行只有鼠标 hover 反馈，键盘用户 Tab 过去看不到焦点落在哪一行。
+   **焦点环必须是完整声明**：Chromium UA 的 auto 焦点圈忽略作者 outline-color（项目既有教训，
+   index.css 同款），只写 outline-color 不生效，必须写含宽度与样式的 outline 简写。
+   取色来源：本变体 --jy-focus #8b97ff（既有焦点色，零新增色相）。WCAG 对比度：对页面底
+   --jy-bg #0a0a0c 实算 **7.5058:1** ≥ 非文本 UI 3:1（scripts/nocturne-contrast-audit.mjs
+   新增行同口径实读本规则）。
+   **行高亮**：`li:has(a:focus-visible)` —— 「祖先包含聚焦元素」写法，与上面 hover 同为
+   rgba(110,123,255,0.06) 整行底色（取色来源 = 本变体 --jy-accent #6e7bff，见上方 hover 条；
+   对比度：叠 nebula 最坏合成底 #18192a 上目录正文 --jy-text 为 9.36:1）。
+   **严禁 `:focus-within`**：鼠标点击链接同样会命中它，键盘与指针用户将无法区分；
+   :focus-visible 只在键盘/非指针模态命中。
+   **裁切与叠层**：概览 ul / li / .juya-issue 均无 overflow（最近裁剪者是滚动容器，而环在内容盒
+   内 2px 宽 + 2px 偏移，有余量）；条目间发丝线是 `li + li::after`（top: -3.5px，落在 6px 间隙
+   中点、在行盒**之外**），焦点行底色画在 li 的 background 层、发丝线是更上层的伪元素 ⇒ 线不会被
+   行底色盖住。环用 outline（边框盒之外），不参与行底色合成。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview a:focus-visible {
+  outline: 2px solid var(--jy-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 焦点行整行高亮：取色来源 = 本变体 --jy-accent #6e7bff（与上面 hover 同一 rgba 字面值）；
+   WCAG 对比度：叠 nebula 最坏合成底 #18192a 后，目录正文 --jy-text #c4c5cc 实算 9.36:1 ≥ 4.5。
+   与 hover 同底色是有意为之：键盘焦点与指针悬停提供同一「当前行」视觉语义。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible) {
+  background: rgba(110, 123, 255, 0.06);
+}
+
+/* ⑤ 窄窗（≤520px）退化：该断点基层把 .juya-issue 内边距收到 `20px 14px 48px`，行内 8px 的
    负向外扩只剩 6px 余量，发丝线与 hover 高亮块看上去像贴屏边的表格框线 → 撤掉横向外扩
    （只留纵向内衬、margin 归零），线仍落在文字列内。序号微光同步收一档（6px→4px、.32→.28）：
    窄列里同样的半径在 12px 小字周围占更大视觉比重，收一档才维持「克制」标定。
    窄窗那条微光的取色来源与 WCAG 对比度同 ① （accent #6e7bff / 4.90:1），只收半径与 alpha。
    与 #5 的阅读窗渐隐遮罩无叠加面（那只作用于正文列左右边缘，本区块在概览区）。 */
 @media (max-width: 520px) {
+  /* #16：窄窗退化 = 把同一个记号收到 0（内衬 / 负外边距 / 分隔线内缩三处同时归零），
+     仍保持「改一处不漂移」；下方 li 规则是既有退化取值，保留作双保险。 */
+  [data-juya-variant='nocturne-dark'].jynoct .juya-overview {
+    --jy-ov-bleed: 0px;
+  }
+
   [data-juya-variant='nocturne-dark'].jynoct .juya-overview li {
     padding: 2px 0;
     margin: 0;
@@ -2428,6 +2711,88 @@
   [data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index {
     filter: drop-shadow(0 0 4px rgba(110, 123, 255, 0.28));
   }
+}
+
+/* ---- 图片放大视图 lightbox（2026-10-20，#21 / SPEC 批次 B5b）----
+   **形态**：原生 `<dialog>` + `showModal()`（`templates/nocturne.tsx` 的 `NocturneLightbox`）。
+   焦点陷阱、ESC 关闭、`role=dialog` / `aria-modal` 语义全部由浏览器提供 —— 本段**只做呈现**，
+   不手写一套焦点/键盘逻辑；开合统一经原生 `close()` 事件回到 React 状态。
+   **挂载点**：portal 到 `document.body`（内容区在 CSS zoom 容器内，居中与尺寸会被 zoom 缩放，
+   先例 ThemeEditor 取色器）。因此 dialog 不在 `.juya-root` 子树内 —— 「`.juya-root` 永无
+   animation」的结构不变量不受影响。
+   **作用域**：只对暗侧（需求 §9：nocturne-light 任何改动不做），模板层同样只在
+   `nocturne-dark` 挂载 lightbox。选择器沿用「变体复合作用域」形态
+   `[data-juya-variant='nocturne-dark'].jynoct-lightbox`（dialog 自带同一 data 属性作 token 宿主，
+   否则 portal 出 `.juya-root` 后读不到 `--jy-*`）。
+   **取色来源（零新增色相）**：
+     面板底 `var(--jy-bg)` #0a0a0c、发丝描边 `var(--jy-border)`（白 8%）—— 均取自本变体既有序；
+     遮罩字面 `rgba(10, 10, 12, 0.82)` = 本变体 `--jy-bg` #0a0a0c 的 82% alpha（与
+     `--jy-window-mask` 同一「页面底压暗」手法）。取 0.82（不是更浓的 0.9+）：正文在遮罩下仍可辨
+     轮廓，关闭后视线无需重新适应；对遮罩上白光标称的「非文本 UI 3:1」不适用（遮罩不承载信息）。
+   **压暗义务（T3 留下的注释）**：正文流 `[data-juya-variant='nocturne-dark'].jynoct .juya-issue img`
+   的 `filter: brightness(.88)` **绝不作用于放大图** —— 放大就是为了看原图。dialog 已脱离
+   `.juya-issue` 子树（该规则结构上打不中），但仍在此**显式**声明 `filter: none`：让「放大图不压暗」
+   成为一条可读取、可被 E2E 断言的义务，而不是依赖祖先链的巧合。
+   **圆角**：走本风格既有记号 `--jy-media-radius`（8px）；dialog 不是 `.jynoct` 后代，未定义时回退 8px。
+   **动画**：只设开（160ms 淡入 + 0.98→1 微缩放，挂在**大图自身**这个子层上 —— 全仓不变量
+   「动画不挂根/层本身、只挂子层」由 `juyaCssGuard` ⑤ 灰盒扫描），关不设动画（原生 dialog 退场
+   本就不可动画）；`::backdrop` 不做动画（它只负责压暗，淡入由大图承接）。
+   `prefers-reduced-motion: reduce` 下把大图的 `animation` 显式复位为 `none`（撤回关键帧后元素
+   回到静态末态，不会比动画过程中途更亮 —— 与刊头极光那条 RM 教训同一口径）。 */
+[data-juya-variant='nocturne-dark'].jynoct-lightbox {
+  box-sizing: border-box;
+  /* 覆盖 UA 对 modal dialog 的 `max-*` 收窄：面板尺寸由内部图片的 92vw / 88vh 决定，
+     否则窄窗下 UA 的 `max-width` 会把大图**裁掉一条**（本票要求完整可见、不裁切） */
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-media-radius, 8px);
+  /* 覆盖变体调色板块给宿主元素挂的顶部 radial-gradient：放大视图用整块纯页面底，不要渐晕 */
+  background: var(--jy-bg);
+}
+
+/* 遮罩取色来源：本变体 `--jy-bg` #0a0a0c 的 82% alpha（与 `--jy-window-mask` 同一「页面底压暗」
+   手法，零新增色相）。对比度：遮罩只压暗背景、不承载文字或图标 ⇒ 不设对比度门槛（也不借此抬高/
+   压低本变体任何既有取值）；0.82 的取值理由见上方区块注释。 */
+[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop {
+  background: rgba(10, 10, 12, 0.82);
+}
+
+[data-juya-variant='nocturne-dark'].jynoct-lightbox img {
+  display: block;
+  width: auto;
+  height: auto;
+  /* 按比例适配、四边完整可见（不裁切）：只给上限，不强制填满盒子 */
+  max-width: min(92vw, 1200px);
+  max-height: 88vh;
+  object-fit: contain;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  /* T3 义务：放大图 filter: none（正文流的 brightness(.88) 只属于缩略形态） */
+  filter: none;
+  animation: jy-noct-lightbox-in 160ms ease-out;
+}
+
+@keyframes jy-noct-lightbox-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-juya-variant='nocturne-dark'].jynoct-lightbox img {
+    animation: none;
+  }
+}
+
+/* 可点击提示（#21）：裸图用 zoom-in 光标；被 `<a>` 包裹的图保持链接形态的默认光标，
+   不暗示「点了会放大」。只加光标，不改几何与颜色 ⇒ 归档像素零变化。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-issue img:not(:is(a img)) {
+  cursor: zoom-in;
 }
 
 /* 订阅封面 16/9 发丝边；featured 顶部渐变高光线 */
@@ -2447,6 +2812,36 @@
   right: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--jy-link), transparent);
+}
+
+/* ---- 页面不可见时暂停动画（2026-10-20，#22 / SPEC 批次 B6）----
+   问题：内容区有多条**持续**动画（尘埃漂移 96s、刊头呼吸 9s、极光幕帘 24s/31s），
+   窗口最小化或切到后台后仍在跑，白耗 CPU 与电。
+   做法：渲染层监听 `visibilitychange`（只读 `document.hidden`），在
+   **`document.documentElement`** 上置 `data-app-hidden`；本段只做暂停，不改任何可见取值。
+   为什么挂文档根元素：`.juya-root`「永无 animation」是结构不变量（reduced-motion E2E 断言依赖），
+   把可见性开关挂到内容根容器会打穿那条断言；文档根元素在内容根之外，选择器仍从它向下命中内容。
+   为什么逐一列举而不是对 `*` 通配统一设置：
+     · `animation-play-state` **不继承**，伪元素上的动画是独立的 Animation 对象；
+     · 作用域必须限定在本变体（且 §9 明确 nocturne-light 本轮范围外），不能用全局通配。
+   载体清单（与本文件 animation 声明一一对应，缺一即漏）：
+     ① `.juya-scene-dust`      —— dust 预设（jy-dust-drift，96s alternate）；
+     ② `.juya-masthead h1`     —— 刊头呼吸（jy-noct-glow，9s，只动 filter 的 drop-shadow alpha）；
+     ③ `.juya-masthead::before`—— 极光前层（jy-noct-aurora-near，24s，只动 opacity）；
+     ④ `.juya-masthead::after` —— 极光后层（jy-noct-aurora-far，31s，只动 opacity）；
+     ⑤ `.juya-feed-item`       —— 订阅页入场（jy-enter，220ms 一次性）；
+     ⑥ `.jynoct-lightbox img`  —— 放大视图入场（jy-noct-lightbox-in，160ms；dialog portal 到 body，
+       变体标记挂在 dialog 自身，故不是 `.jynoct` 的后代）。
+   为什么不改成透明度动画：**不做**动画 `filter`→`opacity` 重构（无实测数据支撑）。
+   只声明 `animation-play-state`：计算样式中的 opacity / filter 保持冻结当帧值，
+   回到前台动画从原 currentTime 继续，不会有可见跳变（E2E 逐项断言）。 */
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::before,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-feed-item,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct-lightbox img {
+  animation-play-state: paused;
 }
 
 /* ---- 杂志编辑式（2026-09-24 重设计新增） ----
@@ -2909,4 +3304,18 @@
 .view-scroll:has([data-juya-variant='wabi-dark'])::-webkit-scrollbar-thumb {
   /* wabi-dark 陶土 accent #b37a5e，对暗底 #1e1c18 对比 4.75 */
   background: #b37a5e;
+}
+
+/* ==== 内容区原生件配色（2026-10-20，#12 / SPEC 批次 B5a）：nocturne 暗侧的滚动条与原生控件
+   跟随**内容自身**的暗色方案 ====
+   与上方滚动条同一结构约束：滚动容器 .view-scroll 是 .juya-root / .jynoct 的**祖先**，
+   故同样用 :has() 向上匹配，把 color-scheme 直接落在滚动容器上（不是取色，滚动条与下拉/输入框
+   取的是该容器的 used color-scheme）。区域级声明压过从根元素继承来的值：应用主题为亮色时
+   内容区仍是暗色，两套配色互不覆盖。
+   不写 html/body/:root —— 主题级配色由 applyTheme 无条件写 root.style.colorScheme，本文件不碰；
+   变体覆盖按 AGENTS「变体覆盖选择器约定」用复合形式（变体属性与 .jynoct 恒挂同一根元素）。
+   仅 nocturne-dark 一条：nocturne-light 按 §9 不在本轮范围。 */
+
+.view-scroll:has([data-juya-variant='nocturne-dark'].jynoct) {
+  color-scheme: dark;
 }

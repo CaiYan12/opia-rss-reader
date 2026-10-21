@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { JUYA_STYLES } from '../../src/renderer/juya/juyaStyles'
+import {
+  buildPhaseSamples,
+  cycleSeconds,
+  extremeTimes
+} from '../../scripts/nocturne-aurora-phase.mjs'
+import { APP_HIDDEN_ATTR } from '../../src/renderer/visibilityPause'
 
 // juya.css 静态守卫（与 ipcContract 静态守卫同思路，不渲染、纯文本断言）：
 // 1) 变体覆盖必须写成复合选择器（[data-juya-variant='x'].jyY…）。
@@ -506,6 +512,19 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
   /** 导语区（暗侧两个复合规则块的合并文本）：发光规则须在此区间内 */
   const leadArea = (): string => leadDarkBlocks().join('\n')
 
+  /** 把渐变里的 `var(--jy-*)` 解析成 rgb 三元组文本（色相来源断言用：token 解析后仍须命中具体通道值）。
+   *  只解析本组用到的 6 位 hex token；解析不到的原样保留（断言会因此转红，不会静默放过）。 */
+  const resolveGradientHues = (grad: string, token: string): string => {
+    let out = grad
+    for (const m of grad.matchAll(/var\((--jy-[\w-]+)\)/g)) {
+      const hex = tokenHex(token, m[1])
+      if (Number.isNaN(hex)) continue
+      const rgb = `rgba(${(hex >> 16) & 0xff}, ${(hex >> 8) & 0xff}, ${hex & 0xff})`
+      out = out.split(m[0]).join(rgb)
+    }
+    return out
+  }
+
   it('① 导语底色 alpha 从 4% 白提到 0.08–0.10（从规则抠真值，非注释）', () => {
     // 缺陷 B 修正后导语规则是暗侧复合形态（原共享 `.jynoct` 会把内衬一并施加到 nocturne-light）
     const lead = decl(darkRule('\\.juya-lead'), 'background')
@@ -524,40 +543,88 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
       '导语底色对 --jy-bg 应可分辨（>1）').toBeGreaterThan(1)
   })
 
-  it('② 导语左侧发光竖线：颜色取该风格 --jy-focus，辉光走外阴影（禁 text-shadow / 禁块级 drop-shadow）', () => {
+  it('② 导语左侧渐变竖线：3px 进边框区、靛蓝→品红→透明（禁 text-shadow / 禁块级 drop-shadow / 禁外发光）', () => {
+    // 2026-10-20 #18 / SPEC 批次 B4：竖线由「单色实线 + 外发光」改为「一条渐变光」，
+    // 外发光移除（设计决策：避免渐变竖线与外发光两套光语言；与文字对比度无关）。
+    // 方案 (d)：保留 3px 透明边框承载渐变，渐变用 background-image 画进 border 区，
+    // origin 与 clip 同为 border-box（绝不用 padding-box —— 那会让竖线上下淡出端露出裸页面底）。
     const rule = darkRule('\\.juya-lead')
-    const focusRule = leadDarkBlocks()[1] ?? ''
-    const left = decl(rule, 'border-left') || decl(focusRule, 'border-left-color')
-    expect(left, '基层已有 border-left，本条票须把它换成 focus 色').toBeTruthy()
-    expect(left, '左侧竖线颜色须走 var(--jy-focus)（#8b97ff）').toContain('var(--jy-focus)')
-    // 竖线宽度以基层声明为真值（3px）：本票允许「只覆写 color」的写法，故宽度从基层读
+    const barRule = leadDarkBlocks().find((b) => /border-left|background-image/.test(b)) ?? ''
+    expect(barRule, '导语竖线规则（暗侧复合形态）应存在').toBeTruthy()
+    const body = stripComments(barRule)
+    // 几何不变：基层 3px 边框宽度保留，只把颜色换成 transparent
     const baseLeft = decl(css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? '', 'border-left')
-    expect(px(baseLeft)[0] || px(left)[0], '竖线宽度应保持基层 3px').toBe(3)
-    // 辉光形态：外阴影 box-shadow（裁决 2026-10-12）—— 只画在边框盒之外，不洗涤矩形内部
-    expect(leadArea(), '导语区（暗侧两个复合规则块）应可提取').toBeTruthy()
-    const body = stripComments(leadArea())
-    expect(body, '导语区须有外阴影辉光（box-shadow）').toContain('box-shadow')
+    expect(px(baseLeft)[0], '基层竖线宽度应保持 3px').toBe(3)
+    const left = decl(body, 'border-left')
+    expect(left, '暗侧须保留 border-left（几何由边框宽度承载）').toBeTruthy()
+    expect(px(left)[0], '竖线宽度应保持 3px').toBe(3)
+    expect(left, '边框本体须为 transparent（颜色由渐变绘制）').toContain('transparent')
+    // 渐变只占边框条：3px 宽 × 100% 高，贴左上；origin+clip 同 border-box
+    const grad = decl(body, 'background-image')
+    expect(grad, '竖线渐变应写在 background-image').toContain('linear-gradient')
+    expect(grad, '渐变走向应为纵向（to bottom / 180deg）').toMatch(/to bottom|180deg/)
+    expect(decl(body, 'background-size'), '渐变尺寸应为 3px × 100%（只占边框条）').toMatch(/3px\s+100%/)
+    expect(decl(body, 'background-position'), '渐变应贴左边框外侧').toMatch(/left top|0 0/)
+    expect(decl(body, 'background-origin'), '渐变的绘制原点须为 border-box').toBe('border-box')
+    expect(
+      decl(body, 'background-clip'),
+      '渐变的裁剪须为 border-box（底色铺进边框区，上下淡出两端才不会露出裸页面底）'
+    ).toBe('border-box')
+    expect(css, '绝不得用 padding-box（会让竖线上下淡出两端露出 3px 裸页面底）').not.toMatch(
+      /background-(?:clip|origin)\s*:\s*padding-box/
+    )
+    // 色相来源：靛蓝 --jy-focus #8b97ff = 139,151,255（token 解析后核对）+ 品红字面 rgba(200,90,180,α)
+    const hues = resolveGradientHues(grad, variantBlock(NIGHT))
+    expect(hues, '渐变须含靛蓝色相来源 139,151,255（--jy-focus）').toContain('139, 151, 255')
+    expect(grad, '渐变须含品红粉色相来源字面 rgba(200,90,180,…)').toMatch(
+      /rgba\(\s*200\s*,\s*90\s*,\s*180\s*,/
+    )
+    const magentaAlpha = Number.parseFloat(
+      grad.match(/rgba\(\s*200\s*,\s*90\s*,\s*180\s*,\s*([\d.]+)\s*\)/)?.[1] ?? 'NaN'
+    )
+    expect(Number.isNaN(magentaAlpha), '品红端应为字面 rgba 且带 alpha').toBe(false)
+    expect(
+      magentaAlpha,
+      `品红端 alpha 实测 ${magentaAlpha}：复用色相但不复用 n3 雾记号 0.025（直接用几乎不可见）`
+    ).toBeGreaterThanOrEqual(0.5)
+    expect(magentaAlpha, '品红端仍须克制（≤0.6，不抢正文）').toBeLessThanOrEqual(0.6)
+    // 两端透明：首行/末行回到「8% 白叠底」（= 导语底 token），而非裸页面底
+    expect(grad, '渐变须从透明起（首行回到 8% 白叠底）').toMatch(/transparent\s+0%/)
+    expect(grad, '渐变须以透明收（末行回到 8% 白叠底）').toMatch(/transparent\s+100%/)
+    // 外发光移除：只禁「非 inset」的投影（保留将来加 inset 内顶高光的空间）
+    const shadows = [...body.matchAll(/box-shadow\s*:\s*([^;}]+)/g)].map((m) => m[1].trim())
+    for (const s of shadows) {
+      expect(s, `导语规则体内不得有非 inset 的 box-shadow（实测：${s}）`).toContain('inset')
+    }
+    // **全量扫描**（2026-10-20 收口修正）：暗侧 `.juya-lead` 不止一条规则（底色/文字色、竖线几何、
+    // 内衬各一条）。只查带 `border-left` 的那条，等于「给另一条加外发光不会转红」—— 收口 Spec 评审
+    // 抓到的守卫盲区。此处按选择器前缀扫**全部**暗侧导语规则体，任一条出现非 inset 阴影即红。
+    const leadBodies = [
+      ...css.matchAll(
+        /\[data-juya-variant='nocturne-dark'\]\.jynoct[^{}]*\.juya-lead[^{}]*\{([^}]*)\}/g
+      )
+    ].map((m) => m[1])
+    expect(leadBodies.length, '应至少匹配到两条暗侧导语规则').toBeGreaterThanOrEqual(2)
+    for (const leadBody of leadBodies) {
+      for (const s of [...leadBody.matchAll(/box-shadow\s*:\s*([^;}]+)/g)].map((m) => m[1].trim())) {
+        expect(s, `任意暗侧导语规则体内不得有非 inset 的 box-shadow（实测：${s}）`).toContain(
+          'inset'
+        )
+      }
+    }
     // 块级 drop-shadow 会按元素 alpha 轮廓（含导语 0.08 半透明底）整片垫在矩形底下 ——
     // 既是「整框泛光」而非票面要的「竖线发光」，也是把 muted 压到 4.4744（<AA 4.5）的唯一分量。
     expect(body, '导语规则体内不得出现 filter: drop-shadow').not.toMatch(/filter\s*:\s*drop-shadow/)
     expect(body, '导语规则体内不得出现 drop-shadow() 调用').not.toMatch(/drop-shadow\(/)
     expect(body, '导语区禁用 text-shadow').not.toMatch(/text-shadow\s*:\s*[^n\s]/)
-    // 发光强度克制：模糊半径 ≤ 8px，且 alpha ≤ 0.6（不得抢正文）
-    const glow = decl(body, 'box-shadow')
-    expect(glow, '导语区应有 box-shadow 声明').toBeTruthy()
-    expect(glow, '辉光应带取色来源（focus 色通道 139,151,255）').toContain('139, 151, 255')
-    const glowLen = glow.replace(/rgba\([^)]*\)/, '').trim()
-    const blur = px(glowLen)
-    expect(blur[blur.length - 1], '发光模糊半径应克制（≤8px）').toBeLessThanOrEqual(8)
-    // alpha 值从 rgba 的参数里按逗号切出（不用嵌套正则：`[^)]*?` 在 `[^)]*` 已吃掉右括号的场景下语义绕）
-    const glowAlpha = Number.parseFloat(glow.split(',').pop()?.trim() ?? 'NaN')
-    expect(Number.isNaN(glowAlpha), `box-shadow 末位参数应为 alpha（实测 ${glowAlpha}）`).toBe(false)
-    expect(glowAlpha, '发光 alpha 应克制（≤0.6）').toBeLessThanOrEqual(0.6)
-    // 文字色（危险组合的来源）：本票不改，须仍是基层的 --jy-muted —— 只在有人覆写时才校验覆写值
+    // 文字色：本票（#6）不改，但 #13（SPEC 批次 B1）已把暗侧导语提亮到**专用记号** --jy-lead-text，
+    // 故断言随之指向新记号，并**明确禁止**再退回 muted —— 那正是 #13 要修的「导语比正文暗一倍」。
+    // （口径未放宽：仍锁死一个具体 token，且多一条反向断言。）
     const leadColor = decl(rule, 'color') || decl(css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? '', 'color')
-    expect(leadColor, '导语文字色应走 --jy-muted（需求 §3.1 点名的危险组合）').toContain(
-      'var(--jy-muted)'
+    expect(leadColor, '导语文字色须走专用记号 --jy-lead-text（#13 起）').toContain(
+      'var(--jy-lead-text)'
     )
+    expect(leadColor, '导语不得再复用 --jy-muted（#13 的验收红线）').not.toContain('var(--jy-muted)')
   })
 
   it('③ 导语内边距加大：4 边均大于基层 padding: 8px 12px，与正文段落形成层级差', () => {
@@ -578,55 +645,67 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     ).toMatch(/font-size:\s*14\.5px/)
   })
 
-  it('④ 栏目 h2：padding-bottom 8px + 1px 发丝线，线 alpha 单独提到 ≈0.22（实测对比度留档）', () => {
+  it('④ 栏目 h2：padding-bottom 8px + 1px 渐变发丝线（青白→靛蓝→透明，右端淡出，几何不变）', () => {
+    // 2026-10-20 #18 / SPEC 批次 B4：栏目线改为渐变并从右端淡出，与刊头极光呼应。
+    // 几何不变：仍是 1px 下边框 + 8px 下内衬（nocturne-geometry.spec 以 borderBottomWidth=1px 为对齐基准）。
     const rule = darkRule('\\.juya-section > h2')
     expect(rule, "[data-juya-variant='nocturne-dark'].jynoct .juya-section > h2 规则应存在").toBeTruthy()
-    expect(decl(rule, 'padding-bottom'), 'h2 下内边距应为 8px').toBe('8px')
+    expect(decl(rule, 'padding-bottom'), 'h2 下内边距应为 8px（几何不变）').toBe('8px')
     const border = decl(rule, 'border-bottom')
     expect(border, 'h2 下边框应为 1px 发丝线').toBeTruthy()
-    expect(px(border)[0], '发丝线宽度 1px').toBe(1)
-    const rgba = border.match(/rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/)
-    expect(rgba, '栏目线应为字面 rgba（须带注释与对比度）').toBeTruthy()
-    const ruleColor = {
-      rgb: (Number(rgba![1]) << 16) | (Number(rgba![2]) << 8) | Number(rgba![3]),
-      alpha: Number(rgba![4])
-    }
-    // 需求 §7.1 决策值：栏目线 alpha 单独提到 ≈0.22（白线；与 --jy-border 同源只提 alpha）
-    expect(ruleColor.rgb, '栏目线取色来源应为白（与 --jy-border 同源）').toBe(0xffffff)
-    expect(ruleColor.alpha, `栏目线 alpha 实测 ${ruleColor.alpha} 应 ≈0.22`).toBeCloseTo(0.22, 2)
-    // 实算：线合成到 --jy-bg 后的对比度（票面实测口径：全局 0.08 仅 1.19:1）
+    expect(px(border)[0], '发丝线宽度仍为 1px（几何不变）').toBe(1)
+    expect(border, '边框本体透明，颜色由渐变绘制').toContain('transparent')
+    // 渐变：只占 1px 边框条（100% × 1px，贴左下），origin+clip 同 border-box
+    const body = stripComments(rule)
+    const grad = decl(body, 'background-image')
+    expect(grad, '栏目线渐变应写在 background-image').toContain('linear-gradient')
+    expect(grad, '栏目线为横向渐变').toMatch(/to right|90deg/)
+    expect(decl(body, 'background-size'), '渐变尺寸应为 100% × 1px（只占下边框条）').toMatch(
+      /100%\s+1px/
+    )
+    expect(decl(body, 'background-position'), '渐变应贴底边').toMatch(/left bottom|0 100%/)
+    expect(decl(body, 'background-origin'), '渐变的绘制原点须为 border-box').toBe('border-box')
+    expect(decl(body, 'background-clip'), '渐变的裁剪须为 border-box').toBe('border-box')
+    // 色相：青白（刊头极光亮脊 rgba(214,236,255)）→ 靛蓝（--jy-accent 色相 110,123,255）→ 透明
+    expect(grad, '起点须为青白色相 rgba(214,236,255,…)').toMatch(
+      /rgba\(\s*214\s*,\s*236\s*,\s*255\s*,/
+    )
+    const startAlpha = Number.parseFloat(
+      grad.match(/rgba\(\s*214\s*,\s*236\s*,\s*255\s*,\s*([\d.]+)\s*\)/)?.[1] ?? 'NaN'
+    )
+    expect(Number.isNaN(startAlpha), '起点 alpha 应可解析').toBe(false)
+    expect(startAlpha, `起点 alpha 实测 ${startAlpha}：不得高于现有 0.22（保持发丝感）`).toBeLessThanOrEqual(
+      0.22
+    )
+    expect(grad, '中段须为靛蓝色相 rgba(110,123,255,…)').toMatch(
+      /rgba\(\s*110\s*,\s*123\s*,\s*255\s*,/
+    )
+    expect(grad, '右端须淡出至透明').toMatch(/transparent\s+100%/)
+    // h2 不得把背景裁剪到文字形状（否则渐变会被裁成字形而不是一条线）
+    expect(stripComments(noctSection()), '栏目 h2 相关规则不得出现 background-clip: text').not.toMatch(
+      /juya-section[^{}]*\{[^}]*background-clip:\s*text/
+    )
+    // 实测留档：起点青白叠 --jy-bg 后仍可见但克制（不是 3:1 分隔件而是装饰发丝线，口径同 §7.1）
     const block = variantBlock(NIGHT)
     const bg = tokenHex(block, '--jy-bg')
-    const borderToken = tokenRgba(block, '--jy-border')
-    expect(borderToken.alpha, '--jy-border 应为 rgba').not.toBeNaN()
-    const oldLine = over(borderToken, bg)
-    expect(contrast(oldLine, bg), '全局 0.08 老线的实测基线应≈1.19（对照面，防漂移）').toBeCloseTo(1.19, 1)
-    const newLine = over(ruleColor, bg)
-    const measured = contrast(newLine, bg)
-    // 实测差额留档（票面验收标准写「达 3:1」）：alpha 0.22 的白线合成到 #0a0a0c 得 #404041，实算仅
-    // **1.91:1** —— 数学上达不到 3:1。真正够 3:1 需 alpha ≈0.34（合成 #5d5d5f ⇒ 3.01:1），但那样栏目线
-    // 会比条目线（0.08）亮一倍以上，直接违反需求 §7.1「只对栏目线提 alpha…提了与『克制』冲突」的红线。
-    // 故按票面明写的决策值 0.22 落地，并把「相对老线的可见度提升倍数」锁进守卫（1.91/1.19 ≈ 1.61）：
-    // 这条断言把实测值钉死，任何想把 alpha 往 3:1 抬的动作都会同时撞红本断言与「克制」红线。
-    expect(measured, `栏目线 alpha ${ruleColor.alpha} 对 --jy-bg 实测 ${measured.toFixed(2)}`).toBeGreaterThan(1.9)
-    expect(measured, '实测值锁定带宽 ±0.02，防静默改 alpha').toBeCloseTo(1.91, 2)
-    expect(measured / contrast(oldLine, bg), '相对全局 0.08 老线的可见度提升 ≈1.61 倍').toBeCloseTo(1.61, 2)
-    // 反证：0.22 确实达不到 3:1；够 3:1 的最小 alpha ≥0.33（证明取舍是数学事实而非疏漏）
-    for (const a of [0.22, 0.3, 0.32]) {
-      expect(contrast(over({ rgb: 0xffffff, alpha: a }, bg), bg), `alpha ${a} 应仍 <3`).toBeLessThan(3)
-    }
-    expect(contrast(over({ rgb: 0xffffff, alpha: 0.34 }, bg), bg), 'alpha 0.34 才够 3:1').toBeGreaterThanOrEqual(3)
-    // 最坏叠加面（三层 nebula 全重叠 #18192a）留档：同一 alpha 在此面上约 2.05，明确低于 3 —— 见 CSS 注释
-    const nebula = [
-      { rgb: 0x6e7bff, alpha: 0.07 },
-      { rgb: 0x5aa0ff, alpha: 0.04 },
-      { rgb: 0xc85ab4, alpha: 0.025 }
-    ]
-    const nebulaComp = [nebula[2], nebula[1], nebula[0]].reduce((acc, l) => over(l, acc), bg)
-    expect(nebulaComp, '三层 nebula 全重叠合成底应为 #18192a（与 #2 守卫同值）').toBe(0x18192a)
-    const stacked = contrast(over(ruleColor, nebulaComp), nebulaComp)
-    expect(stacked, '最坏叠加面上栏目线约 2.05（低于 3，已注释留档）').toBeGreaterThan(2)
-    expect(stacked, '最坏叠加面上栏目线约 2.05（低于 3）').toBeLessThan(3)
+    const startStop = { rgb: 0xd6ecff, alpha: startAlpha }
+    const startLine = over(startStop, bg)
+    const startContrast = contrast(startLine, bg)
+    expect(startContrast, `青白起点对 --jy-bg 实测 ${startContrast.toFixed(3)} 应可分辨`).toBeGreaterThan(1)
+    expect(
+      startContrast,
+      '栏目渐变线仍是装饰发丝线（<3:1，需求 §7.1 的克制口径，已留档）'
+    ).toBeLessThan(3)
+    // 反证：起点青白（0xd6ecff）叠到 --jy-bg 上需 alpha ≈0.40 才够 3:1 —— 那会破坏发丝感，
+    // 故把上限锁在 0.22（现取值 1.78:1，与旧 0.22 白线的 1.91:1 同量级、同属装饰分隔件）。
+    expect(
+      contrast(over({ rgb: 0xd6ecff, alpha: 0.34 }, bg), bg),
+      'alpha 0.34 仍 <3（证明 0.22 上限是取舍而非疏漏）'
+    ).toBeLessThan(3)
+    expect(
+      contrast(over({ rgb: 0xd6ecff, alpha: 0.4 }, bg), bg),
+      'alpha 0.40 才够 3:1'
+    ).toBeGreaterThanOrEqual(3)
   })
 
   it('⑤ 反证：条目分隔线仍用 --jy-border 0.08，未被一并提到 0.22（票面红线）', () => {
@@ -689,17 +768,20 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     const n1 = tokenRgba(neb, '--jy-nebula-1')
     expect(n1.alpha, '--jy-nebula-1 应为 rgba').not.toBeNaN()
 
-    // ---- 前提 3（裁决 2026-10-12 新增的防回退断言）：导语规则体内不得出现块级 `filter: drop-shadow`。
-    //      它按元素渲染结果的 alpha 轮廓取形状，而 `.juya-lead` 带 0.08 半透明底 ⇒ 阴影以
-    //      0.35×0.08 的 alpha **整片垫在矩形底下**被透出：既是「整框泛光」而非票面要的「左侧竖线发光」，
-    //      也把导语 muted 压到 4.4744（< AA）。改回该写法必须同时撞红本断言与⑥的对比度断言。 ----
+    // ---- 前提 3（#18 改写后的防回退断言）：外发光已移除（设计决策：避免渐变竖线与外发光
+    //      两套光语言；与文字对比度无关 —— 外阴影按规范只绘在 border-box 之外，从不进入文字背景）。
+    //      竖线是一条画进边框区的渐变光；块级 `filter: drop-shadow` 仍禁用（取元素 alpha 轮廓，
+    //      会把矩形整片垫在底下被半透明底透出）。 ----
     const leadBody = stripComments(leadArea())
-    expect(leadBody, '导语规则体内不得出现 filter: drop-shadow（须走外阴影/伪元素竖线局部发光）').not.toMatch(
+    expect(leadBody, '导语规则体内不得出现 filter: drop-shadow（须走边框区渐变竖线）').not.toMatch(
       /filter\s*:\s*drop-shadow/
     )
     expect(leadBody, '导语规则体内不得出现 drop-shadow() 调用').not.toMatch(/drop-shadow\(/)
-    // 外阴影只画在边框盒之外 ⇒ 不在文字所落的背景里 → 静态模型里**没有**辉光层
-    expect(leadBody, '局部发光应为 box-shadow（外阴影）').toContain('box-shadow')
+    // 只禁「非 inset」的投影：外发光回归会转红，将来加内顶高光（inset 0 1px 0 …）仍可写
+    const leadShadows = [...leadBody.matchAll(/box-shadow\s*:\s*([^;}]+)/g)].map((m) => m[1].trim())
+    for (const s of leadShadows) {
+      expect(s, `导语规则体内不得有非 inset 的 box-shadow（实测：${s}）`).toContain('inset')
+    }
 
     // ---- 可达最坏面几何（浏览器实测口径：六档视口里 vw=700 最坏；导语文字左缘 = 47px，
     //      由 .juya-issue(≤700px 居中 / 24px 内衬) + .juya-entry(2px) + 3px 竖线 + 18px 左内衬 推出）----
@@ -834,6 +916,56 @@ describe('滚动条风格适配守卫（2026-10-11 用户指令：橘鸦风格�
       /<div className="view-scroll flex-1 overflow-y-auto">/
     )
     expect(mini, 'MiniView 不应挂 view-scroll').not.toContain('view-scroll')
+  })
+})
+
+describe('nocturne 暗侧原生件配色守卫（2026-10-20，#12 / SPEC B5a）', () => {
+  // 需求：内容区原生件（滚动条 / 下拉 / 输入框）跟随**内容自身**的亮暗，而非应用主题（根元素）。
+  // 结构约束：滚动容器 .view-scroll 是 .juya-root 的**祖先**，故只能 :has() 向上匹配（同滚动条先例）；
+  // 变体覆盖按 AGENTS「变体覆盖选择器约定」写复合形式 `[data-juya-variant='nocturne-dark'].jynoct`
+  // （变体属性与风格类恒挂同一根元素，带空格的后代形式永不匹配）。
+  const RULE_OPEN =
+    /(?:^|\n)\.view-scroll:has\(\[data-juya-variant='nocturne-dark'\]\.jynoct\)\s*\{/
+  const rule = (): string => extractBlock(css, RULE_OPEN).replace(/^\n/, '')
+  /** 剥注释（就地替换为空格）：注释里提到 nocturne-light / color-scheme 不得计入声明面 */
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, ' ')
+
+  it('① 滚动容器声明 color-scheme: dark（滚动条与原生控件取容器的 used color-scheme）', () => {
+    expect(rule(), 'nocturne-dark 的 .view-scroll:has() 配色规则应存在').toBeTruthy()
+    expect(decl(rule(), 'color-scheme'), '滚动容器应是暗色方案').toBe('dark')
+  })
+
+  it('② 作用域限定 nocturne 暗侧：复合形式、亮侧不声明、独此一条', () => {
+    expect(RULE_OPEN.test(bare), '必须复合形式（.jynoct 紧贴变体属性，无空格后代）').toBe(true)
+    const declarations = [...bare.matchAll(/color-scheme\s*:/g)]
+    expect(declarations, 'juya.css 只允许本票这一条 color-scheme 声明').toHaveLength(1)
+    const at = declarations[0].index ?? 0
+    const host = bare.slice(bare.lastIndexOf('}', at) + 1, at)
+    expect(host, '声明的宿主必须带滚动容器选择器（区域级，不写根元素）').toContain(
+      ".view-scroll:has([data-juya-variant='nocturne-dark'].jynoct)"
+    )
+    expect(bare, 'nocturne-light 不得声明配色方案（§9 亮侧不在范围）').not.toMatch(
+      /nocturne-light[^{}]*\{[^}]*color-scheme/
+    )
+  })
+
+  it('③ 不落内容根与根元素，且主题注入链路无变体感知（两套配色互不覆盖）', () => {
+    expect(
+      extractBlock(bare, /(?:^|\n)\.juya-root\s*\{/),
+      '内容根不得声明 color-scheme'
+    ).not.toContain('color-scheme')
+    expect(bare, 'juya.css 不得给 html/body/:root 声明 color-scheme').not.toMatch(
+      /(?:^|\n)(?:html|body|:root)[^{}]*\{[^}]*color-scheme/
+    )
+    // 主题注入链路保持主题级原样：只写根元素，不感知 juya 变体/滚动容器
+    const applyTheme = readFileSync(
+      join(process.cwd(), 'src/renderer/theme/applyTheme.ts'),
+      'utf-8'
+    )
+    expect(applyTheme, '主题注入仍写根元素 colorScheme').toContain('root.style.colorScheme')
+    expect(applyTheme, '主题注入不得感知 juya 变体（区域级配色只在 juya.css）').not.toMatch(
+      /juya|jynoct|view-scroll/
+    )
   })
 })
 
@@ -1258,6 +1390,273 @@ describe('nocturne 刊头极光带守卫（2026-10-12，用户指令「头部过
   })
 })
 
+describe('nocturne 极光品红可辨守卫（2026-10-20，#19 T8）', () => {
+  // 实测背景（scripts/nocturne-aurora-phase-probe.mjs，**逐层隔离**口径）：
+  //   只留远层时 R−G 最大 16（rgb(44,28,52)）、只留近层时 R−G = 0；
+  //   联合差分下近层白脊 Δ 远高于远层 ⇒ 刊头整体读作「一片蓝白」，设计里的冷 → 暖层次看不见。
+  // 票面只允许抬**远层渐变自身 alpha**（0.36 → 0.5），其余一律锁死：
+  //   · 不改 opacity 关键帧下限 —— 实测定论：opacity 相位不是主因（逐层隔离已排除）；
+  //   · 不改近层白脊的几何与强度（它是极光唯一的硬信号）；
+  //   · 零新增色相：色相仍恰为既有四色；需要非 token alpha 时写**字面 rgba(同色相, 自定 alpha)** 并注明；
+  //   · 极光层 z-index 仍为 **-1**（绝不能 0，否则按 CSS 2.1 附录 E 会盖在非定位文本之上）。
+  const PREFIX = "[data-juya-variant='nocturne-dark'].jynoct"
+  const beforeSel = `${PREFIX} .juya-masthead::before`
+  const afterSel = `${PREFIX} .juya-masthead::after`
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  /** 按**精确选择器列表**取规则体。为什么不能用 extractBlock 的首次匹配：
+   *  两条伪元素共用的分组规则头第二行正是 `… ::after {`，行首锚定会命中它，
+   *  取「后层」时会误得共用规则（连带 z-index / mask 一起错判）。教训见极光组同名注释。 */
+  const ruleBy = (...sels: string[]): string => {
+    const masked = css.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    const want = [...sels].sort().join(' || ')
+    for (let i = 0; i < masked.length; i++) {
+      if (masked[i] !== '{') continue
+      let j = i
+      while (j > 0 && !'{};'.includes(masked[j - 1])) j--
+      const selectors = masked
+        .slice(j, i)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (
+        selectors.length !== sels.length ||
+        selectors.some((s) => s.startsWith('@')) ||
+        [...selectors].sort().join(' || ') !== want
+      ) {
+        continue
+      }
+      let depth = 0
+      for (let k = i; k < masked.length; k++) {
+        if (masked[k] === '{') depth++
+        else if (masked[k] === '}') {
+          depth--
+          if (depth === 0) return css.slice(j, k + 1)
+        }
+      }
+    }
+    return ''
+  }
+  const beforeRule = (): string => ruleBy(beforeSel)
+  const afterRule = (): string => ruleBy(afterSel)
+  const sharedRule = (): string => ruleBy(beforeSel, afterSel)
+  const bare = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  /** 规则体里某色相字面量的 alpha（如 `rgba(200, 90, 180, 0.5)` → 0.5） */
+  const alphaOf = (rule: string, rgb: string): number =>
+    Number.parseFloat(
+      bare(rule).match(new RegExp(`rgba\\(\\s*${rgb}\\s*,\\s*([\\d.]+)\\s*\\)`))?.[1] ?? 'NaN'
+    )
+  /** 规则体里的色相集合（去掉 alpha，仅 R,G,B） */
+  const huesOf = (rule: string): string[] => [
+    ...new Set([...bare(rule).matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map((m) => `${m[1]},${m[2]},${m[3]}`))
+  ]
+  const FAR_MAGENTA = '200,\\s*90,\\s*180'
+  const FAR_ACCENT = '110,\\s*123,\\s*255'
+  const NEAR_RIDGE = '214,\\s*236,\\s*255'
+  const NEAR_CYAN = '90,\\s*160,\\s*255'
+
+  it('① 远层品红端 alpha 已抬到下限 0.5（原 0.36 被近层亮脊压制约 1:5）', () => {
+    const far = afterRule()
+    expect(far, '远层规则应存在').toBeTruthy()
+    const alpha = alphaOf(far, FAR_MAGENTA)
+    expect(alpha, '远层品红 alpha 应为字面 rgba 小数（token 的 0.025 不适用）').not.toBeNaN()
+    // 保留一个上界：极光是装饰层，继续加大 alpha 会把远层推成独立光源（需求 §4.2 排除双色霓虹）。
+    expect(alpha, `远层品红 alpha 须 ≥ 0.5（实得 ${alpha}）；0.36 会被亮脊压成一片蓝白`).toBeGreaterThanOrEqual(0.5)
+    expect(alpha, `远层品红 alpha 须 ≤ 0.6（实得 ${alpha}）；再高即越出「克制」装饰口径`).toBeLessThanOrEqual(0.6)
+  })
+
+  it('② 不改近层白脊的几何与强度（逐值锁死：停靠点 + alpha + top/height/blur/周期）', () => {
+    const near = bare(beforeRule())
+    expect(near, '近层规则应存在').toBeTruthy()
+    // 亮脊：窄环带（86%→100%）、alpha 0.92，落在盒内 y≈37px
+    expect(near, '亮脊青白 rgba(214,236,255) 的 alpha 与停靠点不得改动').toContain(
+      'rgba(214, 236, 255, 0.92) 90%'
+    )
+    // 幕帘 + 底纹两层的 alpha 与停靠点
+    for (const lock of [
+      'rgba(90, 160, 255, 0.42) 86%',
+      'rgba(110, 123, 255, 0.2) 94%',
+      'rgba(110, 123, 255, 0.26) 0%',
+      'rgba(110, 123, 255, 0.09) 38%',
+      'transparent 72%'
+    ]) {
+      expect(near, `近层强度字面量不得改动：${lock}`).toContain(lock)
+    }
+    // 几何（伪元素盒与模糊半径）：改动会改变亮脊在刊头坐标里的落点
+    expect(near, '近层 top 应保持 -26px').toContain('top: -26px')
+    expect(near, '近层 height 应保持 92px').toContain('height: 92px')
+    expect(near, '近层 blur 应保持 4px').toContain('blur(4px)')
+    expect(near, '近层周期应保持 24s').toContain('jy-noct-aurora-near 24s')
+    // 近层弧心几何（178% 118% at 50% 146% 等）不得动
+    expect(near, '近层主弧几何不得改动').toContain('178% 118% at 50% 146%')
+    expect(near, '近层幕帘弧几何不得改动').toContain('196% 152% at 50% 168%')
+  })
+
+  it('③ 远层的几何与尾色零改动：只许动品红端 alpha', () => {
+    const far = bare(afterRule())
+    expect(far, '远层弧几何应保持（偏心 at 38% 172%）').toContain('205% 140% at 38% 172%')
+    expect(far, '远层品红端停靠点应保持 88%').toContain('88%')
+    expect(far, '远层 accent 尾色 alpha 应保持 0.18').toContain('rgba(110, 123, 255, 0.18) 95%')
+    expect(far, '远层 top 应保持 -40px').toContain('top: -40px')
+    expect(far, '远层 height 应保持 104px').toContain('height: 104px')
+    expect(far, '远层 blur 应保持 13px').toContain('blur(13px)')
+    expect(far, '远层周期应保持 31s').toContain('jy-noct-aurora-far 31s')
+  })
+
+  it('④ 零新增色相：两层色相集合不变，且字面 alpha 在注释里注明来源', () => {
+    // 色相集合（跨两层）必须恰为这四个既有色 —— 新增任何色相即撞红（同极光组 ⑤）
+    const nearHues = huesOf(beforeRule())
+    const farHues = huesOf(afterRule())
+    expect(nearHues.sort()).toEqual(['110,123,255', '214,236,255', '90,160,255'])
+    expect(farHues.sort()).toEqual(['110,123,255', '200,90,180'])
+    // 取色来源必须仍是本变体既有 token（色相相同 ⇒ 不是新色相）
+    const dark = variantBlock('nocturne-dark')
+    expect(decl(dark, '--jy-accent').toLowerCase(), '--jy-accent 应仍是 #6e7bff（110,123,255）').toBe('#6e7bff')
+    const nebula3 = bare(extractBlock(css, /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{/))
+    expect(nebula3, '--jy-nebula-3 应仍是品红 rgba(200, 90, 180)（远层色相来源）').toContain(
+      '--jy-nebula-3: rgba(200, 90, 180'
+    )
+    expect(nebula3, '--jy-nebula-2 应仍是青蓝 rgba(90, 160, 255)（近层色相来源）').toContain(
+      '--jy-nebula-2: rgba(90, 160, 255'
+    )
+    // 「需要不同 alpha 时写字面 rgba(同色相, 自定 alpha) 并注明」：远层规则前的注释须点到来源且说明 alpha 已自定
+    // 必须取**最后一次**出现：共用分组规则的第二行同样以该选择器行首开头（见本组 ruleBy 注释），
+    // 用 indexOf 会命中分组头、把共用规则的注释误当成远层规则的前导注释（第一版守卫即此假红）。
+    const i = css.lastIndexOf(`\n${afterSel} {`)
+    expect(i, '远层规则应以行首形式存在').toBeGreaterThan(0)
+    const before = css.slice(0, i)
+    const open = before.lastIndexOf('/*')
+    const close = before.lastIndexOf('*/')
+    const comment = open >= 0 && close > open && before.slice(close + 2).trim() === '' ? before.slice(open, close + 2) : ''
+    expect(comment, '远层规则前应有说明注释（取色来源 + alpha 自定）').toBeTruthy()
+    expect(comment, '注释须注明色相来源 --jy-nebula-3').toContain('--jy-nebula-3')
+    expect(comment, '注释须说明 alpha 是自定字面量（不复用雾记号的 0.025）').toMatch(/alpha/i)
+  })
+
+  it('⑤ 分层不变量不因调 alpha 松动：z-index 仍为 -1，两层规则自身不得覆盖它', () => {
+    const shared = sharedRule()
+    expect(shared, '伪元素共用规则应存在').toBeTruthy()
+    expect(decl(bare(shared), 'z-index'), '极光 z-index 必须仍为 -1（0 会盖在非定位文本之上）').toBe('-1')
+    for (const [name, rule] of [
+      ['前层', beforeRule()],
+      ['后层', afterRule()]
+    ]) {
+      expect(bare(rule), `${name}不得自行覆盖 z-index`).not.toMatch(/z-index\s*:/)
+    }
+  })
+
+  it('⑥ 不动 opacity 下限：两条关键帧端点与 RM 静态档原样保留', () => {
+    const step = (name: string, s: string): number =>
+      Number.parseFloat(
+        extractBlock(css, new RegExp(`@keyframes ${name} \\{`)).match(
+          new RegExp(`(?:^|[\\s{])${s}\\s*\\{[^}]*opacity:\\s*([\\d.]+)`)
+        )?.[1] ?? 'NaN'
+      )
+    expect(step('jy-noct-aurora-near', 'from'), '近层 from 应仍为 0.62').toBe(0.62)
+    expect(step('jy-noct-aurora-near', 'to'), '近层 to 应仍为 1').toBe(1)
+    expect(step('jy-noct-aurora-far', 'from'), '远层 from 应仍为 1').toBe(1)
+    expect(step('jy-noct-aurora-far', 'to'), '远层 to（opacity 下限）应仍为 0.52，不得靠它补品红').toBe(0.52)
+    // RM 静态档同样不动（0.81 / 0.76）
+    const rm = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).join('\n')
+    for (const [sel, want] of [
+      [beforeSel, 0.81],
+      [afterSel, 0.76]
+    ] as const) {
+      const block = rm.match(new RegExp(`${esc(sel)} \\{[^}]*\\}`))?.[0] ?? ''
+      expect(Number.parseFloat(block.match(/opacity:\s*([\d.]+)/)?.[1] ?? 'NaN'), `${sel} RM 静态 opacity 应仍为 ${want}`).toBe(
+        want
+      )
+    }
+  })
+
+  it('⑦ 相位探针独立新增：按层各自 duration/keyframe 算极端时刻、≥5 采样、不复用归档 FREEZE', () => {
+    const probePath = join(process.cwd(), 'scripts/nocturne-aurora-phase-probe.mjs')
+    const phasePath = join(process.cwd(), 'scripts/nocturne-aurora-phase.mjs')
+    const probe = readFileSync(probePath, 'utf-8')
+    const phaseSrc = readFileSync(phasePath, 'utf-8')
+
+    // 独立探针：必须自己 seek 两层，且**不得**复用归档依赖的冻结方案（animation: none）
+    expect(probe, '探针应引用纯相位模块').toContain("from './nocturne-aurora-phase.mjs'")
+    expect(probe, '探针应逐层按关键帧名 seek').toContain('jy-noct-aurora-near')
+    expect(probe, '探针应逐层按关键帧名 seek').toContain('jy-noct-aurora-far')
+    expect(probe, '逐层隔离应走 visibility（display:none 会让动画从 getAnimations 消失、无法 seek）').toContain(
+      'visibility: hidden'
+    )
+    // 只对**代码**断言，不对注释断言：脚本头注释里必然会解释「为什么不能用 animation: none」，
+    // 不剥注释会把说明文字误判成用法（第一版守卫即此假红）。
+    expect(
+      probe.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' '),
+      '不得退回 walkthrough 的 FREEZE（animation: none 会把两条极光动画从 getAnimations 移除，无法 seek；且归档图依赖它）'
+    ).not.toMatch(/animation:\s*none/)
+    const walkthrough = readFileSync(
+      join(process.cwd(), 'scripts/nocturne-visual-walkthrough.mjs'),
+      'utf-8'
+    )
+    expect(walkthrough, '既有归档 FREEZE 必须原样保留（本票不动它）').toContain(
+      'animation: none !important'
+    )
+
+    // 相位数学：从 CSS 实读 duration / 关键帧端点，交给纯函数模块
+    const durationOf = (name: string): number =>
+      Number.parseFloat(css.match(new RegExp(`animation:\\s*${name}\\s+([\\d.]+)s`))?.[1] ?? 'NaN')
+    const endpointsOf = (name: string): { from: number; to: number } => ({
+      from: Number.parseFloat(
+        extractBlock(css, new RegExp(`@keyframes ${name} \\{`)).match(
+          /(?:^|[\s{])from\s*\{[^}]*opacity:\s*([\d.]+)/
+        )?.[1] ?? 'NaN'
+      ),
+      to: Number.parseFloat(
+        extractBlock(css, new RegExp(`@keyframes ${name} \\{`)).match(
+          /(?:^|[\s{])to\s*\{[^}]*opacity:\s*([\d.]+)/
+        )?.[1] ?? 'NaN'
+      )
+    })
+    const config = () => ({
+      near: { duration: durationOf('jy-noct-aurora-near'), ...endpointsOf('jy-noct-aurora-near') },
+      far: { duration: durationOf('jy-noct-aurora-far'), ...endpointsOf('jy-noct-aurora-far') }
+    })
+    const cfg = config()
+    const samples = buildPhaseSamples(cfg)
+    expect(samples.length, '相位采样须 ≥ 5 个').toBeGreaterThanOrEqual(5)
+
+    const nearCycle = cycleSeconds(cfg.near)
+    const farCycle = cycleSeconds(cfg.far)
+    // 每层 seek 时刻都按**自身**周期落在合法区间，且两层数值不同（不存在同一个 -Xs）
+    for (const s of samples) {
+      expect(s.nearTime, `${s.label}: 近层 seek 时刻须落在其 alternate 周期内`).toBeGreaterThanOrEqual(0)
+      expect(s.nearTime, `${s.label}: 近层 seek 时刻须落在其 alternate 周期内`).toBeLessThan(nearCycle)
+      expect(s.farTime, `${s.label}: 远层 seek 时刻须落在其 alternate 周期内`).toBeGreaterThanOrEqual(0)
+      expect(s.farTime, `${s.label}: 远层 seek 时刻须落在其 alternate 周期内`).toBeLessThan(farCycle)
+    }
+    // 「不用同一个 -Xs」的正确判据不是「每条采样两层秒数都不同」——极端组合里两层各自的谷/峰值
+    // 本来就可能同为 0s（远层峰 = 0s、近层谷 = 0s），那是**按层算出来的巧合**，不是统一施加。
+    // 真正的判据：交错相位采样下两层的归一化周期进度相同、而秒数不同（因为 duration 各异）。
+    expect(samples.some((s) => s.nearTime !== s.farTime), '两层不得被同一个时刻统一 seek').toBe(true)
+    // 极端时刻按层各自 duration + 关键帧方向计算：四个组合全部出现
+    const nearEx = extremeTimes(cfg.near)
+    const farEx = extremeTimes(cfg.far)
+    expect(nearEx.peak, '近层关键帧 0.62→1 为正、峰值应在其 duration 处').toBe(cfg.near.duration)
+    expect(farEx.peak, '远层关键帧 1→0.52 为负、峰值应在 0s').toBe(0)
+    expect(farEx.floor, '远层谷值应在其 duration 处').toBe(cfg.far.duration)
+    for (const [nt, ft] of [
+      [nearEx.peak, farEx.peak],
+      [nearEx.peak, farEx.floor],
+      [nearEx.floor, farEx.peak],
+      [nearEx.floor, farEx.floor]
+    ]) {
+      expect(
+        samples.some((s) => s.nearTime === nt && s.farTime === ft),
+        `极端组合 近${nt}s / 远${ft}s 应在采样表中`
+      ).toBe(true)
+    }
+    // 「按各自 duration 计算」的直接证据：同一周期进度下两层的秒数不同、但归一化进度相同
+    const proportional = samples.filter(
+      (s) => s.label.includes('%') && Math.abs(s.nearTime / nearCycle - s.farTime / farCycle) < 1e-9
+    )
+    expect(proportional.length, '交错相位采样应按各层自身周期换算（同一进度、不同秒数）').toBeGreaterThan(0)
+    expect(phaseSrc, '纯相位模块应说明 alternate 的完整周期是 2×duration').toMatch(/2 × duration|2 \* duration/)
+  })
+})
+
 describe('nocturne 图文回流守卫（2026-10-12，#8：右列限 2 张，其余回流通栏）', () => {
   // **与「排版层级守卫」（#6）的作用域口径差异是有意的，不是不一致**：
   //   #6 把导语/栏目线收窄为 `[data-juya-variant='nocturne-dark'].jynoct …`（§9 把
@@ -1378,8 +1777,18 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
 
     // 反证：全文件里「jynoct + juya-index」同现的规则，除既有那条无中缀的 `.jynoct .juya-index`
     //（条目内序号徽章重置）外，都必须带 .juya-overview —— 不得新增无中缀规则去连带命中条目标题。
+    // #13 起条目标题编号有了**显式后代形态**规则（`.juya-entry h3 .juya-index`，票面要求），它同样
+    // 不带 .juya-overview 中缀。本断言改为**精确列举**这两条（仍不容忍任何第三条），守卫原意不变。
     const heads = (css.match(/^[^\n{}]*jynoct[^\n{}]*juya-index[^\n{}]*\{/gm) ?? []).map((h) => h.trim())
-    expect(heads.filter((h) => !h.includes('.juya-overview'))).toEqual(['.jynoct .juya-index {'])
+    const plainHeads = heads.filter((h) => !h.includes('.juya-overview'))
+    expect(plainHeads).toEqual([
+      '.jynoct .juya-index {',
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {"
+    ])
+    expect(
+      plainHeads.filter((h) => h !== '.jynoct .juya-index {'),
+      '无中缀规则只允许那一条后代形态的条目标题编号规则（不得出现 `>` 子选择器死形态）'
+    ).toEqual(["[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {"])
 
     // 既有徽章规则逐字未改：仍是 muted 灰、无辉光/无 accent/无 filter（条目标题序号带 # 的小字上下文）
     const badge = noctRule('\\.juya-index')
@@ -1470,6 +1879,359 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
   })
 })
 
+describe('nocturne 导语提亮与编号 accent 守卫（2026-10-20，#13 / SPEC 批次 B1）', () => {
+  // issue #13 两条验收：
+  //  ① 导语文字改用**专用**记号 --jy-lead-text（不得再复用次要文字记号 --jy-muted）：对比度按
+  //     「页面底 + 8% 白底 + 可透出层最亮情形」实算，目标 ≈7:1 —— 须高于现状 muted、明显低于正文。
+  //  ② 条目标题编号 `#N` 取 --jy-accent，**无微光、不降 alpha**，选择器必须是**后代形态**
+  //     `.jynoct .juya-entry h3 .juya-index`（EntrySplit 把 h3 嵌在 `.juya-entry-row > .juya-entry-body`，
+  //     子选择器打不中 —— 本仓已记录过两次的老坑）；概览序号的既有颜色/微光零改动。
+  const NIGHT = 'nocturne-dark'
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  /** 三层 nebula 的「最亮单层」合成面：三对支撑域两两不相交（任何像素最多被一层雾覆盖），
+   *  故逐层单独 source-over 后取亮度最大者即**可透出层最亮情形**。真值一律从规则抠（不手抄）。 */
+  const nebulaPeak = (): number => {
+    const neb =
+      css.match(
+        /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula\s*\{[^}]*\}/
+      )?.[0] ?? ''
+    expect(neb, 'nocturne 的 nebula 覆盖规则应存在（依赖 #2 已接线）').toBeTruthy()
+    const bg = tokenHex(variantBlock(NIGHT), '--jy-bg')
+    const faces = [1, 2, 3].map((n) => {
+      const m = neb.match(
+        new RegExp(
+          `--jy-nebula-${n}:\\s*rgba\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*([\\d.]+)\\s*\\)`
+        )
+      )
+      expect(m, `--jy-nebula-${n} 应为 rgba() 字面量`).toBeTruthy()
+      const rgb = (Number(m![1]) << 16) | (Number(m![2]) << 8) | Number(m![3])
+      return alphaOver(rgb, Number(m![4]), bg)
+    })
+    return faces.reduce((a, b) => (lum(b) > lum(a) ? b : a))
+  }
+
+  /** 导语块自身的合成底 = 页面底（取最亮雾层）+ 导语底 8% 白（SPEC 明写的计算面） */
+  const leadSurface = (): number => {
+    const m = variantBlock(NIGHT).match(
+      /--jy-lead-bg:\s*rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*([\d.]+)\s*\)/
+    )
+    expect(m, '--jy-lead-bg 应为 8% 白底 rgba（本守卫合成层之一）').toBeTruthy()
+    return alphaOver(0xffffff, Number(m![1]), nebulaPeak())
+  }
+
+  it('① 新增专用记号 --jy-lead-text：对「雾峰 + 导语底」合成面 ≈7:1（高于 muted、明显低于正文）', () => {
+    const block = variantBlock(NIGHT)
+    const leadText = tokenHex(block, '--jy-lead-text')
+    const muted = tokenHex(block, '--jy-muted')
+    const text = tokenHex(block, '--jy-text')
+    expect(leadText, 'nocturne-dark 变体块须声明 --jy-lead-text（6 位 hex）').not.toBeNaN()
+    const surface = leadSurface()
+    const rLead = contrast(leadText, surface)
+    expect(
+      rLead,
+      `--jy-lead-text 对合成面实算 ${rLead.toFixed(4)} 须 ≈7:1（下限 6.9）`
+    ).toBeGreaterThanOrEqual(6.9)
+    expect(rLead, `≈7:1 上限（实算 ${rLead.toFixed(4)}）`).toBeLessThanOrEqual(7.15)
+    // 「高于现状」：同一合成面上须明显强于 muted 档（现状 4.4915）
+    expect(
+      rLead - contrast(muted, surface),
+      `须明显强于现状 muted 档（${contrast(muted, surface).toFixed(4)}）`
+    ).toBeGreaterThan(1.5)
+    // 「明显低于正文」：与 --jy-text 保持一档层级差
+    expect(
+      contrast(text, surface) - rLead,
+      `须明显低于正文档 --jy-text（${contrast(text, surface).toFixed(4)}）`
+    ).toBeGreaterThan(1.5)
+    // 专用记号：不得退化成复用现有两档之一
+    expect([muted, text], '--jy-lead-text 不得等于 muted 或 text').not.toContain(leadText)
+    // 声明点唯一（只允许落在暗侧 token 块；亮侧 §9 不在范围）
+    expect(
+      (css.match(/--jy-lead-text:/g) ?? []).length,
+      '--jy-lead-text 只允许有一个声明点（暗侧 token 块）'
+    ).toBe(1)
+  })
+
+  it('② 暗侧导语规则用新记号取色；基层（亮侧路径）仍走 --jy-muted，亮侧零改动', () => {
+    const dark = extractBlock(
+      css,
+      /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-lead \{/
+    )
+    expect(dark, "暗侧导语规则 [data-juya-variant='nocturne-dark'].jynoct .juya-lead 应存在").toBeTruthy()
+    expect(decl(dark, 'color'), '暗侧导语文字色须走 var(--jy-lead-text)').toBe('var(--jy-lead-text)')
+    expect(dark, '暗侧导语不得再复用 --jy-muted').not.toContain('var(--jy-muted)')
+    // 基层 .juya-lead 是亮侧路径：保持 muted，不得被动跟随
+    const base = css.match(/(?:^|\n)\.juya-lead \{[^}]*\}/)?.[0] ?? ''
+    expect(base, '基层 .juya-lead 规则应存在（亮侧走它）').toBeTruthy()
+    expect(decl(base, 'color'), '基层导语色须保持 var(--jy-muted)（亮侧零改动）').toBe('var(--jy-muted)')
+    expect(
+      css,
+      '不得出现 nocturne-light 的导语/新记号覆写（§9 亮侧不在范围）'
+    ).not.toMatch(
+      /\[data-juya-variant='nocturne-light'\][^{}]*\{[^}]*(?:juya-lead|--jy-lead-text)/
+    )
+  })
+
+  it('③ 条目标题编号 #N：accent 取色、后代形态（严禁 `>`）、无微光、不降 alpha、对页面底 ≥4.5', () => {
+    const BADGE = "[data-juya-variant='nocturne-dark'].jynoct .juya-entry h3 .juya-index {"
+    const rule = extractBlock(css, new RegExp(esc(BADGE)))
+    expect(rule, `条目标题编号规则应为后代形态：${BADGE}`).toBeTruthy()
+    const head = rule.slice(0, rule.indexOf('{'))
+    expect(head, '选择器须含后代链 .juya-entry h3 .juya-index').toContain(
+      '.juya-entry h3 .juya-index'
+    )
+    expect(head, '严禁子选择器（EntrySplit 把 h3 嵌进 .juya-entry-body，`>` 打不中）').not.toMatch(
+      /\.juya-entry\s*>\s*h3/
+    )
+    const body = rule.slice(rule.indexOf('{'))
+    expect(body, '编号色须走 var(--jy-accent)（强调色相，零新增色）').toContain('color: var(--jy-accent)')
+    // 「不加微光」：两个序号角色靠有无微光区分（辉光唯一合法写法是 filter: drop-shadow，本仓禁 text-shadow）
+    expect(body, '条目标题编号不得加微光（filter / drop-shadow）').not.toMatch(/filter|drop-shadow/)
+    expect(body, '全仓禁 text-shadow').not.toContain('text-shadow')
+    // 「不降 alpha」：既不得用 rgba 字面量，也不得叠 opacity
+    expect(body, '不得降 alpha（rgba 字面量会掉出 AA）').not.toMatch(/rgba?\(/)
+    expect(body, '不得用 opacity 降透明度').not.toMatch(/opacity\s*:/)
+    expect(body, '静态样式：零 animation / transition').not.toMatch(/animation|transition/)
+    // 对页面底 ≥4.5（含最亮雾层的合成面也须过）
+    const block = variantBlock(NIGHT)
+    const accent = tokenHex(block, '--jy-accent')
+    expect(contrast(accent, tokenHex(block, '--jy-bg')), '编号 accent 对 --jy-bg').toBeGreaterThanOrEqual(4.5)
+    expect(contrast(accent, nebulaPeak()), '编号 accent 对最亮雾层合成面').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('④ 既有 `.jynoct .juya-index` 与概览序号规则零改动（反证：两种序号角色仍可区分）', () => {
+    const badge = noctRule('\\.juya-index')
+    expect(badge, '条目标题序号既有规则应存在').toContain('color: var(--jy-muted)')
+    expect(badge, '既有规则不得被本票改写（新规则是独立的后代形态覆盖）').not.toMatch(
+      /--jy-accent|drop-shadow|filter/
+    )
+    const overview =
+      css.match(
+        /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-overview \.juya-index\s*\{[^}]*\}/
+      )?.[0] ?? ''
+    expect(overview, '概览序号规则应存在').toContain('color: var(--jy-accent)')
+    expect(overview, '概览序号的微光须保留（有无微光才是两个角色的区分手段）').toMatch(
+      /filter:\s*drop-shadow\(/
+    )
+    // 全文件不得出现「jynoct + .juya-entry > h3 + juya-index」的死形态
+    expect(css, '不得用子选择器打条目标题编号').not.toMatch(
+      /jynoct[^\n{}]*\.juya-entry\s*>\s*h3[^\n{}]*\.juya-index/
+    )
+  })
+})
+
+describe('nocturne 阅读页图片压暗与发丝描边守卫（2026-10-20，#14 / SPEC 批次 B2）', () => {
+  // 需求：SPEC #10「批次 B2：图片与发丝描边」——
+  //   ① 阅读页图片统一 `filter: brightness(.88)`（色彩略偏移属已接受取舍，图表类有取舍）；
+  //   ② 图片加 1px 发丝描边 + 极淡 accent 外发光，**不占布局**（右列 / 满宽回流带的既有几何不变）；
+  //   ③ 光强必须明显低于导语左侧竖线（#13 的 box-shadow alpha 0.35）；
+  //   ④ 不做 --jy-card 衬边；outline 留给焦点环；圆角走统一自定义属性、不改共享 --jy-radius。
+  // 命名：这套处理叫**发丝描边**，不叫「装裱」——后者是 folio / editorial 带衬底与题注装框的概念。
+  // 前置检查（本票实做，不只是引文档结论）：
+  //   ① 图片自身是否烘焙圆角：下载线上当期 5 张正文图 + 1 张封面（assets.juya.uk）逐张读像素通道，
+  //      全部 RGBA 但 alpha 恒 255（min = max = 255，零半透明像素）⇒ **没有**烘焙圆角或透明角，
+  //      发丝描边贴 border-box 与图形边缘几何一致；测试图源同为满幅 SVG rect（方角）。
+  //   ② 祖先是否 overflow: hidden 裁掉光晕：全文件仅 3 处 overflow: hidden（.juya-feed-summary /
+  //      .juya-feed-item / .juya-scene），均不在阅读页图片祖先链上；最近的裁剪者是滚动容器
+  //      .view-scroll（overflow-y: auto），而图落在 .juya-issue 24px 内衬之内、外发光 ≤ 8px ⇒ 不被切。
+  const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
+  const esc2 = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const strip = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, ' ')
+
+  /** 暗侧复合形态规则块：`[data-juya-variant='nocturne-dark'].jynoct <rest> { … }` */
+  const darkBlock = (rest: string): string =>
+    extractBlock(css, new RegExp(`(?:^|\\n)${esc2(DARK)} ${esc2(rest)} \\{`))
+
+  /** 顶格逗号拆分（括号内不拆）：box-shadow 的多层就是顶层逗号 */
+  const splitTop = (value: string): string[] => {
+    const out: string[] = []
+    let depth = 0
+    let cur = ''
+    for (const ch of value) {
+      if (ch === '(') depth++
+      else if (ch === ')') depth--
+      if (ch === ',' && depth === 0) {
+        out.push(cur.trim())
+        cur = ''
+      } else cur += ch
+    }
+    if (cur.trim()) out.push(cur.trim())
+    return out
+  }
+
+  const rgbaOf = (layer: string): { rgb: number; alpha: number } => {
+    const m = layer.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/)
+    return m
+      ? { rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]), alpha: Number(m[4]) }
+      : { rgb: Number.NaN, alpha: Number.NaN }
+  }
+
+  const IMG_RULE = `${DARK} .juya-issue img`
+  const imgRule = (): string => darkBlock('.juya-issue img')
+
+  it('① 阅读页图片统一压暗 brightness(.88)：暗侧复合形态、只作用于阅读页', () => {
+    const rule = imgRule()
+    expect(rule, `图片规则应为复合形态 ${IMG_RULE}（变体属性与 .jynoct 恒挂同一根元素）`).toBeTruthy()
+    expect(decl(strip(rule), 'filter'), '压暗值须为 brightness(.88)（SPEC B2 明写）').toMatch(
+      /^brightness\(\.?0?88\)$/
+    )
+    // 只覆盖阅读页（.juya-issue 内）；订阅页封面走 .juya-feed-*，不得被压暗（归档须逐字节不变）
+    expect(rule.slice(0, rule.indexOf('{')), '不得把订阅页封面一并压暗').not.toContain('juya-feed')
+    // 亮侧不在本票范围（§9：nocturne-light 任何改动不做）
+    expect(css, '亮侧不得出现图片压暗规则').not.toMatch(
+      /\[data-juya-variant='nocturne-light'\][^{}]*\{[^}]*brightness/
+    )
+    // 反证：压暗必须落在规则上而不是 token 块（token 块声明会波及全变体）
+    for (const v of ['nocturne-dark', 'nocturne-light']) {
+      expect(variantBlock(v), `${v} token 块不得承载 filter`).not.toMatch(/filter\s*:/)
+    }
+  })
+
+  it('② 发丝描边 = 1px box-shadow + 极淡 accent 外发光；outline 留给焦点环', () => {
+    const body = strip(imgRule())
+    const shadow = decl(body, 'box-shadow')
+    expect(shadow, '描边与发光必须走 box-shadow（不占布局）').toBeTruthy()
+    const layers = splitTop(shadow)
+    expect(layers.length, '两层：1px 发丝环 + 极淡外发光').toBe(2)
+    expect(layers[0], '发丝环须为 0 0 0 1px var(--jy-border)（SPEC B2 明写）').toBe(
+      '0 0 0 1px var(--jy-border)'
+    )
+    // 外发光：同 accent 色相、无方向偏移（外发光而非投影）
+    const glow = rgbaOf(layers[1])
+    expect(glow.rgb, '外发光取色须为本变体 --jy-accent（零新增色相）').toBe(
+      tokenHex(variantBlock('nocturne-dark'), '--jy-accent')
+    )
+    // 偏移量允许写成无单位 0（`0 0 8px`），故按空白切 token 而不是只认 px
+    const glowParts = layers[1].trim().split(/\s+/)
+    expect(Number.parseFloat(glowParts[0]), '外发光不得带 x 方向偏移').toBe(0)
+    expect(Number.parseFloat(glowParts[1]), '外发光不得带 y 方向偏移').toBe(0)
+    expect(body, 'outline 留给焦点环，描边不得占用该属性').not.toMatch(/(?:^|[;\s])outline\s*:/)
+    expect(body, '不得用 border 简写追加第二条线（会与发丝环叠成 2px）').not.toMatch(
+      /(?:^|[;\s])border\s*:/
+    )
+  })
+
+  it('③ 外发光克制：图片 0.16 < 0.2；导语侧已无外发光（#18 起不再拿 0.35 当参照物）', () => {
+    // 2026-10-20 #18：导语竖线改为边框区渐变光，其外发光被移除（避免两套光语言）。
+    // 因此「图片发光强度低于导语竖线」的旧参照物已不存在；改为两条结构 + 数值断言：
+    //  ① 导语侧确实没有外发光（光只落在 3px 边框条内，不形成整框泛光）；
+    //  ② 图片外发光保持在既有克制带宽（0.16，< 0.2）。
+    const leadBar =
+      extractBlocks(css, /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-lead \{/).find((b) =>
+        b.includes('background-image')
+      ) ?? ''
+    expect(leadBar, '导语渐变竖线规则应存在（#18 实现）').toBeTruthy()
+    expect(leadBar, '导语侧不得再有外发光 box-shadow（#18 已移除）').not.toContain('box-shadow')
+    expect(decl(strip(leadBar), 'background-size'), '导语的光只占 3px 边框条').toMatch(/3px\s+100%/)
+
+    const glowLayer = splitTop(decl(strip(imgRule()), 'box-shadow'))[1]
+    const glowAlpha = rgbaOf(glowLayer).alpha
+    expect(glowAlpha, '图片外发光必须有可感知强度').toBeGreaterThan(0)
+    expect(glowAlpha, 'SPEC B2 决策值 0.16（改动须同步本守卫）').toBeCloseTo(0.16, 2)
+    expect(glowAlpha, '光强须保持克制（<0.2）').toBeLessThan(0.2)
+    expect(pxValues(glowLayer)[0], '发光半径 ≤8px（克制）').toBeLessThanOrEqual(8)
+    // filter: brightness 会把元素自身的 box-shadow 一并压暗 12% ⇒ 有效光强更低（记录，不另取参数）
+    expect(glowAlpha * 0.88, '压暗后的有效光强仍须 <0.2').toBeLessThan(0.2)
+  })
+
+  it('④ 描边不参与盒模型：只画在边框盒之外，既有 1px 边框的占位保留', () => {
+    const body = strip(imgRule())
+    for (const prop of [
+      'padding',
+      'width',
+      'min-width',
+      'height',
+      'min-height',
+      'margin',
+      'top',
+      'right',
+      'bottom',
+      'left',
+      'position',
+      'transform',
+      'border-width',
+      'border-style'
+    ]) {
+      expect(body, `描边不得参与盒模型：禁止 ${prop}`).not.toMatch(
+        new RegExp(`(?:^|[;\\s])${esc2(prop)}\\s*:`)
+      )
+    }
+    // 既有基层 1px 边框**保留占位**（border-box 下改它会改变图片内容宽度 = 几何变化），只把绘制置透明
+    expect(
+      decl(body, 'border-color'),
+      '既有 1px 边框只置透明绘色、保留占位 ⇒ 图片内容宽度逐像素不变'
+    ).toBe('transparent')
+    const base = css.match(/(?:^|\n)\.juya-media img \{[\s\S]*?\}/)?.[0] ?? ''
+    expect(base, '基层 .juya-media img 规则须保持原样（几何来源）').toContain(
+      'border: 1px solid var(--jy-border)'
+    )
+    // 反证：阅读页图片描边规则唯一（两条会叠成 2px，破坏「1 像素细线」）
+    expect(extractBlocks(css, /\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-issue img \{/)).toHaveLength(1)
+  })
+
+  it('⑤ 圆角用统一自定义属性表达，不改共享 --jy-radius', () => {
+    const tokenRule =
+      extractBlocks(css, /(?:^|\n)\.jynoct \{/).find((b) => b.includes('--jy-media-radius')) ?? ''
+    expect(tokenRule, '统一圆角记号 --jy-media-radius 须声明在共享 .jynoct 作用域').toBeTruthy()
+    expect(decl(strip(tokenRule), '--jy-media-radius'), '统一圆角值（与既有图版圆角一致）').toBe('8px')
+    expect((css.match(/--jy-media-radius\s*:/g) ?? []).length, '该记号只允许一处声明').toBe(1)
+
+    expect(decl(strip(imgRule()), 'border-radius'), '新规则须消费统一记号').toBe(
+      'var(--jy-media-radius)'
+    )
+    const figure = css.match(/(?:^|\n)\.jynoct \.juya-entry-figure img \{[^}]*\}/)?.[0] ?? ''
+    expect(figure, '既有图版圆角须同源到统一记号（计算值仍 8px，亮侧渲染不变）').toContain(
+      'border-radius: var(--jy-media-radius)'
+    )
+    expect(imgRule(), '不得改共享 --jy-radius（改它会波及全部风格）').not.toContain('var(--jy-radius')
+    for (const v of ['nocturne-light', 'nocturne-dark']) {
+      expect(variantBlock(v), `${v} 的共享圆角记号须保持不变`).toContain('--jy-radius: 12px')
+    }
+  })
+
+  it('⑥ 不做 --jy-card 衬边、不加背景（右列与正文 20px 呼吸间隙不得被吃掉）', () => {
+    const body = strip(imgRule())
+    expect(body, '不得给图片加衬底').not.toMatch(/(?:^|[;\s])background/)
+    expect(body, '不得引用 --jy-card').not.toContain('--jy-card')
+    expect(body, '衬边必然要内衬，本规则不得出现 padding').not.toMatch(
+      /(?:^|[;\s])padding(?:-[a-z]+)?\s*:/
+    )
+  })
+
+  it('⑦ lightbox（T10 / #21 已落地接棒）：放大图 filter: none + object-fit: contain，暗侧复合作用域，正文压暗不得命中', () => {
+    // 守卫交棒说明（不是放宽）：本组 ⑦ 原为 T3（#14）的**范围守卫** —— 断言「本票不建 lightbox，
+    // 只留 filter: none 的注释义务」。T10（#21）已按 SPEC 批次 B5b 落地 lightbox，故该断言的前提
+    // 消失；此处把它换成对**同一义务**的代码级断言（注释义务 → 实现契约），并保留原「注释须点名
+    // lightbox / filter: none」两条（改成代码面），断言强度只增不减：
+    //   ① 放大图规则必须存在且为暗侧复合作用域（§9 亮侧不做）；
+    //   ② 放大图 filter 必须恰为 `none`（T3 义务的最终落点）；
+    //   ③ 放大图 object-fit: contain（按比例完整可见，不裁切）；
+    //   ④ 正文流压暗规则仍只选择 `.juya-issue` 子树、不得扩到 lightbox（放大图不压暗的结构依据）；
+    //   ⑤ 遮罩为暗色半透明（::backdrop 有 rgba 且 alpha 落在 0.6–0.95）。
+    const code = noctSection().replace(/\/\*[\s\S]*?\*\//g, ' ')
+    const bigImg =
+      extractBlock(code, /\[data-juya-variant='nocturne-dark'\]\.jynoct-lightbox img \{/) ?? ''
+    expect(bigImg, '放大图规则应为暗侧复合作用域 [data-juya-variant="nocturne-dark"].jynoct-lightbox img').toBeTruthy()
+    expect(decl(strip(bigImg), 'filter'), 'T3 义务：放大图必须 filter: none').toBe('none')
+    expect(decl(strip(bigImg), 'object-fit'), '按比例完整可见（不裁切）').toBe('contain')
+
+    const backdrop =
+      extractBlock(code, /\[data-juya-variant='nocturne-dark'\]\.jynoct-lightbox::backdrop \{/) ?? ''
+    expect(backdrop, '遮罩规则应存在').toBeTruthy()
+    const mask = rgbaOf(decl(strip(backdrop), 'background'))
+    expect(mask.alpha, '遮罩须为暗色半透明（alpha 0.6–0.95）').toBeGreaterThanOrEqual(0.6)
+    expect(mask.alpha, '遮罩须为暗色半透明（alpha 0.6–0.95）').toBeLessThanOrEqual(0.95)
+
+    // 正文压暗不得命中放大图：压暗规则的选择器仍必须是 .juya-issue 子树
+    expect(imgRule(), '正文压暗规则应保持 .juya-issue 作用域').toBeTruthy()
+    expect(strip(imgRule()), '正文压暗规则不得扩到 lightbox').not.toMatch(/lightbox/i)
+    // 反证：放大图规则里也确实带了 filter: none（不是靠祖先链「打不中」的巧合）
+    expect(code, '全份 CSS 不得给 lightbox 大图任何 brightness 压暗').not.toMatch(
+      /jynoct-lightbox[^{]*\{[^}]*brightness\(/
+    )
+  })
+})
+
 describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
   // 需求：docs/juyathemesworks/nocturne-dark.md §2 —— 三档无衬线分工（零衬线），仅暗侧。
   // 本机实测（Fonts 注册表 596 条）：Inter / SF Pro Text / SF Pro Display 均未安装，
@@ -1505,13 +2267,16 @@ describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
     return layers
   }
 
-  it('① 标题（h1/h2/h3）栈以 DengXian 起，正文栈以 Noto Sans SC 起', () => {
+  it('① 标题（h1/h2/h3）栈以 DengXian 为 CJK 首选，正文栈以 Noto Sans SC 为 CJK 首选', () => {
+    // 2026-10-20（#17 / SPEC B3）追加「拉丁在前、CJK 在后」：拉丁族 'Segoe UI' 提到两个 CJK 族之前，
+    // 否则拉丁字母/数字由 CJK 族自带的拉丁字形绘制（=本票要避免的回退）。CJK 面别**未变**：
+    // 标题仍是 DengXian、正文仍是 Noto Sans SC，只是让位给拉丁族先接拉丁字符。
     const block = variantBlock(NIGHT)
-    expect(block, `${NIGHT} --jy-font-heading 应为等线起始的三档无衬线栈`).toMatch(
-      /--jy-font-heading:\s*'DengXian',\s*'Noto Sans SC',\s*'Segoe UI',\s*sans-serif/
+    expect(block, `${NIGHT} --jy-font-heading 应为「拉丁在前 + 等线 CJK」的三档无衬线栈`).toMatch(
+      /--jy-font-heading:\s*'Segoe UI',\s*'DengXian',\s*'Noto Sans SC',\s*sans-serif/
     )
-    expect(block, `${NIGHT} --jy-font-body 应为 Noto Sans SC 起始的正文栈`).toMatch(
-      /--jy-font-body:\s*'Noto Sans SC',\s*'Segoe UI',\s*sans-serif/
+    expect(block, `${NIGHT} --jy-font-body 应为「拉丁在前 + Noto Sans SC」的正文栈`).toMatch(
+      /--jy-font-body:\s*'Segoe UI',\s*'Noto Sans SC',\s*sans-serif/
     )
   })
 
@@ -1659,6 +2424,9 @@ describe('Scene 预设守卫（2026-10-12，#1）', () => {
         const remainder = part
           .replace(/\.juya-scene-(?:dust|nebula)/g, '')
           .replace(/\[data-juya-variant='[^']*'\]/g, '')
+          // 允许 `[data-app-hidden]` 状态门（#22 页面不可见暂停规则）：它挂在文档根元素上、
+          // 不是内容选择器，也不命中场景层以外的元素；逐条锁定见「不可见暂停动画守卫」组
+          .replace(/\[data-app-hidden\]/g, '')
           .replace(/\.jy[\w-]*/g, '')
           .replace(/[\s>+~]/g, '')
         expect(remainder, `「${part}」不得引入场景层以外的选择器`).toBe('')
@@ -2001,8 +2769,31 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
   it('⑧ dust 沿用共享层中性默认：本变体不覆写 --jy-scene-dust（覆写只会抬高存在感）', () => {
     // 剥注释后判定：注释里引用选择器形态（写作规范示例）不算实现
     const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '')
-    const overrides = cssCode.match(/\[data-juya-variant='nocturne-dark'\][^{}]*\.juya-scene-dust/g) ?? []
-    expect(overrides, 'nocturne-dark 不覆写 dust token（需求 §3.2「不抢正文」）').toEqual([])
+    // #20 / SPEC B5 起，暗侧**允许且仅允许一条** dust 规则用于「破除点阵」的 background-size 覆写。
+    // 本守卫的原意（测试名）是「不覆写点色 token」，不是「一条 dust 规则都不许有」；故收窄为：
+    // 规则恰好一条、且其全部声明只能是 background-size —— token / 动画 / 透明度仍是零放行。
+    const dustRules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(
+      ([, sel, body]) =>
+        sel.includes("data-juya-variant='nocturne-dark'") &&
+        sel.includes('.juya-scene-dust') &&
+        // 排除 #22 的不可见暂停规则：它只声明 animation-play-state（不碰点色/透明度），
+        // 逐条锁定在「不可见暂停动画守卫」组，不属于「点阵破除」覆写
+        !/(?:^|[;\s])animation-play-state\s*:/.test(body)
+    )
+    expect(dustRules.length, '暗侧 dust 覆写规则恰好一条（#20 点阵破除）').toBe(1)
+    const body = dustRules[0][2]
+    expect(body, '不得覆写 dust 点色 token').not.toContain('--jy-scene-dust')
+    expect(body, '不得改 dust 动画/透明度').not.toMatch(/\b(?:animation|transition|opacity)\b/)
+    expect(
+      body
+        .split(';')
+        .map((d) => d.split(':')[0]?.trim())
+        .filter(Boolean),
+      '唯一允许的声明是 background-size'
+    ).toEqual(['background-size'])
+    // 更强的一层：整份 css 里 `--jy-scene-dust:` 只出现一次（共享层声明），任何选择器都不得覆写它
+    const tokenDecls = cssCode.match(/--jy-scene-dust\s*:/g) ?? []
+    expect(tokenDecls, '--jy-scene-dust 只在共享层声明一次').toHaveLength(1)
     const rule = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
     const alpha = Number.parseFloat(
       rule.match(/--jy-scene-dust:\s*rgba\([^)]*?,\s*([\d.]+)\)/)?.[1] ?? 'NaN'
@@ -2446,13 +3237,17 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       )
     }
 
-    // 变体前缀的**非选择器开头**出现处：只允许两处滚动条 :has() 规则（各自列在滚动条守卫组里）；
-    // 该弹坑是既有死形态守卫拦不住的（`[data-juya-variant='x'] .view-scroll` 不以 .jy 开头）
+    // 变体前缀的**非选择器开头**出现处：只允许三种已登记形态——
+    //   ① 滚动条 :has() 规则（各自列在滚动条守卫组里）；
+    //   ② #12 的配色方案 :has() 规则（列在「暗侧原生件配色守卫」组里）；
+    //   ③ #22 的 6 条不可见暂停规则（`[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct …`，
+    //      祖先先行是为把状态门挂在文档根元素上；变体前缀与 .jynoct 仍是紧贴的复合形态，
+    //      列在「不可见暂停动画守卫」组里）。该弹坑是既有死形态守卫拦不住的（`[data-juya-variant='x'] .view-scroll` 不以 .jy 开头）
     const occurrences = (masked.match(new RegExp(`\\[${NOCT}`, 'g')) ?? []).length
     expect(
       occurrences - prefixed.length,
-      '段外的 :has() 滚动条规则是仅有的非选择器开头出现处（改这里须同步滚动条守卫组）'
-    ).toBe(2)
+      '非选择器开头处只允许 :has() 滚动条规则 / #12 配色规则 / #22 不可见暂停规则（改这里须同步对应守卫组）'
+    ).toBe(9)
   })
 
   /** 规则体内的字面色值（剔除注释；含自定义属性声明——`--x: rgba()` 同样是构成色） */
@@ -2498,6 +3293,17 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     //      – `.jynoct .juya-masthead { position: relative }`：纯定位；
     //      – `::before, ::after` 共用的定位/mask 规则：mask 停靠点用 `black` 关键字而非字面色；
     //      – 两条 @keyframes jy-noct-aurora-*：只动 opacity，无任何色值。
+    // #14 阅读页图片发丝描边（2026-10-20，SPEC B2）再新增一条，故 17 → 18 条：
+    //  · .juya-issue img = 1px 发丝环（var(--jy-border)）+ 外发光 rgba(110,123,255,0.16)；
+    //    同批的 `.jynoct { --jy-media-radius: 8px }` 与改写的 `.jynoct .juya-entry-figure img`
+    //    无任何字面色值（纯 token 消费），故不入表。
+    // #20 概览焦点整行高亮（2026-10-20，SPEC B5）再新增一条，故 18 → 19 条：
+    //  · li:has(a:focus-visible) = 与 hover 同底色 rgba(110,123,255,0.06)；
+    //    同批的焦点环规则 `a:focus-visible` 只写 outline 简写（var(--jy-focus)）无字面色值，不入表。
+    // #21 图片放大视图（2026-10-20，SPEC B5b）再新增一条，故 19 → 20 条：
+    //  · ::backdrop = 暗色半透明遮罩 rgba(10,10,12,0.82)（--jy-bg 的 82% alpha 字面）；
+    //    同批的 `.jynoct-lightbox`（面板底 var(--jy-bg)/描边 var(--jy-border)）与
+    //    `.jynoct-lightbox img`（filter/object-fit/几何）全走 token 或无字面色值，不入表。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
@@ -2512,10 +3318,13 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       "[data-juya-variant='nocturne-dark'].jynoct .juya-lead",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-section > h2",
       '.jynoct .juya-feed-item:hover',
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-issue img",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover",
-      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index"
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
+      "[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop"
     ])
 
     // 反证（范围闸门）：段内亮侧作用域的字面色规则恰好是既有两条；新增亮侧规则会撞红本断言
@@ -2537,8 +3346,14 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
 
   it('③ 字体栈落点：暗侧三档声明齐全、段内 font-family 无 Inter / SF Pro、token 无中段覆写', () => {
     const dark = variantBlock('nocturne-dark')
-    expect(decl(dark, '--jy-font-heading'), '标题档首位须是等线').toMatch(/^'DengXian'/)
-    expect(decl(dark, '--jy-font-body'), '正文档首位须是 Noto Sans SC').toMatch(/^'Noto Sans SC'/)
+    // 2026-10-20（#17 / SPEC B3）追加「拉丁在前、CJK 在后」：拉丁族 'Segoe UI' 排到最前，
+    // CJK 面别不变（标题仍 DengXian、正文仍 Noto Sans SC）。断言同样严格，只是把顺序写死。
+    expect(decl(dark, '--jy-font-heading'), '标题档：拉丁族在前、等线为 CJK 首选').toMatch(
+      /^'Segoe UI', 'DengXian'/
+    )
+    expect(decl(dark, '--jy-font-body'), '正文档：拉丁族在前、Noto Sans SC 为 CJK 首选').toMatch(
+      /^'Segoe UI', 'Noto Sans SC'/
+    )
 
     // 段内能命中暗侧的每个 font-family 声明：只允许三档（heading token / body token / 等宽元信息档）
     const families = segmentRules()
@@ -2727,3 +3542,552 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
   })
 })
 
+describe('nocturne 窄窗单列回落图宽守卫（2026-10-20，#15 / SPEC 批次 B2 附）', () => {
+  // 病根（票面已 git blame 查证）：`.jynoct .juya-entry-row .juya-entry-figure { width: 200px }`
+  // 来自 `3e8b9e9`，提交信息只写「图文并排」、从未涉及窄窗；基层在 ≤640px 把 `.juya-entry-row`
+  // 改纵排时写的是 `.juya-entry-row .juya-entry-figure { width: 100% }`（特异性 0,2,0），
+  // 输给 200px 那条（0,3,0）⇒ 断点处只换了排布方向、没重置宽度，单列里图仍占 200px，
+  // 同屏与满宽回流带并置出两种图宽。判定为布局模式切换后的残留，无设计意图。
+  // 本组锁三件事：宽屏 200px 一字节不动、断点内确有暗侧复合形态的复位、复位值严格等于 100%
+  // （不放宽成「任意非 auto 值」——那会放过 width: 320px 这类新的错误取值）。
+  const stripComments = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const FIG = 'juya-entry-row .juya-entry-figure'
+  /** 暗侧窄窗复位选择器的字面量（复合形式：AGENTS「变体覆盖选择器约定」硬形态） */
+  const DARK_RESET = `[data-juya-variant='nocturne-dark'].jynoct .${FIG}`
+  /** 全部 ≤640px 媒体块（按花括号配平提取，剥注释；同名媒体查询可能分散多处） */
+  const narrowBlocks = (): string[] =>
+    extractBlocks(css, /@media \(max-width: 640px\) \{/).map(stripComments)
+  /** 含 nocturne 图宽复位的那个窄窗媒体块 */
+  const resetBlock = (): string =>
+    narrowBlocks().find((b) => b.includes('.jynoct') && b.includes(FIG)) ?? ''
+  /** 从块内抠出指定选择器的完整规则块 */
+  const ruleOf = (block: string, selector: string): string =>
+    block.match(new RegExp(`${esc(selector)}\\s*\\{[^}]*\\}`))?.[0] ?? ''
+
+  it('① 宽屏并排宽度不变：`.jynoct` 图列仍是 200px，且只有这一条声明（无旁路覆写）', () => {
+    const wide = css.match(/(?:^|\n)\.jynoct \.juya-entry-row \.juya-entry-figure \{([^}]*)\}/) ?? []
+    expect(wide[1], '宽屏（>640px）图恒在右的 200px 列宽应原样保留').toBeTruthy()
+    expect(decl(wide[1], 'width'), '宽屏图列必须是 200px（本票不得改宽屏行为）').toBe('200px')
+    // 复位只允许出现在媒体块内：媒体块之外不得再出现 figure 宽度的变体覆写
+    let outside = css
+    for (const b of extractBlocks(css, /@media \(max-width: 640px\) \{/)) outside = outside.split(b).join('\n')
+    outside = stripComments(outside)
+    outside = outside.replace(/(?:^|\n)\.jynoct \.juya-entry-row \.juya-entry-figure \{[^}]*\}/, '\n')
+    expect(
+      outside,
+      '媒体块之外不得有 [data-juya-variant=…].jynoct 的 figure 宽度覆写（宽屏几何零变化）'
+    ).not.toMatch(/\[data-juya-variant='[^']+'\]\.jynoct \.juya-entry-row \.juya-entry-figure\s*\{/)
+  })
+
+  it('② 断点内存在暗侧复合形态的复位规则（不是空格后代死形态）', () => {
+    const block = resetBlock()
+    expect(block, '≤640px 媒体块内应有 nocturne 图宽复位').toBeTruthy()
+    expect(ruleOf(block, DARK_RESET), `断点内应有规则：${DARK_RESET}`).toBeTruthy()
+    // 复位必须只挂暗侧：块内不得出现共享 `.jynoct` 形态（那会把 nocturne-light 一并改掉，§9 不做）
+    expect(block, '块内不得出现共享 `.jynoct` 图宽复位（亮侧不在本票范围）').not.toMatch(
+      /(?:^|[;{}\s])\.jynoct \.juya-entry-row \.juya-entry-figure\s*\{/
+    )
+    // 非死形态：变体前缀与风格类必须复合（空格后代形式永不匹配，见 AGENTS 约定）
+    expect(css, '不得写 [data-juya-variant=…] 后带空格再接 .jynoct 的死形态').not.toMatch(
+      /\[data-juya-variant='nocturne-dark'\]\s+\.jynoct \.juya-entry-row/
+    )
+  })
+
+  it('③ 复位值严格等于 100%（不放宽成任意值），特异性高于宽屏 200px 那条', () => {
+    const block = resetBlock()
+    const reset = ruleOf(block, DARK_RESET)
+    expect(reset, '复位规则应存在').toBeTruthy()
+    const body = reset.slice(reset.indexOf('{') + 1)
+    // 严格相等：既拦「没写 / auto」，也拦 width: 320px 这类新的错误取值
+    expect(decl(body, 'width'), '单列回落的图宽必须严格是 100%').toBe('100%')
+    expect(body, '复位不得夹带 px 定宽（那等于把残留换成另一个定宽）').not.toMatch(/\d+px/)
+    // 特异性对照：复位选择器含 4 个类/属性记号（0,4,0），宽屏那条是 3 个（0,3,0）
+    const weight = (sel: string): number => (sel.match(/\[[^\]]+\]|\.[\w-]+/g) ?? []).length
+    expect(weight(DARK_RESET), '复位特异性（类/属性记号数）须高于宽屏规则').toBeGreaterThan(
+      weight(`.jynoct .${FIG}`)
+    )
+    expect(ruleOf(block, DARK_RESET)).toMatch(/width:\s*100%/m)
+  })
+
+  it('④ 图本体也铺满：暗侧窄窗内图列 img 宽度严格 100%（只命中图列，不波及回流带）', () => {
+    // 为什么图也要管：固有宽（480px）在 560 视口下**小于**内容列（实测 508px），而基层只给
+    // `.juya-root img { max-width: 100% }`（上限而非填充）⇒ 仅复位 figure 仍会在右侧留 26px 空白。
+    const block = resetBlock()
+    const DARK_IMG = `[data-juya-variant='nocturne-dark'].jynoct .juya-entry-figure img`
+    const rule = ruleOf(block, DARK_IMG)
+    expect(rule, `断点内应有规则：${DARK_IMG}`).toBeTruthy()
+    expect(decl(rule.slice(rule.indexOf('{') + 1), 'width'), '图宽必须严格是 100%').toBe('100%')
+    // 回流带 / 通用图（.juya-media img / .jynoct .juya-entry-figure img）不得被这条窄窗规则连带改掉
+    expect(rule, '选择器只允许锚在图列上（不得写到 .juya-media 或裸 img）').not.toMatch(
+      /\.juya-media\s+img|(?:^|[^.\w-])img\s*\{$/
+    )
+  })
+
+  it('⑤ 复位块只锁暗侧窄窗：媒体查询必须是 max-width: 640px，与基层断点同档', () => {
+    const narrow = narrowBlocks()
+    expect(narrow.length, '既有基层 ≤640px 块应仍在（断点不得被本票挪动）').toBeGreaterThan(0)
+    expect(css, '基层断点保持 640px 未改').toMatch(/@media \(max-width: 640px\) \{/)
+    const block = resetBlock()
+    // 复位块本身是 ≤640px 块（由 narrowBlocks 提取，天然满足）；此处锁「块内不再夹带第二个
+    // 媒体/支持查询条件」——把复位藏进嵌套条件会让上面三条静态断言脱离真实生效语境
+    const inner = block.replace(/^@media \(max-width: 640px\) \{/, '')
+    expect(inner, '复位块不得夹带 prefers-reduced-motion 等额外条件').not.toMatch(/@media|@supports/)
+  })
+})
+
+
+describe('nocturne 右边缘对齐记号守卫（2026-10-20，#16 / SPEC 批次 B2b）', () => {
+  // 票面要求：概览的「负外边距 / 内衬 / 分隔线左右内缩」由**同一个自定义记号**驱动，
+  // 改一处不会漂移；基准是栏目 h2 横线右缘（= 正文文字右缘），不是 issue 外缘。
+  // 条目容器的水平内衬（`4px 2px 18px` 的 2px，来自 `3e8b9e9`）在暗侧置 0 —— 已查证不承载
+  // 任何 hover 效果（暗侧 hover 走 border-bottom-color 提亮、border-radius 已置 0）。
+  // 本组只锁暗侧复合形态（AGENTS「变体覆盖选择器约定」），亮侧取值一字不动。
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const stripComments = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const ruleOf = (selector: string): string => extractBlock(css, new RegExp(esc(selector)))
+  const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
+  const TOKEN_RULE = `${DARK} .juya-overview {`
+  const ROW_RULE = `${DARK} .juya-overview li {`
+  const SEP_RULE = `${DARK} .juya-overview li + li::after {`
+  const ENTRY_RULE = `${DARK} .juya-entry {`
+  const body = (rule: string): string => rule.slice(rule.indexOf('{') + 1, rule.lastIndexOf('}'))
+
+  it('① 概览三处由同一记号 --jy-ov-bleed 驱动，且三处都不再写字面 8px', () => {
+    const token = body(ruleOf(TOKEN_RULE))
+    expect(token, '概览记号的声明规则应存在').toBeTruthy()
+    expect(decl(token, '--jy-ov-bleed'), '记号取值应为 8px（SPEC B2b）').toBe('8px')
+
+    const row = body(ruleOf(ROW_RULE))
+    expect(row, '概览条目行规则应存在').toBeTruthy()
+    // li 内衬与负外边距必须吃同一个记号：内衬 = +bleed，margin = -bleed（两者等量 ⇒ 行宽不变）
+    expect(decl(row, 'padding'), 'li 内衬须由记号驱动').toContain('var(--jy-ov-bleed)')
+    expect(decl(row, 'margin'), 'li 负外边距须由同一记号驱动（等量负值）').toContain(
+      'calc(-1 * var(--jy-ov-bleed))'
+    )
+
+    const sep = body(ruleOf(SEP_RULE))
+    expect(sep, '概览分隔线规则应存在').toBeTruthy()
+    expect(decl(sep, 'left'), '分隔线左内缩须由同一记号驱动').toBe('var(--jy-ov-bleed)')
+    expect(decl(sep, 'right'), '分隔线右内缩须由同一记号驱动').toBe('var(--jy-ov-bleed)')
+
+    // 漂移防线：三处的**横向**数值不得再写字面量（否则改记号时这些数值会被落下）。
+    // 纵向 2px 内衬是既有形态、与本记号无关，不在漂移面内。
+    for (const [name, value] of [
+      ['margin', decl(row, 'margin')],
+      ['left', decl(sep, 'left')],
+      ['right', decl(sep, 'right')]
+    ] as const) {
+      expect(value, `${name} 不得写字面 px（须全部走 --jy-ov-bleed）`).not.toMatch(/\d+px/)
+    }
+    expect(decl(row, 'padding'), 'padding 的横向分量不得写字面 8px').not.toMatch(/-?8px/)
+  })
+
+  it('② 条目容器水平内衬在暗侧置 0，亮侧与基层一字不改', () => {
+    const entry = body(ruleOf(ENTRY_RULE))
+    expect(entry, "[data-juya-variant='nocturne-dark'].jynoct .juya-entry 覆写应存在").toBeTruthy()
+    expect(decl(entry, 'padding'), '暗侧条目内衬应为 4px 0 18px（水平 0）').toBe('4px 0 18px')
+
+    // 基层（共享）那条仍是 2px：它是亮侧 / 其他分支的取值，本票不碰
+    const base = extractBlock(css, /(?:^|\n)\.jynoct \.juya-entry \{/).replace(/^\n/, '')
+    expect(decl(body(base), 'padding'), '既有共享 .jynoct .juya-entry 内衬应保持 4px 2px 18px').toBe(
+      '4px 2px 18px'
+    )
+    // 亮侧不得出现条目内衬覆写（§9：nocturne-light 任何改动都不做）
+    expect(css, '不得出现 nocturne-light 的 .juya-entry 内衬覆写').not.toMatch(
+      /\[data-juya-variant='nocturne-light'\]\.jynoct \.juya-entry\s*\{/
+    )
+    // 也不得新增共享形态的条目内衬覆写（那会连带改亮侧）
+    expect(css, '不得新增共享 .jynoct .juya-entry 的第二条覆写').not.toMatch(
+      /(?:^|\n)\.jynoct \.juya-entry \{[^}]*padding:[^;}]*\b0\b/
+    )
+  })
+
+  it('③ 窄窗退化保留：同一记号收到 0，既有 li 退化为零外扩', () => {
+    const narrow = extractBlocks(css, /@media \(max-width: 520px\) \{/)
+      .map(stripComments)
+      .find((b) => b.includes('nocturne-dark') && b.includes('.juya-overview'))
+    expect(narrow, '应存在含概览目录的 nocturne ≤520px 退化媒体块').toBeTruthy()
+    // 退化 = 把记号本身收到 0 ⇒ 三处（内衬 / 负外边距 / 分隔线内缩）同时归零，仍「改一处不漂移」
+    expect(decl(narrow!, '--jy-ov-bleed'), '窄窗须把同一记号收到 0').toBe('0px')
+    // 既有退化规则（li padding 2px 0 / margin 0）保留，避免窄窗出现横向外扩贴屏边
+    expect(narrow, '既有窄窗 li 退化规则应保留').toMatch(/\.juya-overview li \{[^}]*margin: 0/)
+    expect(narrow, '既有窄窗 li 退化规则应保留（padding 2px 0）').toMatch(
+      /\.juya-overview li \{[^}]*padding: 2px 0/
+    )
+  })
+
+  it('④ 分隔线内缩方向为正、hover 底色仍由 li 盒外溢（「底色比线宽」形态）', () => {
+    const token = body(ruleOf(TOKEN_RULE))
+    expect(Number.parseFloat(decl(token, '--jy-ov-bleed')), '记号必须是正值（负值会反向溢出）').toBeGreaterThan(0)
+    const sep = body(ruleOf(SEP_RULE))
+    // 分隔线内缩不可能是负值：必须使用记号本身，而不是 calc(-1 * …)
+    expect(decl(sep, 'left'), '分隔线左缘朝内').not.toContain('-1 *')
+    expect(decl(sep, 'right'), '分隔线右缘朝内').not.toContain('-1 *')
+    // li 仍是 hover 底色承载者（底色外溢 8px 的交互反馈保留）
+    const hover = ruleOf(`${DARK} .juya-overview li:hover {`)
+    expect(hover, 'hover 整行底色规则应保留').toBeTruthy()
+    expect(decl(body(hover), 'background'), 'hover 底色应存在').toBeTruthy()
+  })
+})
+
+describe('nocturne 排印补齐守卫（2026-10-20，#17 / SPEC 批次 B3：避孤字 / 中西文间距 / 等宽数字）', () => {
+  // 需求（issue #17 / SPEC B3）：
+  //   ① 导语试 `text-wrap: pretty`（可与 `balance` 对比后择一）；正文暂不启用。
+  //   ② `line-break: strict` 以实测决定 —— 本票实测 156 组断行样本 + 5 视口 × 3 段落零差异，故**不启用**。
+  //   ③ `text-autospace` 作用于条目标题 / 概览项 / 正文段落；**h1 不单独排除**，但须实测不变。
+  //   ④ 字体栈拉丁在前、CJK 在后；日期与序号 `tabular-nums`。
+  // 全部只动暗侧，选择器一律复合形态（AGENTS「变体覆盖选择器约定」：变体属性与风格类恒挂同一根元素）。
+  const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
+  const stripComments = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  /** 取全部形如 `<selector> { … }` 的规则块（同一选择器可能被拆成多条，例如导语区两条） */
+  const blocksOf = (selector: string): string[] =>
+    extractBlocks(css, new RegExp(`(?:^|\\n)${escape(selector)} \\{`)).map(stripComments)
+  /** 是否存在「该选择器的某条规则里 decl(prop) === value」 */
+  const hasDecl = (selector: string, prop: string, value: string): boolean =>
+    blocksOf(selector).some((b) => decl(b, prop) === value)
+
+  it('① 导语 text-wrap: pretty（暗侧专属）；正文段落不启用；全仓不得出现 balance', () => {
+    expect(hasDecl(`${DARK} .juya-lead`, 'text-wrap', 'pretty'), '暗侧导语应 text-wrap: pretty').toBe(true)
+    // 实测对比（脚本 scripts/nocturne-typography-probe.mjs）：pretty 把末行只有 1 字的样本全部消除（三档各 2 组 → 0），
+    // 总行数不变、改动只落在末尾 4 行窗口内；balance 会重排近乎全部的段落（60 组样本里 54~57 组断行变化），
+    // 是标题级短块的算法，正文导语不取。
+    expect(stripComments(css), '全仓不得落 text-wrap: balance（本票实测后弃用的候选）').not.toMatch(
+      /text-wrap:\s*balance/
+    )
+    // 正文暂不启用（票面明写）：段落选择器上不得出现 text-wrap 声明
+    expect(stripComments(css), '正文段落不得启用 text-wrap（票面：正文暂不启用）').not.toMatch(
+      /\.juya-entry p[^{]*\{[^}]*text-wrap/
+    )
+  })
+
+  it('② text-autospace 落在阅读页文本根 .juya-issue：一处作用域覆盖三类目标，且不单独排除 h1', () => {
+    expect(hasDecl(`${DARK} .juya-issue`, 'text-autospace', 'normal'), '暗侧阅读页文本根应启用自动中西文间距').toBe(true)
+    const rule = blocksOf(`${DARK} .juya-issue`).find((b) => b.includes('text-autospace'))
+    expect(rule, 'text-autospace 规则块应存在').toBeTruthy()
+    // 「h1 不得单独排除」：作用域内不得出现任何 :not(…) 排除形态
+    expect(rule!, '不得用 :not(…) 把刊头/h1 排除在自动间距之外').not.toContain(':not(')
+    // 也不得反向把 h1 的自动间距关掉
+    expect(stripComments(css), '不得出现把 text-autospace 关掉的声明').not.toMatch(
+      /text-autospace:\s*no-autospace/
+    )
+    // 三类目标都在 .juya-issue 子树内（结构断言，防模板改名后静默失效）：
+    // 刊头与条目标题由 nocturne.tsx 直接渲染，概览项走共享原子层 OverviewItems（.juya-overview 在 shared.tsx）
+    const nocturneTsx = readFileSync(join(process.cwd(), 'src/renderer/juya/templates/nocturne.tsx'), 'utf-8')
+    const sharedTsx = readFileSync(join(process.cwd(), 'src/renderer/juya/templates/shared.tsx'), 'utf-8')
+    for (const anchor of ['juya-masthead', 'juya-issue', 'OverviewItems', 'NocturneEntrySplit']) {
+      expect(nocturneTsx, `模板应仍在阅读页内渲染 ${anchor}`).toContain(anchor)
+    }
+    expect(sharedTsx, '概览项类名应仍由共享原子层渲染').toContain('juya-overview')
+  })
+
+  it('③ 字体栈拉丁在前、CJK 在后（避免拉丁字符回退到 CJK 字体）', () => {
+    const block = stripComments(variantBlock('nocturne-dark'))
+    const heading = decl(block, '--jy-font-heading')
+    const body = decl(block, '--jy-font-body')
+    // 精确形态：拉丁族（Segoe UI）必须排在两个 CJK 族之前；DengXian 仍是标题的 CJK 首选（#3 的风格身份）
+    expect(heading, '--jy-font-heading 应为「拉丁在前 + 等线 CJK」').toBe(
+      "'Segoe UI', 'DengXian', 'Noto Sans SC', sans-serif"
+    )
+    expect(body, '--jy-font-body 应为「拉丁在前 + Noto Sans SC」').toBe(
+      "'Segoe UI', 'Noto Sans SC', sans-serif"
+    )
+    for (const [name, stack] of [
+      ['--jy-font-heading', heading],
+      ['--jy-font-body', body]
+    ] as const) {
+      expect(stack.indexOf('Segoe UI'), `${name} 的拉丁族应排在 CJK 族之前`).toBeLessThan(
+        stack.indexOf("'Noto Sans SC'")
+      )
+      expect(stack, `${name} 仍须以通用族 sans-serif 收尾（零衬线）`).toMatch(/sans-serif$/)
+    }
+    expect(heading.indexOf('Segoe UI'), '标题栈拉丁族应排在 DengXian 之前').toBeLessThan(
+      heading.indexOf('DengXian')
+    )
+    // 等宽三档（元信息 / 序号 / 题注）本来就是拉丁在前：JetBrains Mono > … > Noto Sans SC
+    for (const sel of ['\\.juya-feed-meta', '\\.juya-index', '\\.juya-plate figcaption']) {
+      const mono = decl(noctRule(sel), 'font-family')
+      expect(mono, `${sel} 等宽栈应保持 JetBrains Mono 首选`).toContain("'JetBrains Mono'")
+      expect(mono.indexOf('JetBrains Mono'), `${sel} 拉丁等宽族应排在 Noto Sans SC 之前`).toBeLessThan(
+        mono.indexOf('Noto Sans SC')
+      )
+    }
+  })
+
+  it('④ 日期与序号等宽数字：订阅页日期 / 序号徽章 / 刊头日期行均声明 tabular-nums', () => {
+    // 订阅页日期（.juya-feed-meta）与序号（.juya-index，概览序号与条目 #N 徽章共用同一个类）
+    expect(decl(noctRule('\\.juya-feed-meta'), 'font-variant-numeric'), '订阅页日期应等宽数字').toBe(
+      'tabular-nums'
+    )
+    expect(decl(noctRule('\\.juya-index'), 'font-variant-numeric'), '序号应等宽数字').toBe('tabular-nums')
+    // 阅读页日期承载在刊头 h1（形如「AI 早报 2026-10-12」），暗侧补声明；
+    // 实测三档字体（DengXian / Segoe UI / Noto Sans SC）默认数字即等宽 ⇒ 该声明是**零像素变化**的意图锁死
+    expect(
+      hasDecl(`${DARK} .juya-masthead h1`, 'font-variant-numeric', 'tabular-nums'),
+      '暗侧刊头日期应声明 tabular-nums'
+    ).toBe(true)
+  })
+
+  it('⑤ line-break: strict 不启用（实测决定，2026-10-20）', () => {
+    // 实测口径：Chromium 150 目标内核支持该值（探针 CSS.supports = true），但
+    // 5 档视口（560/700/900/1280/1920）× 3 段含「」（）【】；：、——% 的简体中文，
+    // 加不加 strict 的**每行字数与断点完全相同**；再把样本按长度切片扫 156 组，差异仍为 0 组。
+    // 结论：默认标点禁则已覆盖简体中文，加规则只增加内核分支与误伤风险 ⇒ 不落声明。
+    expect(stripComments(noctSection()), 'nocturne 段不得出现 line-break 声明').not.toMatch(/line-break:/)
+  })
+
+  it('⑥ 范围未越界：三条新声明均不出现在 nocturne-light（本轮仅暗侧）', () => {
+    const light = stripComments(css)
+    expect(light, '不得给 nocturne-light 加 text-wrap / text-autospace').not.toMatch(
+      /\[data-juya-variant='nocturne-light'\][^{]*\{[^}]*text-(wrap|autospace)/
+    )
+    expect(light, '不得给 nocturne-light 加 line-break').not.toMatch(
+      /\[data-juya-variant='nocturne-light'\][^{]*\{[^}]*line-break/
+    )
+  })
+})
+
+/**
+ * #20 / SPEC 批次 B5（2026-10-20）：星尘破除点阵 + 概览焦点环。
+ * 断言面全部取自**剥注释后的代码视图**（注释里复述选择器/尺寸会污染结构抠取）：
+ *  · 暗侧 dust 只覆写 background-size（共享预设 44/132 与 keyframe 一字节不改）；
+ *  · 六层尺寸互不相同，任意两层之比距最近整数 ≥ 0.1（票面判据，脚本搜索所得值）；
+ *  · 焦点环写完整 outline 简写（只写 outline-color 在 Chromium 下不生效），取 --jy-focus；
+ *  · 行高亮用 `li:has(a:focus-visible)` 且与 hover 同底色，全文件禁用 `:focus-within`；
+ *  · 概览容器/行/issue 均无 overflow 裁剪，分隔线 ::after 的负 top 与焦点行底色分层正确。
+ */
+describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20 / SPEC 批次 B5）', () => {
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const sel = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const ruleOf = (selector: string): string =>
+    extractBlock(code, new RegExp(`${sel(selector)}\\s*\\{`))
+  const DUST_OVERRIDE =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust"
+  const FOCUS_LINK =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview a:focus-visible"
+  const FOCUS_ROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)"
+  const HOVER_ROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover"
+  const SEP_ROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after"
+  const bodyOf = (rule: string): string => rule.match(/\{([^}]*)\}/)?.[1] ?? ''
+  const propsOf = (rule: string): string[] =>
+    bodyOf(rule)
+      .split(';')
+      .map((d) => d.split(':')[0]?.trim())
+      .filter((p): p is string => Boolean(p))
+  const sizesOf = (rule: string): Array<[number, number]> =>
+    (decl(bodyOf(rule), 'background-size') ?? '')
+      .split(',')
+      .map((s) => s.trim().split(/\s+/).map((v) => Number.parseFloat(v)) as [number, number])
+
+  it('① 暗侧 dust 只覆写 background-size：共享预设 44/132 与 96s alternate 一字节不改', () => {
+    const shared = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
+    expect(shared, '共享 dust 预设应存在').toBeTruthy()
+    // 共享层是 y2k / dreamcore 也在用的预置：本票**不得**改它（隔离验证由归档逐字节比对兜底）
+    expect(decl(shared, 'background-size'), '共享 dust 尺寸必须保持 3×44 + 3×132').toBe(
+      '44px 44px, 44px 44px, 44px 44px, 132px 132px, 132px 132px, 132px 132px'
+    )
+    expect(decl(shared, 'animation'), '共享 dust 的 96s 往复动画不改').toContain(
+      '96s ease-in-out infinite alternate'
+    )
+
+    const override = ruleOf(DUST_OVERRIDE)
+    expect(override, '暗侧 dust 覆写规则应存在').toBeTruthy()
+    expect(override.split('{')[0].trim(), '必须写复合形态（变体属性与 .jynoct 同根、无空格）').toBe(
+      DUST_OVERRIDE
+    )
+    // 只允许一条声明（背景尺寸）；点色 token / 动画 / 透明度一律不得在这里覆写
+    expect(propsOf(override), '暗侧 dust 覆写只允许 background-size').toEqual(['background-size'])
+    expect(override, '不得覆写尘埃点色 token（沿用共享层中性白）').not.toContain('--jy-scene-dust')
+    expect(override, '不得自带 animation/transition（RM 复位继续由共享层承担）').not.toMatch(
+      /\b(?:animation|transition)\b/
+    )
+  })
+
+  it('② 六层尺寸互不相同且两两之比距最近整数 ≥ 0.1（脚本搜索所得值，非随手填）', () => {
+    const sizes = sizesOf(ruleOf(DUST_OVERRIDE))
+    expect(sizes, '六层各一个 background-size').toHaveLength(6)
+    const values = sizes.map(([w, h]) => {
+      expect(w, '平铺单元应为正方形（与共享层一致）').toBe(h)
+      return w
+    })
+    expect(new Set(values).size, '每层必须各用不同尺寸（同尺寸只是同格点的偏移拷贝）').toBe(6)
+    // 搜索空间：小尺寸 [38,60] × 大尺寸 [100,200]，3+3 组合共 295,137,150 组；
+    // 满足判据且 1280×800 点数 ∈ [1000,2500] 的解 2,546,089 组；取「最小两两余量」最大者
+    // （0.2241，判据门槛 0.1 的两倍以上），再按点数最接近共享原值 1764 定值。
+    expect([...values].sort((a, b) => a - b), '锁定脚本搜索结果（防随手改）').toEqual([
+      38, 47, 58, 129, 161, 199
+    ])
+    for (let i = 0; i < values.length; i++) {
+      for (let j = i + 1; j < values.length; j++) {
+        const ratio = Math.max(values[i], values[j]) / Math.min(values[i], values[j])
+        expect(
+          Math.abs(ratio - Math.round(ratio)),
+          `${Math.max(values[i], values[j])}/${Math.min(values[i], values[j])} = ${ratio.toFixed(4)} 距最近整数`
+        ).toBeGreaterThanOrEqual(0.1)
+      }
+    }
+    // 点数密度与共享层同量级（不因破除周期变密/变稀）
+    const points = sizes.reduce((sum, [w, h]) => sum + (1280 / w) * (800 / h), 0)
+    expect(points, '1280×800 下尘埃点数仍为一两千点量级').toBeGreaterThanOrEqual(1000)
+    expect(points, '不得堆到万点量级').toBeLessThanOrEqual(2500)
+
+    // keyframe 不改：alternate 往复 ⇒ 无接缝问题，终点位移不必是 size 整数倍
+    const kf = extractBlock(css, /@keyframes jy-dust-drift \{/)
+    expect(kf, '漂移关键帧应存在').toContain(
+      'background-position: 44px -88px, -22px 44px, 33px 22px, 132px -66px, -66px 132px, 44px 44px'
+    )
+  })
+
+  it('③ 焦点环是完整声明（2px solid var(--jy-focus)）：只写 outline-color 在 Chromium 下不生效', () => {
+    const rule = ruleOf(FOCUS_LINK)
+    expect(rule, '概览链接焦点环规则应存在').toBeTruthy()
+    expect(rule.split('{')[0].trim(), '必须写暗侧复合形态').toBe(FOCUS_LINK)
+    // Chromium UA 的 auto focus 圈忽略作者 outline-color ⇒ 必须写含样式的简写
+    expect(decl(bodyOf(rule), 'outline'), '完整 outline 简写（宽度 + 样式 + 取色）').toBe(
+      '2px solid var(--jy-focus)'
+    )
+    expect(decl(bodyOf(rule), 'outline-offset'), '与底座留 2px 间隙，不压字').toBe('2px')
+    expect(bodyOf(rule), '不得退化成 outline: auto / none').not.toMatch(
+      /outline\s*:\s*(?:auto|none)\b/
+    )
+    expect(bodyOf(rule), '不得只改 outline-color（UA auto 圈不读它）').not.toMatch(/outline-color/)
+    // 反证：亮侧不新增同名焦点环规则（本轮只动暗侧）
+    expect(code).not.toContain("[data-juya-variant='nocturne-light'].jynoct .juya-overview a:focus-visible")
+  })
+
+  it('④ 行高亮用 li:has(a:focus-visible)，与 hover 同底色；全文件严禁 :focus-within', () => {
+    const row = ruleOf(FOCUS_ROW)
+    const hover = ruleOf(HOVER_ROW)
+    expect(row, '焦点行高亮规则应存在').toBeTruthy()
+    expect(hover, '既有 hover 行高亮规则应存在').toBeTruthy()
+    expect(decl(bodyOf(row), 'background'), '焦点态与 hover 必须同底色').toBe(
+      decl(bodyOf(hover), 'background')
+    )
+    expect(row.split('{')[0]).not.toContain(':focus-within')
+    expect(code, ':focus-within 会被鼠标点击触发，全文件禁用').not.toContain(':focus-within')
+    // 概览区所有 focus 相关选择器都必须用 :focus-visible（而不是 :focus）
+    const focusHeads = [...code.matchAll(/([^{}]+)\{/g)]
+      .map((m) => m[1].trim())
+      .filter((h) => h.includes('.juya-overview') && h.includes(':focus'))
+    expect(focusHeads.length, '概览区应恰有两条焦点规则').toBe(2)
+    for (const h of focusHeads) expect(h, `焦点规则必须用 :focus-visible：${h}`).toContain(':focus-visible')
+  })
+
+  it('⑤ 焦点环不被裁切：概览容器/行/issue 无 overflow；分隔线 ::after 与焦点行底色分层正确', () => {
+    const rules = [...code.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, s, b]) => ({
+      sel: s.trim(),
+      body: b
+    }))
+    const clippers = rules.filter(
+      (r) =>
+        /\.juya-overview\b|\.juya-issue\b/.test(r.sel) &&
+        /(?:^|[;\s])overflow(?:-[xy])?\s*:/.test(r.body)
+    )
+    expect(clippers.map((r) => r.sel), '概览列表/行/issue 不得有 overflow 裁剪（会切掉 2px+2px 焦点环）').toEqual([])
+
+    const sep = ruleOf(SEP_ROW)
+    expect(sep, '既有条目间发丝线规则应保留').toBeTruthy()
+    expect(decl(bodyOf(sep), 'top'), '发丝线落在 6px 间隙中点（行盒之外）').toBe('-3.5px')
+    expect(decl(bodyOf(sep), 'left'), '线与内容栏同界（#16 记号）').toBe('var(--jy-ov-bleed)')
+    expect(decl(bodyOf(sep), 'background'), '线色不改').toBe('rgba(255, 255, 255, 0.05)')
+    // 叠层：焦点行底色画在 li 的 background 层，发丝线是 li 的 ::after（更上层），
+    // 且 top 为负 ⇒ 线在行盒之外，不会被行底色覆盖；焦点规则不得另画/隐藏分隔线。
+    expect(ruleOf(FOCUS_ROW), '焦点行规则不得触碰分隔线伪元素').not.toContain('::after')
+    expect(ruleOf(FOCUS_ROW), '焦点行规则不得改用 outline 之外的元素做环').not.toContain('outline')
+  })
+})
+
+describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 B6）', () => {
+  // 剥注释后的 CSS 代码（注释里引用选择器形态/属性名不算实现）
+  const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const HIDDEN = `[${APP_HIDDEN_ATTR}]`
+  const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
+
+  /** 本变体全部动画承载者（含伪元素）—— 逐一列举；新增动画必须同步加入本清单。
+   *  · `.juya-scene-dust`：Scene 的 dust 预设（96s 尘埃漂移）；
+   *  · `.juya-masthead h1`：刊头呼吸（9s）；
+   *  · `.juya-masthead::before` / `::after`：极光幕帘两层（24s / 31s，伪元素必须单独选中）；
+   *  · `.juya-feed-item`：订阅页入场（220ms，共享规则但本变体订阅页同样命中）；
+   *  · `.jynoct-lightbox img`：放大视图入场（160ms，dialog portal 到 body，变体标记挂 dialog 自身）。 */
+  const CARRIERS = [
+    `${DARK} .juya-scene-dust`,
+    `${DARK} .juya-masthead h1`,
+    `${DARK} .juya-masthead::before`,
+    `${DARK} .juya-masthead::after`,
+    `${DARK} .juya-feed-item`,
+    "[data-juya-variant='nocturne-dark'].jynoct-lightbox img"
+  ]
+
+  /** 非 nocturne 场景层（太阳/透视网格/星空只有 dreamcore 与 y2k 暗挂载，本变体模板不渲染） */
+  const FOREIGN_SCENE = ['.juya-scene-sun', '.juya-scene-grid-persp', '.juya-scene-stars']
+
+  /** 全 css 的叶规则（花括号内的声明块；媒体查询/@keyframes 外壳天然不匹配） */
+  const rules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, s, b]) => ({
+    sels: s
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean),
+    body: b
+  }))
+  const pauseRules = rules.filter((r) =>
+    /(?:^|[;\s])animation-play-state\s*:\s*paused/.test(r.body)
+  )
+  const pausedSels = pauseRules.flatMap((r) => r.sels)
+
+  it('① 暂停规则逐一选中全部动画载体（含 ::before / ::after），且只声明 animation-play-state', () => {
+    expect(pauseRules.length, '应恰有一条不可见暂停规则块').toBe(1)
+    const declarations = pauseRules[0]!.body
+      .split(';')
+      .map((d) => d.trim())
+      .filter(Boolean)
+    expect(declarations, '暂停态只能改动画播放状态，不得夹带 opacity/filter/animation 等可见属性').toEqual([
+      'animation-play-state: paused'
+    ])
+    expect([...pausedSels].sort(), '暂停选择器集合须与载体清单逐一对应').toEqual(
+      CARRIERS.map((c) => `${HIDDEN} ${c}`).sort()
+    )
+  })
+
+  it('② 完整性：本变体可出现的每一条 animation 声明都被暂停规则覆盖（漏一个即红，并报出漏项）', () => {
+    const animationRules = rules.filter((r) => /(?:^|[;\s])animation\s*:/.test(r.body))
+    const pausedSet = new Set(pausedSels)
+    const covered = (sel: string): boolean => {
+      if (FOREIGN_SCENE.some((f) => sel === f || sel.endsWith(` ${f}`))) return true
+      if (sel.includes("data-juya-variant='nocturne-light'")) return false
+      // 暗侧复合形态直接用；共享类名（.juya-scene-dust / .juya-feed-item）必须挂上暗侧作用域
+      const scoped = sel.includes("data-juya-variant='nocturne-dark'") ? sel : `${DARK} ${sel}`
+      return pausedSet.has(`${HIDDEN} ${scoped}`)
+    }
+    const uncovered = animationRules.flatMap((r) => r.sels).filter((s) => !covered(s))
+    expect(uncovered, '动画载体必须逐一暂停（animation-play-state 不继承）——上面列出漏项').toEqual(
+      []
+    )
+    // 扫描面非空：dust + 呼吸 + 两条极光 + 订阅页入场 + 放大视图入场
+    expect(animationRules.length, 'animation 声明扫描面非空').toBeGreaterThanOrEqual(5)
+  })
+
+  it('③ 状态标记挂 documentElement，不挂内容根容器（.juya-root 的结构不变量）', () => {
+    const hook = readFileSync(join(process.cwd(), 'src/renderer/visibilityPause.ts'), 'utf-8')
+    const hookCode = hook.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(hookCode, '只在文档根元素上置/清标记').toContain('document.documentElement')
+    expect(hookCode, '属性名必须与守卫同源').toContain(`APP_HIDDEN_ATTR = '${APP_HIDDEN_ATTR}'`)
+    expect(hookCode, '必须监听 visibilitychange').toContain('visibilitychange')
+    expect(hookCode, '只做 document.hidden 判据').toContain('document.hidden')
+    expect(hookCode, '不得把标记挂到内容根容器（.juya-root）上').not.toContain('.juya-root')
+    expect(noctSection(), '暂停规则必须落在 nocturne 段内（不改共享层）').toContain(HIDDEN)
+    for (const s of pausedSels) {
+      expect(s, '暂停选择器不得命中内容根容器本身').not.toContain('.juya-root')
+      expect(s, '只做暗侧；nocturne-light 本轮范围外（§9）').not.toContain('nocturne-light')
+    }
+  })
+
+  it('④ 项目文档写明「不做动画 filter→opacity 重构」及其理由', () => {
+    const agents = readFileSync(join(process.cwd(), 'AGENTS.md'), 'utf-8')
+    expect(agents, 'AGENTS.md 须记录本次不做该重构').toContain('`filter`→`opacity` 重构')
+    expect(agents, '须写明理由：无实测数据').toContain('无实测数据')
+  })
+})

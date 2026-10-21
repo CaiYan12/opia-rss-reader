@@ -201,3 +201,128 @@ test('nocturne 图文回流（真实图源）：右列限 2 张、其余回流�
   expect(geo.overflowH, '回流带自身有高度（2 张通栏图）').toBeGreaterThan(100)
 })
 
+test('nocturne 窄窗单列回落：图宽跟随内容列、两图竖向堆叠（#15 / SPEC B2 附，560 视口）', async ({
+  page
+}) => {
+  // 病根见 juya.css 的复位规则头：宽屏 200px 的图列宽度在 ≤640px 单列回落时没有同步重置，
+  // 于是单列里图仍占 200px、右侧留空白，与满宽回流带并置成两种图宽。
+  // 本断言用 `getBoundingClientRect` 的**相对关系**（图/正文列/栏目标题线三者对齐），
+  // 不锁绝对坐标 —— zoom、滚动条宽度、窗口内衬变化都不该让它变红。
+  await page.setViewportSize({ width: 560, height: 800 })
+  await loadApp(page, 'nocturneSvg')
+  await openFirstArticle(page)
+
+  const entry = activeTab(page).locator('article.juya-entry').first()
+  await expect(entry).toBeVisible()
+
+  const geo = await entry.evaluate((el) => {
+    const box = (n: Element): { left: number; right: number; width: number; top: number; height: number } => {
+      const r = n.getBoundingClientRect()
+      return { left: r.left, right: r.right, width: r.width, top: r.top, height: r.height }
+    }
+    const row = el.querySelector('.juya-entry-row') as HTMLElement
+    const body = el.querySelector('.juya-entry-body') as HTMLElement
+    const fig = el.querySelector('.juya-entry-figure') as HTMLElement
+    const h2 = el.closest('.juya-section')?.querySelector('h2') ?? null
+    const imgs = [...el.querySelectorAll('.juya-entry-figure img')]
+    return {
+      direction: getComputedStyle(row).flexDirection,
+      body: box(body),
+      fig: box(fig),
+      h2: h2 ? box(h2) : null,
+      imgs: imgs.map(box)
+    }
+  })
+
+  // eslint-disable-next-line no-console
+  console.log(
+    `[T4 560 实测] direction=${geo.direction} 图列=${geo.fig.width.toFixed(2)} 内容列=${geo.body.width.toFixed(2)} ` +
+      `h2线=${geo.h2 ? geo.h2.width.toFixed(2) : 'n/a'} 图宽=${geo.imgs.map((i) => i.width.toFixed(2)).join('/')} ` +
+      `左缘(图/内容/h2)=${geo.fig.left.toFixed(2)}/${geo.body.left.toFixed(2)}/${geo.h2 ? geo.h2.left.toFixed(2) : 'n/a'}`
+  )
+
+  expect(geo.direction, '≤640px 应回落为单列纵排').toBe('column')
+
+  // ① 图列左右缘 == 正文列左右缘（内容列）
+  expect(geo.fig.left, '图列左缘应与内容列左缘一致').toBeCloseTo(geo.body.left, 1)
+  expect(geo.fig.right, '图列右缘应与内容列右缘一致').toBeCloseTo(geo.body.right, 1)
+  // ② 与栏目标题线一致（票面验收「左右缘与栏目标题线一致」）。
+  // 容差 2px 的来源曾是 `.jynoct .juya-entry { padding: 4px 2px 18px }`（#8 期就有的条目内衬）；
+  // #16 已把暗侧该内衬的水平分量置 0（T5 右边缘对齐），故此处实测为 0.00px。
+  // 断言保留 ≤2 作取整余量，不放宽也不收紧 —— 它锁的仍是「图列与栏目线同一内容栏边界」。
+  expect(geo.h2, '栏目 h2 应可取到').toBeTruthy()
+  expect(Math.abs(geo.fig.left - geo.h2!.left), '图列左缘与栏目标题线左端应在条目内衬 2px 内一致').toBeLessThanOrEqual(2)
+  expect(Math.abs(geo.fig.right - geo.h2!.right), '图列右缘与栏目标题线右端应在条目内衬 2px 内一致').toBeLessThanOrEqual(2)
+  // ③ 两张图竖向堆叠且都铺满内容列（票面「两张竖向堆叠、铺满可用宽度」）
+  expect(geo.imgs, '右列仍是 2 张').toHaveLength(2)
+  for (const [i, img] of geo.imgs.entries()) {
+    expect(img.width, `第 ${i + 1} 张图宽应等于内容列宽`).toBeCloseTo(geo.body.width, 1)
+    expect(img.left, `第 ${i + 1} 张图左缘应贴内容列左缘`).toBeCloseTo(geo.body.left, 1)
+  }
+  // 竖向堆叠：第二张的顶边在第一张底边之下（容 1px 取整误差）
+  expect(geo.imgs[1].top, '两张图应竖向堆叠（不再是并排两列）').toBeGreaterThanOrEqual(
+    geo.imgs[0].top + geo.imgs[0].height - 1
+  )
+})
+
+test('nocturne 概览键盘焦点（#20）：Tab 到目录链接时焦点环 + 整行高亮同时可见', async ({ page }) => {
+  // 票面验收：键盘 Tab 到概览项，焦点环（2px solid --jy-focus）与整行高亮同时可见，
+  // 且不被列表/行容器裁切。断言语义面 = 计算样式 + 焦点态伪类，不是截图目测；
+  // 截图作为可视证据附到 Playwright 报告（不写仓库文件）。
+  await loadApp(page, 'nocturneSvg')
+  await openFirstArticle(page)
+
+  const tab = activeTab(page)
+  const link = tab.locator('.juya-overview a').first()
+  await expect(link).toBeVisible()
+
+  // 从文档起点 Tab（先 blur，避免焦点停在触发打开的控件上）
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  let reached = false
+  for (let i = 0; i < 60 && !reached; i++) {
+    await page.keyboard.press('Tab')
+    reached = await link.evaluate((el) => el === document.activeElement).catch(() => false)
+  }
+  expect(reached, '键盘 Tab 应能到达概览目录链接').toBe(true)
+
+  const focus = await link.evaluate((el) => {
+    const a = el as HTMLElement
+    const li = a.closest('li') as HTMLElement
+    const ul = a.closest('.juya-overview') as HTMLElement
+    const cs = getComputedStyle(a)
+    return {
+      outlineStyle: cs.outlineStyle,
+      outlineWidth: cs.outlineWidth,
+      outlineColor: cs.outlineColor,
+      outlineOffset: cs.outlineOffset,
+      rowBg: getComputedStyle(li).backgroundColor,
+      rowHighlighted: li.matches(':has(a:focus-visible)'),
+      ulOverflow: getComputedStyle(ul).overflow,
+      liOverflow: getComputedStyle(li).overflow,
+      focusVisible: a.matches(':focus-visible')
+    }
+  })
+
+  // :focus-visible 只在键盘/非指针模态命中（鼠标点击不触发 ⇒ 行高亮不会误闪）
+  expect(focus.focusVisible, '键盘 Tab ⇒ :focus-visible 命中').toBe(true)
+  // 完整声明（Chromium UA 的 auto 圈忽略作者 outline-color，必须显式 solid + 变量）
+  expect(focus.outlineStyle, '焦点环样式必须是 solid').toBe('solid')
+  expect(focus.outlineWidth, '焦点环宽度 2px').toBe('2px')
+  expect(focus.outlineOffset, '与文字留 2px 间隙').toBe('2px')
+  // 颜色走 index.css 既有的 0.2s outline-color 过渡（基态是 transparent 的 solid 圈），
+  // 故用 Playwright 的 CSS 断言轮询到过渡结束值，而不是瞬时快照（会读到 rgba(...,0)）。
+  await expect(link).toHaveCSS('outline-color', 'rgb(139, 151, 255)')
+  // 整行高亮（li:has(a:focus-visible)），与 hover 同底色
+  expect(focus.rowHighlighted, '行高亮选择器形态 li:has(a:focus-visible) 命中').toBe(true)
+  expect(focus.rowBg, '整行底色 = hover 同值 rgba(110,123,255,0.06)').toBe(
+    'rgba(110, 123, 255, 0.06)'
+  )
+  // 环不被裁切：概览列表与行都没有 overflow 裁剪
+  expect(focus.ulOverflow, '概览列表不得裁切焦点环').toBe('visible')
+  expect(focus.liOverflow, '概览行不得裁切焦点环').toBe('visible')
+
+  await test.info().attach('nocturne-overview-focus', {
+    body: await page.screenshot(),
+    contentType: 'image/png'
+  })
+})

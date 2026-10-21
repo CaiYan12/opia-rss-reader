@@ -37,14 +37,17 @@ function makeEntry(imageCount: number, withLinks = true): JuyaEntry {
 }
 
 /** 渲染单条目期号，返回解析后的 DOM */
-function renderEntry(entry: JuyaEntry): Document {
+function renderEntry(
+  entry: JuyaEntry,
+  variantId: 'nocturne-dark' | 'nocturne-light' = 'nocturne-dark'
+): Document {
   const issue: JuyaIssue = { heading: '期头', sections: [{ heading: '栏目', entries: [entry] }] }
   const html = renderToStaticMarkup(
     createElement(nocturneTemplate.IssueView, {
       article: ARTICLE,
       issue,
       onOpenLink: () => {},
-      variantId: 'nocturne-dark'
+      variantId
     })
   )
   return new DOMParser().parseFromString(html, 'text/html')
@@ -124,5 +127,44 @@ describe('nocturne 图文并排：右列限 2 张，其余回流通栏（#8）',
       'juya-entry-row',
       'jynoct-overflow-media'
     ])
+  })
+})
+
+// 链接图包装的变体门控（2026-10-20 收口修正）：
+// 暗侧为让「点图跳原文」不被放大视图吞掉，解析期新增可选 `JuyaImage.href`，并在模板里把带
+// href 的图包一层 SafeLink。该包装**不得外溢到亮侧** —— 需求 §9 把 `nocturne-light` 的任何
+// 改动列为不做，包裹会在亮侧新增 `<a>` 节点与可点行为（DOM + 交互双改动）。
+// 断言形态：只看渲染出来的 DOM 结构，不看内部实现。
+const withHref = (entry: JuyaEntry, href: string, indexes: number[] = [0]): JuyaEntry => ({
+  ...entry,
+  images: entry.images.map((img, i) => (indexes.includes(i) ? { ...img, href } : img))
+})
+
+describe('链接图包装按变体门控（亮侧零改动）', () => {
+  const HREF = 'https://example.com/origin'
+
+  it('暗侧：带 href 的图被 SafeLink 包裹，href 原样保留（右列与通栏两处都包）', () => {
+    // 首图进右列、第 3 图进通栏，两处各验一次，证明包装在两种布局容器里都生效
+    const doc = renderEntry(withHref(makeEntry(3), HREF, [0, 2]))
+    const links = [...doc.querySelectorAll('.juya-entry-figure a, .jynoct-overflow-media a')]
+    expect(links, '暗侧首图（右列）与第三图（通栏）均应可点').toHaveLength(2)
+    expect(links[0].getAttribute('href')).toBe(HREF)
+    expect(links.map((a) => a.querySelector('img')?.getAttribute('src'))).toEqual([
+      'img-0.png',
+      'img-2.png'
+    ])
+  })
+
+  it('暗侧：没有 href 的图不得被包裹（裸图才能开放大视图）', () => {
+    const doc = renderEntry(makeEntry(3))
+    expect(doc.querySelector('.juya-entry-figure a, .jynoct-overflow-media a')).toBeNull()
+  })
+
+  it('亮侧：即使解析出 href 也不包裹，产出仍是裸 <img>（§9 任何改动不做）', () => {
+    const doc = renderEntry(withHref(makeEntry(3), HREF, [0, 2]), 'nocturne-light')
+    expect(doc.querySelector('.juya-entry-figure a, .jynoct-overflow-media a')).toBeNull()
+    // 图仍在原位、未因去掉包装而丢失
+    expect(figureSrcs(doc)).toEqual(['img-0.png', 'img-1.png'])
+    expect(overflowSrcs(doc)).toEqual(['img-2.png'])
   })
 })

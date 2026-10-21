@@ -87,11 +87,32 @@ powershell -File build.ps1 -Run   # 构建并启动，tail 启动日志
 
 ### 测试
 
+**一条命令跑全部闸门**（CI 调的就是它，见 `.github/workflows/verify.yml`）：
+
 ```powershell
+npm run verify      # = typecheck + vitest + Playwright + 对比度审计 + 归档逐字节比对
+```
+
+分项跑：
+
+```powershell
+npm run typecheck   # tsc --noEmit
 npm test            # vitest 单元测试（解析器等纯逻辑，tests/unit）
 npm run test:e2e    # Playwright 渲染层端到端（先自动 build:dir，驱动 out/renderer + window.opia 内存桩）
-npx tsc --noEmit    # 类型检查（提交前必过）
+npm run verify:nocturne  # 两个 nocturne 专用闸门（见下）
 ```
+
+### 橘鸦风格的额外闸门
+
+改动了 `src/renderer/juya/` 下的 CSS 就多两道闸（已含在 `npm run verify` 里）：
+
+```powershell
+node scripts/nocturne-contrast-audit.mjs             # 叠加态对比度全量实算，取值实读 juya.css，退出码上报
+node scripts/nocturne-visual-walkthrough.mjs         # 写入模式：重生归档截图 + 打印 RM 证据
+node scripts/nocturne-visual-walkthrough.mjs --verify # 只比对不写盘（重生后必须 exit 0）
+```
+
+> **改了影响渲染的取值时**：先跑写入模式重生归档，再跑 `--verify`。跳过重生会让 `--verify` 报旧图陈旧（曾踩过）。逐项历史见 `docs/STYLE-WORKLOG.md`。
 
 ## 🗂️ 目录结构
 

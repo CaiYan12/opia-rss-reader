@@ -1,0 +1,50 @@
+name: verify
+
+# 唯一的验证闸门（2026-10-21 由 /retro 建立）。
+# 之前仓库有完整的 tsc / vitest / playwright / 审计 / 归档校验命令，但一根线都没接 ——
+# 全靠人记得跑。本工作流直接调用 `npm run verify`（package.json），保证 CI 与本地同一条命令。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    # Windows 必须：build.ps1 / Electron 二进制 / Playwright 的 webServer 都是 Windows 假定；
+    # 本机上这三个验证从来只在 Windows 跑过，换 Linux 会引入未经验证的平台差异。
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 用户环境里有 ELECTRON_RUN_AS_NODE=1 的坑（见 AGENTS.md）；CI 是干净环境，不继承该变量，
+      # 但仍显式清一次 —— 让本工作流在自托管 runner 上也成立。
+      - name: Clear ELECTRON_RUN_AS_NODE
+        shell: pwsh
+        run: Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+
+      - name: Verify (typecheck + unit + e2e + nocturne audit + archive byte-compare)
+        run: npm run verify
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

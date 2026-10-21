@@ -39,6 +39,7 @@ tests/fixtures/
 
 # Playwright run artifacts
 test-results/
+playwright-report/
 .superpowers/
 
 # Agent tool working data (local-only, never committed)

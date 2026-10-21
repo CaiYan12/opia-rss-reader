@@ -4086,8 +4086,12 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
   })
 
   it('④ 项目文档写明「不做动画 filter→opacity 重构」及其理由', () => {
+    // 2026-10-21 /retro 后：施工历史下沉到 docs/STYLE-WORKLOG.md，AGENTS.md 只留导航指针。
+    // 故断言改为「两份文档合起来必须有」，而不是钉死在哪一个文件里 —— 否则每次重组文档都会误报。
     const agents = readFileSync(join(process.cwd(), 'AGENTS.md'), 'utf-8')
-    expect(agents, 'AGENTS.md 须记录本次不做该重构').toContain('`filter`→`opacity` 重构')
-    expect(agents, '须写明理由：无实测数据').toContain('无实测数据')
+    const worklog = readFileSync(join(process.cwd(), 'docs/STYLE-WORKLOG.md'), 'utf-8')
+    const docs = `${agents}\n${worklog}`
+    expect(docs, '项目文档须记录本次不做该重构').toContain('`filter`→`opacity` 重构')
+    expect(docs, '须写明理由：无实测数据').toContain('无实测数据')
   })
 })

@@ -10,7 +10,10 @@
     "build": "electron-vite build && electron-builder",
     "build:dir": "electron-vite build",
     "test": "vitest run",
-    "test:e2e": "npm run build:dir && playwright test"
+    "test:e2e": "npm run build:dir && playwright test",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm run test && npm run test:e2e && npm run verify:nocturne",
+    "verify:nocturne": "node scripts/nocturne-contrast-audit.mjs && node scripts/nocturne-visual-walkthrough.mjs --verify"
   },
   "build": {
     "appId": "com.opia.rssreader",

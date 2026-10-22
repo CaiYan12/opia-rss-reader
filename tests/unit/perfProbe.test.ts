@@ -1,16 +1,48 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import {
   FIXED,
   assessSampleConditions,
+  planGridControl,
   parseOptions,
   summarizeRafSamples,
-  summarizeTraceEvents
+  summarizeTraceEvents,
+  warmUpArticle
 } from '../../scripts/perf-probe.mjs'
 
 const script = resolve('scripts/perf-probe.mjs')
+
+afterEach(() => vi.unstubAllGlobals())
+
+describe('文章预热', () => {
+  it('测量前使布局变化时未进入视口的 lazy 图片也就绪', async () => {
+    const images = Array.from({ length: 2 }, () => ({
+      complete: false,
+      get loading() { return 'lazy' },
+      set loading(value: string) { if (value === 'eager') this.complete = true }
+    }))
+    const root = { querySelectorAll: () => images }
+    const scroller = {
+      scrollTop: 0, scrollHeight: 3000, clientHeight: 600, clientWidth: 1091,
+      firstElementChild: {}, getBoundingClientRect: () => ({ left: 0, top: 100, width: 1091, height: 600 })
+    }
+    vi.stubGlobal('document', {
+      querySelector: (selector: string) => selector === '.view-scroll' ? scroller : root,
+      hasFocus: () => true
+    })
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => callback())
+    vi.stubGlobal('setTimeout', (callback: () => void) => callback())
+    vi.stubGlobal('getComputedStyle', () => ({ zoom: '1' }))
+    vi.stubGlobal('devicePixelRatio', 1.75)
+    vi.stubGlobal('innerWidth', 1099)
+    vi.stubGlobal('innerHeight', 721)
+    const result = await warmUpArticle({ evaluate: (callback: () => unknown) => callback() })
+    expect(result.imagesComplete).toBe(2)
+    expect(scroller.scrollTop).toBe(0)
+  })
+})
 
 describe('性能探针参数', () => {
   it('默认同时跑轻量采样与 trace，输出到 out/perf-probe', () => {
@@ -26,6 +58,17 @@ describe('性能探针参数', () => {
       mode: 'light',
       timeout: 30000
     })
+  })
+
+  it('应用目录独立于探针目录，缺值或未构建时明确失败', () => {
+    expect(parseOptions(['--app-dir', '../old58219a1']).appDir).toBe(resolve('../old58219a1'))
+    expect(parseOptions([]).appDir).toBe(resolve('.'))
+    expect(() => parseOptions(['--app-dir'])).toThrow(/Missing value/)
+    const target = resolve('out/nonexistent-app-47')
+    const result = spawnSync(process.execPath, [script, '--app-dir', target], { encoding: 'utf8' })
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain(target)
+    expect(result.stderr).toContain('缺少构建产物')
   })
 
   it('未知参数不静默忽略', () => {
@@ -62,6 +105,49 @@ describe('性能探针参数', () => {
     expect(result.status).toBe(2)
     expect(result.stderr).toContain('--fix')
   })
+})
+
+describe('网格实际动画载体', () => {
+  const active = { animationName: 'jy-grid-scroll', animationPlayState: 'running' }
+  const inactive = { animationName: 'none', animationPlayState: 'running' }
+
+  it('旧版选择父元素，关断样式只指向父元素', () => {
+    const snapshot = { parent: active, after: inactive }
+    expect(planGridControl(snapshot, false)).toMatchObject({
+      carrier: 'parent', css: null, expectedAnimationName: 'jy-grid-scroll'
+    })
+    expect(planGridControl(snapshot, true)).toMatchObject({
+      carrier: 'parent',
+      css: '.juya-scene-grid.juya-scene-grid-persp { animation: none !important; }',
+      expectedAnimationName: 'none'
+    })
+  })
+
+  it('新版选择 ::after，关断样式不影响父元素', () => {
+    const snapshot = { parent: inactive, after: active }
+    expect(planGridControl(snapshot, false)).toMatchObject({
+      carrier: '::after', css: null, expectedAnimationName: 'jy-grid-scroll'
+    })
+    expect(planGridControl(snapshot, true)).toMatchObject({
+      carrier: '::after',
+      css: '.juya-scene-grid.juya-scene-grid-persp::after { animation: none !important; }',
+      expectedAnimationName: 'none'
+    })
+  })
+
+  it('两个载体都有动画时优先父元素', () => {
+    expect(planGridControl({ parent: active, after: active }, false).carrier).toBe('parent')
+  })
+
+  it.each([null, { parent: inactive, after: inactive }, { parent: null, after: null }])(
+    '无载体时抛 fatal，不能把缺失伪元素静默当成新版', (snapshot) => {
+      expect(() => planGridControl(snapshot, false)).toThrow(/无可对比载体/)
+      expect(() => planGridControl(snapshot, true)).toThrow(/无可对比载体/)
+      try { planGridControl(snapshot, true) } catch (error) {
+        expect(error).toMatchObject({ fatal: true })
+      }
+    }
+  )
 })
 
 describe('rAF 指标聚合', () => {

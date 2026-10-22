@@ -129,6 +129,7 @@ npm run diagnose:gpu
 npm run perf:probe
 npm run perf:probe -- --mode light
 npm run perf:probe -- --mode trace
+npm run perf:probe -- --app-dir D:/Dev/opia-wt/old58219a1 --mode light
 npm run perf:probe -- --help
 ```
 
@@ -137,6 +138,8 @@ npm run perf:probe -- --help
 固定条件逐项写入报告头：样本标题 / 条目数、视口、DPR、uiZoom、滚动距离 / 速度、GPU 型号、显示器刷新率、`document.visibilityState`、`[data-app-hidden]`。任何一项不满足、GPU 未 PASS 或无法证明 profile 隔离时，报告标注「样本不可比」，退出码 `1`。报告中的 GPU 状态来自本次应用内 `getGPUFeatureStatus()` / `getGPUInfo()`，不等于完整性标签结论；标签级排障仍以 `npm run diagnose:gpu` 为准。轻量采样输出 rAF 回调频率、回调间隔（中位 / P95 / 最差）；完整 trace 输出 compositor 呈现帧数、呈现间隔与 `DroppedFrame` 掉帧数。取不到的指标显式写「未测」，不填 0。
 
 退出码：`0` = 样本可比；`1` = 已产出报告但样本不可比；`2` = 启动 / 测量失败或参数非法。报告保存在 `out/perf-probe/run-*/`，每次新建目录，不覆盖既有报告。
+
+旧 / 新构建比较（#47）：`--app-dir <path>` 指向已运行 `build:dir` 的应用根目录；主进程、preload 与 renderer 均来自该目录，Electron 可执行文件固定取探针自身的依赖，避免两组运行时不同。报告分别记录探针与被测应用的 HEAD、构建指纹和主进程实际路径。网格载体按父元素 → `::after` 探测；`--pause-grid` 只停检测到的载体。两处都无动画时返回 `2`，不会把旧版静默当成新版。A/B 正式比较应让两版网格均运动，预热不计入统计，按旧→新→新→旧重复至少两轮；轻量与 trace 分档，报告成对差值、中位数与组内漂移，漂移覆盖差值时结论为「收益未确定」。
 
 隔离：探针在 require 主进程前把 `userData` / `sessionData` 指向临时目录，并在运行前后对真实 profile（`%APPDATA%/opia-rss-reader` 等）做只读 stat 快照；报告记录临时 / 真实路径与前后变化。无法隔离时立即停止，不改用真实 profile。运行前请关闭正在使用的 Opia 实例；若真实 profile 在采样期间被别的进程写入，报告会判为无法证明隔离。实现上使用 Playwright `_electron` 启动真实应用，再从页面会话开 CDP `Tracing` / `Input.synthesizeScrollGesture`；调试端口由 Playwright 以临时端口分配，不占用 `4173` / `9222`，也不需要手写 websocket CDP 客户端。采样前会把被测窗口聚焦并移到 z 序最前（不设 always-on-top），避免遮挡节流污染样本。
 

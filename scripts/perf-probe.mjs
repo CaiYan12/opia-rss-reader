@@ -15,6 +15,7 @@ import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'n
 import { dirname, basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { assessGpuHealth } from './gpu-diagnostics.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -45,18 +46,19 @@ const TRACE_CATEGORIES = 'disabled-by-default-devtools.timeline.frame,cc,input,b
 // #45 对照组：仅注入到探针的临时页面，产品 CSS 与构建产物一字节不改。
 // 它停的正是 #44 移到合成层的那个纹理层动画，用来在同批次内量「网格动画开 / 关」的差值。
 const GRID_TARGET = '.juya-scene-grid.juya-scene-grid-persp'
-const GRID_PAUSE_CSS = `${GRID_TARGET}::after { animation: none !important; }`
 
-const HELP = `npm run perf:probe -- [--mode light|trace|both] [--output <directory>] [--timeout <ms>] [--pause-grid]
+const HELP = `npm run perf:probe -- [--mode light|trace|both] [--app-dir <path>] [--output <directory>] [--timeout <ms>] [--pause-grid]
 Fixed-protocol local performance probe for the real Electron app.
 Prerequisite: npm run build:dir; then npm run diagnose:gpu and compare only on PASS.
 Exit codes: 0 comparable sample, 1 completed but not comparable, 2 failed or invalid arguments.
 Reports default to out/perf-probe/run-<unique>/; light sampling and full trace are separate runs.
 --help       Show help without launching Electron.
 --mode       light (rAF sampling only), trace (compositor trace only), or both (default).
+--app-dir    Built application root (default: this probe's checkout). The Electron runtime
+             always comes from this probe's dependencies, so old/new builds share it.
 --output     Parent directory for a new report subdirectory (existing files are preserved).
 --timeout    Per-mode launch/measurement budget in milliseconds (30000..300000, default 120000).
---pause-grid Control-group only: inject a temporary style stopping the grid texture animation
+--pause-grid Control-group only: stop the detected carrier (parent for old builds, ::after for new)
              in the probe's own profile page. Product CSS is not modified; the run is marked
              as a control sample and must not be compared across batches.
 `
@@ -270,6 +272,7 @@ export function parseOptions(args) {
     mode: 'both',
     output: join(ROOT, 'out', 'perf-probe'),
     timeout: 120000,
+    appDir: ROOT,
     pauseGrid: false
   }
   for (let i = 0; i < args.length; i++) {
@@ -278,7 +281,7 @@ export function parseOptions(args) {
       options.pauseGrid = true
       continue
     }
-    if (!['--mode', '--output', '--timeout'].includes(name)) throw new Error(`Unknown argument: ${name}`)
+    if (!['--mode', '--output', '--timeout', '--app-dir'].includes(name)) throw new Error(`Unknown argument: ${name}`)
     const value = args[++i]
     if (!value || value.startsWith('--')) throw new Error(`Missing value: ${name}`)
     if (name === '--mode') {
@@ -286,6 +289,8 @@ export function parseOptions(args) {
       options.mode = value
     } else if (name === '--output') {
       options.output = resolve(value)
+    } else if (name === '--app-dir') {
+      options.appDir = resolve(value)
     } else {
       options.timeout = Number(value)
       if (!Number.isInteger(options.timeout) || options.timeout < 30000 || options.timeout > 300000) {
@@ -389,6 +394,7 @@ const path = require('node:path')
 const profile = process.env.OPIA_PERF_PROFILE
 const mainPath = process.env.OPIA_PERF_MAIN
 const infoPath = process.env.OPIA_PERF_INFO
+const appDir = process.env.OPIA_PERF_APP_DIR
 
 const defaultUserData = app.getPath('userData')
 const defaultSessionData = app.getPath('sessionData')
@@ -396,12 +402,16 @@ app.setPath('userData', profile)
 app.setPath('sessionData', profile)
 app.setPath('crashDumps', path.join(profile, 'crashes'))
 fs.mkdirSync(path.join(profile, 'crashes'), { recursive: true })
+app.setAppPath(appDir)
 
 const info = {
   defaultUserData,
   defaultSessionData,
   resolvedUserData: app.getPath('userData'),
   resolvedSessionData: app.getPath('sessionData'),
+  appPath: app.getAppPath(),
+  mainPath,
+  executable: process.execPath,
   versions: process.versions,
   argv: process.argv,
   gpuInfoUpdated: false
@@ -500,8 +510,8 @@ async function waitForJson(path, timeoutMs, accept) {
   return { error: lastError?.message ?? 'timeout' }
 }
 
-function gitValue(args) {
-  const result = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', windowsHide: true })
+function gitValue(args, cwd = ROOT) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true })
   return result.status === 0 ? result.stdout.trim() : null
 }
 
@@ -520,7 +530,7 @@ async function closeApp(app) {
   }
 }
 
-async function launchMode({ mode, directory, timeout, sample, pauseGrid }) {
+async function launchMode({ mode, directory, timeout, sample, pauseGrid, appDir }) {
   const profile = join(directory, 'profile')
   const infoPath = join(directory, 'main-info.json')
   mkdirSync(profile, { recursive: true })
@@ -530,7 +540,8 @@ async function launchMode({ mode, directory, timeout, sample, pauseGrid }) {
   const env = { ...process.env }
   for (const name of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_RENDERER_URL', 'ELECTRON_CLI_ARGS', 'NODE_OPTIONS']) delete env[name]
   env.OPIA_PERF_PROFILE = profile
-  env.OPIA_PERF_MAIN = join(ROOT, 'out', 'main', 'index.js')
+  env.OPIA_PERF_APP_DIR = appDir
+  env.OPIA_PERF_MAIN = join(appDir, 'out', 'main', 'index.js')
   env.OPIA_PERF_INFO = infoPath
 
   let app = null
@@ -540,7 +551,8 @@ async function launchMode({ mode, directory, timeout, sample, pauseGrid }) {
   try {
     app = await electron.launch({
       args: [bootstrap],
-      cwd: ROOT,
+      executablePath: require('electron'),
+      cwd: appDir,
       env,
       timeout
     })
@@ -711,27 +723,60 @@ async function readPageInfo(page) {
  * profile page only. The product stylesheet, build output and any real profile stay untouched,
  * and the injected tag disappears with the page when the run ends.
  */
-async function applyGridControl(page, pauseGrid) {
-  if (pauseGrid) await page.addStyleTag({ content: GRID_PAUSE_CSS })
-  const texture = await page.evaluate((selector) => {
+export function planGridControl(snapshot, pauseGrid) {
+  const hasAnimation = (style) => Boolean(style?.animationName?.split(',').some((name) => name.trim() && name.trim() !== 'none'))
+  const carrier = hasAnimation(snapshot?.parent) ? 'parent' : hasAnimation(snapshot?.after) ? '::after' : null
+  if (!carrier) {
+    const error = new Error('无可对比载体：父元素与 ::after 均未检测到网格动画')
+    error.fatal = true
+    throw error
+  }
+  const before = carrier === 'parent' ? snapshot.parent : snapshot.after
+  return {
+    carrier,
+    before,
+    expectedAnimationName: pauseGrid ? 'none' : before.animationName,
+    css: pauseGrid ? `${GRID_TARGET}${carrier === 'parent' ? '' : '::after'} { animation: none !important; }` : null
+  }
+}
+
+async function readGridStyles(page) {
+  return await page.evaluate((selector) => {
     const plane = document.querySelector(selector)
     if (!plane) return null
-    const cs = getComputedStyle(plane, '::after')
-    return { animationName: cs.animationName, animationPlayState: cs.animationPlayState }
+    const read = (pseudo) => {
+      const cs = getComputedStyle(plane, pseudo)
+      return { animationName: cs.animationName, animationPlayState: cs.animationPlayState }
+    }
+    return { parent: read(null), after: read('::after') }
   }, GRID_TARGET)
+}
+
+async function applyGridControl(page, pauseGrid) {
+  const plan = planGridControl(await readGridStyles(page), pauseGrid)
+  if (plan.css) await page.addStyleTag({ content: plan.css })
+  const after = await readGridStyles(page)
+  const texture = plan.carrier === 'parent' ? after?.parent : after?.after
   return {
+    carrier: plan.carrier,
+    before: plan.before,
     paused: pauseGrid,
     injected: pauseGrid,
     texture,
     // 关断必须真的生效，否则对照组与默认组同源，差值没有意义
-    verified: pauseGrid ? texture?.animationName === 'none' : texture?.animationName !== 'none'
+    verified: texture?.animationName === plan.expectedAnimationName
   }
 }
 
-async function warmUpArticle(page) {
+export async function warmUpArticle(page) {
   return await page.evaluate(async () => {
     const scroller = document.querySelector('.view-scroll')
     if (!scroller) throw new Error('未找到 .view-scroll 滚动容器')
+    const root = document.querySelector('.juya-root')
+    const images = root ? [...root.querySelectorAll('img')] : [...document.images]
+    // Probe-only preparation: layout shifts can move a lazy image past the tour's
+    // viewport stops. Both builds must start measurement with every sample image ready.
+    for (const image of images) image.loading = 'eager'
     scroller.scrollTop = 0
     const step = Math.max(200, Math.floor(scroller.clientHeight * 0.8))
     for (let y = 0; y <= scroller.scrollHeight; y += step) {
@@ -740,8 +785,6 @@ async function warmUpArticle(page) {
     }
     scroller.scrollTop = scroller.scrollHeight
     await new Promise((resolve) => setTimeout(resolve, 400))
-    const root = document.querySelector('.juya-root')
-    const images = root ? [...root.querySelectorAll('img')] : [...document.images]
     await Promise.race([
       Promise.all(images.map((image) => image.complete ? null : new Promise((resolve) => {
         image.onload = image.onerror = resolve
@@ -1012,7 +1055,7 @@ function formatRunMarkdown(run) {
     `- 滚动：${run.scrollStart} → ${run.scrollEnd} CSS px，手势 ${run.gestureMs} ms，实测 ${formatNumber(run.actualSpeed, ' px/s')}`,
     `- 可见性：${run.visibilityStart} → ${run.visibilityEnd}；data-app-hidden ${run.appHiddenStart} → ${run.appHiddenEnd}；焦点 ${run.hasFocusStart} → ${run.hasFocusEnd}`,
     `- 预热：${run.warmUp?.entryCount} 条目 / ${run.warmUp?.imageCount} 图像（完成 ${run.warmUp?.imagesComplete}）/ scrollHeight ${run.warmUp?.scrollHeight}`,
-    `- 网格纹理层：请求 ${run.grid?.paused ? '关断（对照组）' : '默认'}；实测 animation-name ` +
+    `- 网格载体 ${run.grid?.carrier ?? '未取到'}：请求 ${run.grid?.paused ? '关断（对照组）' : '默认'}；实测 animation-name ` +
       `${run.grid?.texture?.animationName ?? '未取到'} / play-state ${run.grid?.texture?.animationPlayState ?? '未取到'}；` +
       `注入样式 ${run.grid?.injected ? '是' : '否'}`,
     ''
@@ -1057,10 +1100,12 @@ function formatRunMarkdown(run) {
 
 function renderMarkdown(report) {
   const lines = [
-    '# 性能探针报告（#46）',
+    '# 性能探针报告（#46 / #47）',
     '',
     `- 生成时间：${report.createdAt}`,
     `- 分支 / HEAD：${report.branch ?? '未知'} / ${report.head ?? '未知'}`,
+    `- 被测构建：${report.app.directory}；HEAD ${report.app.head ?? '未知'}；工作树 ${report.app.dirty ? '有改动' : '干净'}`,
+    `- 构建 SHA256：main ${report.app.mainSha256}；renderer HTML ${report.app.rendererSha256}`,
     `- 结论：${report.comparability.comparable ? '样本可比' : '样本不可比'}`,
     `- GPU（应用内状态）：${report.prereq.status}${report.prereq.findings.length ? ' — ' + report.prereq.findings.join('；') : ''}`,
     `- 活动显卡：${report.gpu.activeDevices.map((device) => device.deviceString).filter(Boolean).join(', ') || '未知'}`,
@@ -1068,7 +1113,7 @@ function renderMarkdown(report) {
     `- 固定条件：${FIXED.viewportWidth}×${FIXED.viewportHeight} CSS px，DPR ${FIXED.devicePixelRatio}，uiZoom ${FIXED.uiZoom}，滚动 ${FIXED.scrollDistance} px @ ${FIXED.scrollSpeed} px/s`,
     `- 样本：${report.sample.title}（${report.sample.entries} 条目 / ${report.sample.images} 图像，合成固定样本）`,
     `- 网格动画：${report.grid.pauseRequested ? '对照组 — 探针注入样式关断纹理层动画' : '默认 — 产品 CSS'}` +
-      `（实测 ::after animation-name=${report.grid.texture?.animationName ?? '未取到'}）`,
+      `（载体 ${report.grid.carrier ?? '未取到'}，animation-name=${report.grid.texture?.animationName ?? '未取到'}）`,
     '- 先决条件：先运行 `npm run diagnose:gpu`；GPU 未 PASS 时本报告标注样本不可比。',
     ''
   ]
@@ -1129,8 +1174,8 @@ async function main(args = process.argv.slice(2)) {
     return 2
   }
 
-  const mainEntry = join(ROOT, 'out', 'main', 'index.js')
-  const rendererEntry = join(ROOT, 'out', 'renderer', 'index.html')
+  const mainEntry = join(options.appDir, 'out', 'main', 'index.js')
+  const rendererEntry = join(options.appDir, 'out', 'renderer', 'index.html')
   for (const path of [mainEntry, rendererEntry]) {
     if (!statSafe(path).exists) {
       console.error(`[perf-probe] 缺少构建产物：${path}；先运行 npm run build:dir。`)
@@ -1154,11 +1199,19 @@ async function main(args = process.argv.slice(2)) {
 
   const report = {
     schemaVersion: 1,
-    ticket: 46,
+    ticket: 47,
     createdAt: new Date().toISOString(),
     directory: runDirectory,
     branch: gitValue(['rev-parse', '--abbrev-ref', 'HEAD']),
     head: gitValue(['rev-parse', 'HEAD']),
+    app: {
+      directory: options.appDir,
+      head: gitValue(['rev-parse', 'HEAD'], options.appDir),
+      branch: gitValue(['rev-parse', '--abbrev-ref', 'HEAD'], options.appDir),
+      dirty: gitValue(['status', '--porcelain'], options.appDir),
+      mainSha256: createHash('sha256').update(readFileSync(mainEntry)).digest('hex'),
+      rendererSha256: createHash('sha256').update(readFileSync(rendererEntry)).digest('hex')
+    },
     probe: {
       script: fileURLToPath(import.meta.url),
       node: process.version,
@@ -1169,7 +1222,7 @@ async function main(args = process.argv.slice(2)) {
     display: null,
     gpu: { activeDevices: [] },
     sample: sample.meta,
-    grid: { pauseRequested: options.pauseGrid === true, controlVerified: null, texture: null },
+    grid: { pauseRequested: options.pauseGrid === true, controlVerified: null, carrier: null, texture: null },
     conditions: FIXED,
     isolation: {
       profiles: [],
@@ -1196,6 +1249,7 @@ async function main(args = process.argv.slice(2)) {
         directory,
         timeout: options.timeout,
         sample,
+        appDir: options.appDir,
         pauseGrid: options.pauseGrid === true
       })
     } catch (error) {
@@ -1224,6 +1278,7 @@ async function main(args = process.argv.slice(2)) {
     if (run.grid) {
       report.grid.controlVerified = run.grid.verified === true
       report.grid.texture = run.grid.texture ?? null
+      report.grid.carrier = run.grid.carrier ?? null
     }
     const markdown = formatRunMarkdown(run)
     writeFileSync(join(directory, 'report.json'), JSON.stringify(run, null, 2), 'utf8')
@@ -1260,7 +1315,7 @@ async function main(args = process.argv.slice(2)) {
     if (run.conditions && !run.conditions.met) issues.push(...run.conditions.issues.map((issue) => `${run.mode}: ${issue}`))
     if (run.grid && run.grid.verified !== true) {
       issues.push(
-        `${run.mode}: 网格动画状态与请求不符（请求 paused=${run.grid.paused}，实测 ::after animation-name=${run.grid.texture?.animationName ?? '未取到'}），样本不可比`
+        `${run.mode}: 网格动画状态与请求不符（请求 paused=${run.grid.paused}，载体 ${run.grid.carrier}，实测 animation-name=${run.grid.texture?.animationName ?? '未取到'}），样本不可比`
       )
     }
     if (run.mode === 'light' && !run.metrics?.raf?.measured) issues.push('light: rAF 指标未测')
@@ -1281,7 +1336,7 @@ async function main(args = process.argv.slice(2)) {
     `- GPU（应用内状态）: ${report.prereq.status}${report.prereq.findings.length ? ' — ' + report.prereq.findings.join('; ') : ''}`,
     `- 活动显卡: ${report.gpu.activeDevices.map((device) => device.deviceString).filter(Boolean).join(', ') || '未知'}`,
     `- 刷新率: ${report.display?.frequencyHz ?? '未知'} Hz`,
-    `- 网格动画: ${report.grid.pauseRequested ? '对照组（关断）' : '默认'}，实测 ::after animation-name=${report.grid.texture?.animationName ?? '未取到'}`,
+    `- 网格动画: ${report.grid.pauseRequested ? '对照组（关断）' : '默认'}，载体 ${report.grid.carrier ?? '未取到'}，实测 animation-name=${report.grid.texture?.animationName ?? '未取到'}`,
     `- 隔离: ${report.isolation.verified ? '已证明（真实 profile 快照无变化）' : '未证明'}`,
     ...(report.comparability.issues.length ? ['', ...report.comparability.issues.map((issue) => `- ${issue}`)] : []),
     '',

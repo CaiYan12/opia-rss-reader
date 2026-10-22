@@ -4392,3 +4392,24 @@ describe('newsprint90s 订阅页 compact 态守卫（#31：72×40 直角缩略�
     expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
   })
 })
+
+describe('newsprint90s 订阅页 magazine 态守卫（#31：首条 3:2 / 26px）', () => {
+  // magazine 首条（.juya-feed-featured）是 .juya-feed 的直接子元素、不经 .juya-feed-grid，
+  // 故 #30 的网格规则接不到它；其余条目复用网格，继续由 #30 守卫。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('首条封面 3:2 直角（基础层 21:9 必须被覆盖）', () => {
+    const cover = newsRule('\.juya-feed-featured \.juya-feed-cover')
+    expect(cover, 'magazine 首条图版规则应存在').toBeTruthy()
+    expect(decl(cover, 'aspect-ratio'), '首条封面 3:2').toBe('3 / 2')
+    expect(decl(cover, 'border-radius'), '首条封面直角').toBe('0')
+  })
+
+  it('首条标题 26px 黑体优先', () => {
+    const title = newsRule('\.juya-feed-featured \.juya-feed-title')
+    expect(title, 'magazine 首条标题规则应存在').toBeTruthy()
+    expect(decl(title, 'font-size'), '首条标题 26px').toBe('26px')
+    expect(decl(title, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+  })
+})

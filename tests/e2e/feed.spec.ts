@@ -362,6 +362,36 @@ test('newsprint compact：小缩略图直角、标题 14px、行式结构与元�
   expect(dot.radius, '未读点方角').toBe('0px')
 })
 
+test('newsprint magazine：首条封面 3:2、标题 26px；其余条目仍走 #30 网格形态', async ({ page }) => {
+  await loadApp(page, 'newsprintMagazine')
+  const tab = activeTab(page)
+  const featured = tab.locator('.juya-feed-featured')
+  await expect(featured).toHaveCount(1)
+
+  // 首条大图：3:2（基础层是 21:9），直角
+  const coverEl = featured.locator('.juya-feed-cover')
+  const cover = (await coverEl.boundingBox())!
+  expect(cover.width / cover.height, '首条封面 3:2').toBeCloseTo(3 / 2, 1)
+  expect(await coverEl.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe('0px')
+
+  const title = await featured.locator('.juya-feed-title').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { size: cs.fontSize, family: cs.fontFamily }
+  })
+  expect(title.size, '首条标题 26px').toBe('26px')
+  expect(title.family.split(',')[0].trim().replace(/["']/g, '')).toBe('SimHei')
+
+  // 其余条目继续沿用 #30 的卡片网格形态（160 × 4:3 图版、18px 标题、无卡片底色）
+  const grid = tab.locator('.juya-feed-grid')
+  await expect(grid.locator('> .juya-feed-item')).toHaveCount(4)
+  const small = grid.locator('> .juya-feed-item').first()
+  const smallCover = (await small.locator('.juya-feed-cover').boundingBox())!
+  expect(smallCover.width).toBeCloseTo(160, 0)
+  expect(smallCover.height).toBeCloseTo(120, 0)
+  expect(await small.locator('.juya-feed-title').evaluate((el) => getComputedStyle(el).fontSize)).toBe('18px')
+  expect(await small.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
+})
+
 /* ---- 程序化视觉合理性断言（无视觉模型，纯几何校验） ---- */
 
 type Box = { left: number; top: number; right: number; bottom: number; width: number; height: number }

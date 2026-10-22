@@ -1,4 +1,5 @@
-import { cloneElement, type CSSProperties } from 'react'
+import { cloneElement, type CSSProperties, type ReactNode } from 'react'
+import { Calendar, Rss } from 'lucide-react'
 import type { Article, LayoutConfig } from '../../../shared/types'
 import type { JuyaStyleVariantId } from '../juyaStyles'
 import type { JuyaEntry } from '../parseJuyaIssue'
@@ -61,19 +62,23 @@ export function feedFieldGates(fields: LayoutConfig['fields'], mode: FeedItemMod
 
 /** 订阅页布局骨架（单一来源）：预设分发（grid/compact/magazine）、--jy-cols 分列、
  *  入场 stagger、空态文案都在这里；各风格只注入 renderItem 决定卡片内部排布。
- *  显示字段门控由本骨架按模式计算后传给 renderItem。 */
+ *  显示字段门控由本骨架按模式计算后传给 renderItem。
+ *  scene：可选场景节点，渲染在 .juya-root 内、.juya-feed 之前（z-index 0 固定层在内容之下）。
+ *  不传时输出与接线前逐字一致——其余七个风格的调用点不传。 */
 export function FeedShell({
   articles,
   variantId,
   variantClass,
   layout,
-  renderItem
+  renderItem,
+  scene
 }: {
   articles: Article[]
   variantId: JuyaStyleVariantId
   variantClass: string
   layout: LayoutConfig
   renderItem: (a: Article, i: number, mode: FeedItemMode, gates: FeedGates, delay: number) => JSX.Element
+  scene?: ReactNode
 }): JSX.Element {
   const { preset, gridColumns } = layout
   const empty = articles.length === 0
@@ -83,6 +88,7 @@ export function FeedShell({
   if (preset === 'magazine') {
     return (
       <div className={`juya-root ${variantClass}`} data-juya-variant={variantId}>
+        {scene}
         <div className="juya-feed">
           {empty && <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>}
           {articles[0] &&
@@ -105,6 +111,7 @@ export function FeedShell({
   if (preset === 'compact') {
     return (
       <div className={`juya-root ${variantClass}`} data-juya-variant={variantId}>
+        {scene}
         <div className="juya-feed juya-feed-compact">
           {empty ? (
             <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>
@@ -121,6 +128,7 @@ export function FeedShell({
   }
   return (
     <div className={`juya-root ${variantClass}`} data-juya-variant={variantId}>
+      {scene}
       <div className="juya-feed juya-feed-grid" style={gridProps}>
         {empty ? (
           <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>
@@ -168,19 +176,23 @@ export function EntrySplit({
   )
 }
 
-/** 默认期号卡片：多数风格的订阅页 renderItem 直接复用；个性化的风格在此基础上自写。 */
+/** 默认期号卡片：多数风格的订阅页 renderItem 直接复用；个性化的风格在此基础上自写。
+ *  metaIcons：日期前 Calendar、来源前 Rss（12px、装饰性故 aria-hidden），仅 synthwave 传。
+ *  不传时保持原 DOM（日期 span 无 class、无图标），其它七个风格观感不变。 */
 export function DefaultFeedItem({
   a,
   mode,
   gates,
   delay,
-  onOpen
+  onOpen,
+  metaIcons = false
 }: {
   a: Article
   mode: FeedItemMode
   gates: FeedGates
   delay: number
   onOpen: () => void
+  metaIcons?: boolean
 }): JSX.Element {
   const { history, sources } = useAppStore()
   const read = history[a.guid]?.read ?? false
@@ -200,14 +212,20 @@ export function DefaultFeedItem({
         <span className="juya-feed-meta">
           {!read && <span className="juya-feed-read-dot" aria-hidden />}
           {gates.pubDate && (
-            <span>
+            <span className={metaIcons ? 'juya-feed-date' : undefined}>
+              {metaIcons && <Calendar size={12} aria-hidden />}
               {new Date(a.pubDate).toLocaleString('zh-CN', {
                 dateStyle: 'medium',
                 timeStyle: 'short'
               })}
             </span>
           )}
-          {gates.source && sourceName && <span className="juya-feed-source">{sourceName}</span>}
+          {gates.source && sourceName && (
+            <span className="juya-feed-source">
+              {metaIcons && <Rss size={12} aria-hidden />}
+              {sourceName}
+            </span>
+          )}
         </span>
       </span>
     </button>

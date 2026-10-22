@@ -1705,103 +1705,301 @@
 }
 
 /* ---- 蒸汽梦核式 ---- */
-[data-juya-variant='dreamcore-light'] {
-  --jy-bg: #f3ecff;
-  --jy-card: rgba(255, 255, 255, 0.8);
-  --jy-border: rgba(124, 77, 255, 0.35);
-  --jy-heading: #342a58;
-  --jy-text: #463e60;
-  --jy-muted: #75689c;
-  --jy-accent: #6d4de0;
+/* 亮侧（#41）：同一母题的日间版 —— 洋红橙高饱和，卡片同为 0.62 毛玻璃，
+   不再是与应用其它页面无异的低饱和淡紫。场景层会覆盖 --jy-bg，该值只是无场景时的兜底。 */
+[data-juya-variant='synthwave-light'] {
+  --jy-bg: #ffe6cc;
+  --jy-card: rgba(255, 255, 255, 0.62);
+  --jy-border: rgba(224, 0, 110, 0.30);
+  /* 悬停边框提亮（#34 review，同暗侧口径）：与常态边同色相，alpha .30 → .55。
+     合成色由 #f6a7cd 提到 #ee6cab（对白卡合成底 1.67 → 2.57），亮侧靠「加深」而非「加亮」
+     表达悬停 —— 白卡上加亮等于看不见。 */
+  --jy-border-hover: rgba(224, 0, 110, 0.55);
+  --jy-heading: #4a0736;
+  --jy-text: #3d0a2c;
+  /* 次要文字（#41）：0.62 白卡叠日间天空顶 #ffd6e8 的合成底 #ffeff6 上实算 6.24:1；
+     叠天空最深段 #ffb27a 的合成底 #ffe2cc 上 5.60:1 —— 两侧都过 AA（守卫实算，改色即撞断言）。 */
+  --jy-muted: #8c3f6a;
+  --jy-accent: #e0006e;
   --jy-on-accent: #ffffff;
-  --jy-link: #5737c2;
-  --jy-lead-bg: rgba(124, 77, 255, 0.08);
+  --jy-link: #b0005a;
+  --jy-lead-bg: rgba(224, 0, 110, 0.12);
   --jy-focus: #7c4dff;
   --jy-radius: 16px;
-  /* synthwave pastel 场景 token（太阳/网格，.juya-scene 层消费） */
-  --jy-scene-sun-1: #ffd9ec;
-  --jy-scene-sun-2: #b78cff;
-  --jy-scene-grid-line: rgba(143, 99, 255, 0.22);
-  --jy-scene-horizon: rgba(183, 140, 255, 0.5);
+  /* 字体（#37 / #41）：与暗侧同值，亮侧不再退到兜底栈 */
+  --jy-font-heading: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --jy-font-masthead: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
+  /* synthwave 场景 token（日间版）：日轮 #fff04d → #ff9a3c → #ff2d95（中段与暗侧同值，
+     日间版只把最高光调亮），网格线与暗侧同一品红但更淡（.35 vs .55），
+     地平线沿用暖橙 —— 亮侧靠天空与卡面提亮，不靠换色相 */
+  --jy-scene-sun-1: #fff04d;
+  --jy-scene-sun-mid: #ff9a3c;
+  --jy-scene-sun-2: #ff2d95;
+  --jy-scene-grid-line: rgba(255, 45, 149, 0.35);
+  --jy-scene-horizon: rgba(255, 120, 60, 0.85);
 }
 
-[data-juya-variant='dreamcore-dark'] {
+[data-juya-variant='synthwave-dark'] {
   --jy-bg: #0b0918;
-  --jy-card: rgba(24, 19, 44, 0.85);
-  --jy-border: rgba(158, 132, 255, 0.32);
-  --jy-heading: #e6dcff;
-  --jy-text: #c0b6dc;
-  --jy-muted: #9388b8;
-  --jy-accent: #8f63ff;
-  --jy-on-accent: #120d26;
-  --jy-link: #c3a9ff;
-  --jy-lead-bg: rgba(143, 99, 255, 0.12);
+  --jy-card: rgba(20, 8, 38, 0.62);
+  /* 边框（#34 review）：SPEC「卡片与文字」定「边框 1px 半透明品红」，取 --jy-accent 同色相。
+     原 rgba(158,132,255,.32) 是 #35 改名前留下的梦核紫，与品红母题异色。
+     实算：0.62 卡面压落日峰（合成底 #6d3f2e）时边框合成色 #9c394f、对该底 1.30:1 ——
+     边框是装饰性轮廓（边界感主要由 18px 毛玻璃与 18px 外发光承担），不承担信息承载，
+     故按视觉一致性取值，不套非文本件 3:1 门槛。 */
+  --jy-border: rgba(255, 45, 149, 0.32);
+  /* 悬停边框提亮（#34 review，SPEC「交互与系统」：悬停只加深外发光与边框亮度）：
+     同一品红，alpha .32 → .55。合成色由 #9c394f 提到 #bd3567（对卡底 1.30 → 1.61），
+     肉眼可辨是「边框亮了」，又不会盖过同时加深的外发光。 */
+  --jy-border-hover: rgba(255, 45, 149, 0.55);
+  --jy-heading: #ffe6ff;
+  --jy-text: #f0dcff;
+  /* 次要文字（#39）：0.62 卡面把落日最亮处压成约 rgb(109, 63, 46)（#ff9a3c 之上），
+     原值 #9388b8 在该合成底上只有 2.69:1；提到 #c9b7e0 后实测 4.72:1，过 AA。
+     #34 review 复核：本次调色板迁移未动该值，4.72 仍成立。 */
+  --jy-muted: #c9b7e0;
+  --jy-accent: #ff2d95;
+  --jy-on-accent: #1a0010;
+  --jy-link: #ff8ad0;
+  --jy-lead-bg: rgba(255, 45, 149, 0.12);
+  /* 焦点色（#34 review）：--jy-focus #b89aff 刻意**保持不动**。
+     SPEC 未规定焦点色，改它属于设计决策（焦点环是功能件，不是装饰色），
+     不随本轮「梦核紫 → 品红」迁移顺手改 —— 待单独裁决，不要顺手改。 */
   --jy-focus: #b89aff;
   --jy-radius: 16px;
-  /* synthwave 场景 token：日轮 #ffd319→#ff2975，霓虹网格品红线，地平线辉光 */
-  --jy-scene-sun-1: #ffd319;
-  --jy-scene-sun-2: #ff2975;
-  --jy-scene-grid-line: rgba(255, 41, 117, 0.5);
-  --jy-scene-horizon: rgba(255, 209, 25, 0.9);
+  /* 字体（#37）：标题落黑体栈；刊头落等宽栈。中文没有等宽字体，等宽只作用于拉丁与数字，
+     汉字仍由 Noto Sans SC 承接 —— 这是已知限制，不引入 webfont（SPEC「字体」Out of Scope）。 */
+  --jy-font-heading: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --jy-font-masthead: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
+  /* synthwave 场景 token：日轮 #ffe14d → #ff9a3c → #ff2d95（SPEC「场景」三色色带，
+     中段 #34 review 补上 —— 此前只有首尾两站，橙带整段缺失），霓虹网格品红线，地平线辉光 */
+  --jy-scene-sun-1: #ffe14d;
+  --jy-scene-sun-mid: #ff9a3c;
+  --jy-scene-sun-2: #ff2d95;
+  --jy-scene-grid-line: rgba(255, 45, 149, 0.55);
+  --jy-scene-horizon: rgba(255, 120, 60, 0.85);
 }
 
-/* 发光边框 + 毛玻璃卡片；背景氛围漂移（每屏唯一动效，可关闭：reduced-motion 下静态） */
-.jydream .juya-entry,
-.jydream .juya-masthead {
+/* 夜空 + 扫描线（#36，2026-10-22）：挂在场景层自身，随内容固定；
+   首个背景层绘制在最上层（扫描线压在渐变之上），落日与网格是 DOM 子层，画在其上。 */
+[data-juya-variant='synthwave-dark'].jysynth .juya-scene {
+  background-image:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #24103f 0%, #3d0f4a 32%, #b01a5a 68%, #ff8a4c 88%, #1a0b2e 100%);
+}
+
+/* 窗口不可见时暂停（#36）：此前暂停清单只覆盖 nocturne，落日与网格切到后台仍在重绘 */
+[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-sun {
+  animation-play-state: paused;
+}
+[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp::after {
+  animation-play-state: paused;
+}
+
+/* 日间天空 + 扫描线（#41）：与暗侧同一母题 —— 粉紫高空 → 洋红 → 暖橙 → 米色落地。
+   扫描线比暗侧更淡（.06 vs .10）：白天不需要那么强的 CRT 压暗，否则会把字压灰。
+   其余管线不变：首个背景层绘制在最上层（扫描线压在渐变之上），落日与网格是 DOM 子层，画在其上。 */
+[data-juya-variant='synthwave-light'].jysynth .juya-scene {
+  background-image:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.06) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #ffd6e8 0%, #ffc4d8 45%, #ffb27a 82%, #ffe6cc 100%);
+}
+
+/* 日间地面（#41）：共享透视网格平面自带的 #170a2a 是给暗侧调的地面底色，亮侧沿用它会出现
+   亮粉天空 → 近黑地面的硬断层，而且卡片压在网格区时 0.62 白卡合成出 #a7a2ae 的中灰底，
+   次要文字 2.78:1、链接 2.81:1（AA 不过）。这里只把 background-color 换成浅粉：
+   合成底变 #ffebf1，正文 14.40 / 次要 6.07 / 链接 6.15；品红网格线（alpha .35）在浅底上仍成形。
+   几何（height / bottom / transform / perspective）继续归共享规则与下方 #40 的订阅页补偿，
+   本规则一件不改 —— 守卫⑤锁这一点，并锁共享规则的 #170a2a 不被顺手改动。 */
+[data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp {
+  background-color: #ffcadb;
+}
+
+/* 窗口不可见时暂停（#41）：暗侧已进清单，亮侧此前漏在清单外（白天后台仍重绘网格） */
+[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-sun {
+  animation-play-state: paused;
+}
+[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp::after {
+  animation-play-state: paused;
+}
+
+/* 订阅页场景（#40）：订阅页滚动口顶端是 80px（标题栏 + 标签栏），阅读页内容根顶端是 130px；
+   共享网格的 bottom: 136px 是按阅读页调校的，订阅页直接沿用会让地面停在可视区下缘之上 56px，
+   露出夜空渐变 88% 处的橙色地平带（地面像悬空）。仅在订阅页骨架内（:has(> .juya-feed)）补回这 48px：
+   网格底边留 8px 余量，horizon 与阅读页同高（≈452px vs 阅读页 453px）。
+   作用域限定 .jysynth + 订阅页；共享 .juya-scene / .juya-scene-grid.juya-scene-grid-persp 一字节不动。 */
+.jysynth:has(> .juya-feed) .juya-scene-grid-persp {
+  bottom: 88px;
+}
+
+/* 发光边框 + 毛玻璃卡片；背景氛围漂移（每屏唯一动效，可关闭：reduced-motion 下静态）
+   #39：模糊从 6px 提到 18px 并补 saturate(1.15) —— 6px 时落日与网格直接透底，卡片读不出边界。
+   #34 review：外发光字面色由梦核紫 rgba(124,92,255,.12) 改品红 —— 取色来源为暗侧 --jy-accent
+   #ff2d95；亮侧 accent #e0006e 与它同色相（品红），本条是两变体共享规则，字面值统一取品红。
+   发光是纯装饰（box-shadow 不承载信息、无对比度门槛），只求与边框/网格线同族。 */
+.jysynth .juya-entry,
+.jysynth .juya-masthead {
   background: var(--jy-card);
   border: 1px solid var(--jy-border);
   border-radius: var(--jy-radius);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 0 18px rgba(124, 92, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: 0 0 18px rgba(255, 45, 149, 0.12);
 }
 
-.jydream .juya-entry {
+.jysynth .juya-entry {
   padding: 18px 20px;
 }
 
-.jydream .juya-masthead {
+.jysynth .juya-masthead {
   padding: 24px;
 }
 
-.jydream .juya-masthead h1 {
+/* 刊头标题（#37）：28px + 0.02em 字距 + heading→accent 横向渐变 + 1px 描边。
+   不做倾斜或斜体：中文没有斜体字形，合成斜切会让笔画失真（SPEC「字体」段明令）。
+   字族用带兜底的 var()：字体 token 亮/暗两侧变体块都已定义（#37 暗侧、#41 亮侧），
+   兜底栈只为防 token 被误删时刊头掉回通用字体。
+   描边（#34 review）改由下面两条按变体分色 —— 此处不再写死单色，见紧跟的说明。 */
+.jysynth .juya-masthead h1 {
+  font-family: var(--jy-font-masthead, 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif);
+  font-size: 28px;
+  letter-spacing: 0.02em;
   background: linear-gradient(90deg, var(--jy-heading), var(--jy-accent));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.jydream .juya-lead {
+/* 1px 描边分变体（#34 review）：此前全风格共用一条 rgba(230,220,255,.45) —— 近白紫是给暗侧
+   调的，亮侧「深紫标题压白卡」上几乎看不见，等于没有描边。
+   暗侧：与 --jy-heading #ffe6ff 同源（同 RGB、alpha 0.45）。浅色低透只在字形外沿勾轮廓，
+   不夺渐变中段层次；纯白 1px 会在 28px 粗体上糊成第二层字形，accent 描边则与渐变末端同色，等于没勾边。
+   亮侧：与 --jy-heading #4a0736 同源（同 RGB、alpha 0.28）。深色低透的理由与暗侧镜像 ——
+   白卡上提亮即消失，只能靠压暗勾边；alpha 取 0.28 而非暗侧的 0.45，因为亮侧渐变末端 accent
+   #e0006e 已偏暗，描边再重会明显吃掉「深紫 → 品红」的过渡。
+   描边是装饰性轮廓（字身由不透明渐变填充），不套对比度门槛。 */
+[data-juya-variant='synthwave-dark'].jysynth .juya-masthead h1 {
+  -webkit-text-stroke: 1px rgba(255, 230, 255, 0.45);
+}
+
+[data-juya-variant='synthwave-light'].jysynth .juya-masthead h1 {
+  -webkit-text-stroke: 1px rgba(74, 7, 54, 0.28);
+}
+
+/* 可访问性回退①（#37）：不支持 background-clip: text 的引擎上，transparent 字 + 无处裁剪
+   = 整行标题消失，退回实色并撤掉渐变 */
+@supports not (background-clip: text) {
+  .jysynth .juya-masthead h1 {
+    background: none;
+    color: var(--jy-heading);
+  }
+}
+
+/* 可访问性回退②（#37）：高对比模式强制丢弃 background-image，clip: text 下同样只剩透明字，
+   退回系统前景色（CanvasText），保证标题在任何强制配色下可见 */
+@media (forced-colors: active) {
+  .jysynth .juya-masthead h1 {
+    background: none;
+    color: CanvasText;
+  }
+}
+
+.jysynth .juya-lead {
   border-left: 3px solid var(--jy-accent);
   border-radius: 8px;
 }
 
-.jydream .juya-feed-item {
+/* 订阅页条目卡面。外发光字面色（#34 review）：取暗侧 --jy-accent #ff2d95 的品红，
+   与上面刊头/条目那条同族（亮侧 accent #e0006e 同色相，本条为共享规则故字面值统一）。
+   原 rgba(124,92,255,.12) 是梦核紫，和新的品红边框异色。发光是纯装饰，无对比度门槛。 */
+.jysynth .juya-feed-item {
   background: var(--jy-card);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 0 14px rgba(124, 92, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: 0 0 14px rgba(255, 45, 149, 0.12);
+}
+
+/* 概览底板（#39，新增）：此前概览是裸列表，压在落日上完全读不出区块边界。
+   外观与卡片同源（同一套 token），内衬 12×16；条目本身的字号/行高仍由基类决定，此处不动。 */
+.jysynth .juya-overview {
+  background: var(--jy-card);
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius);
+  padding: 12px 16px;
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+/* 配图（#39）：1px 霓虹描边勾出图片边界，再降一点饱和，避免落日暖调把照片冲得过艳。
+   描边走场景里的品红霓虹线 token（--jy-scene-grid-line，暗侧 rgba(255,45,149,.55)），
+   不新增色值：卡面边框同族但更淡（--jy-border 暗侧 alpha .32），图片借网格线的 .55
+   读出「霓虹管」的存在感，同时也和地面网格呼应。 */
+.jysynth .juya-media img {
+  border: 1px solid var(--jy-scene-grid-line);
+  filter: saturate(0.92);
 }
 
 /* 订阅封面 16/9（featured 21/9），hover 发光加深 */
-.jydream .juya-feed-cover {
+.jysynth .juya-feed-cover {
   aspect-ratio: 16 / 9;
 }
 
-.jydream .juya-feed-featured .juya-feed-cover {
+.jysynth .juya-feed-featured .juya-feed-cover {
   aspect-ratio: 21 / 9;
 }
 
-.jydream .juya-feed-item:hover {
-  box-shadow: 0 0 22px rgba(124, 92, 255, 0.28);
+/* 悬停（#39）：基础层会 translateY(-2px) 上浮，卡片一浮就和 18px 毛玻璃脱层；
+   这里取消位移（SPEC「交互与系统」：悬停只加深外发光与边框亮度）。
+   #34 review：此前只改了 box-shadow，漏掉「边框亮度」一半 —— 补 border-color 走
+   --jy-border-hover（亮/暗各自一条 token，alpha .30/.32 → .55，见变体块内实算）。
+   外发光字面色品红取暗侧 --jy-accent #ff2d95（亮侧 #e0006e 同色相，共享规则统一字面值），
+   0.12 → 0.28 是「加深」而不是换色；发光纯装饰，无对比度门槛。 */
+.jysynth .juya-feed-item:hover {
+  transform: none;
+  border-color: var(--jy-border-hover);
+  box-shadow: 0 0 22px rgba(255, 45, 149, 0.28);
+}
+
+/* ---- 图标：相关链接箭头与订阅页元信息（#38）----
+   链接箭头改由 lucide ArrowUpRight 承担，故在 synthwave 作用域内关掉基础层文本 ↗；
+   元信息图标 12px、与文字同色（lucide 走 currentColor）、间距 4px。 */
+[data-juya-variant='synthwave-light'].jysynth .juya-links a::after {
+  content: none;
+}
+[data-juya-variant='synthwave-dark'].jysynth .juya-links a::after {
+  content: none;
+}
+
+[data-juya-variant='synthwave-light'].jysynth .juya-links a.juya-link-icon svg,
+[data-juya-variant='synthwave-dark'].jysynth .juya-links a.juya-link-icon svg {
+  /* preflight 把 svg 置为 block；改回行内，图标才与链接文字同排 */
+  display: inline;
+  margin-left: 4px;
+  vertical-align: -1px;
+  color: inherit;
+}
+
+/* 日期与来源改为行内弹性容器，图标与文字基线对齐且恒为 4px 间距 */
+[data-juya-variant='synthwave-light'].jysynth .juya-feed-date,
+[data-juya-variant='synthwave-light'].jysynth .juya-feed-meta .juya-feed-source,
+[data-juya-variant='synthwave-dark'].jysynth .juya-feed-date,
+[data-juya-variant='synthwave-dark'].jysynth .juya-feed-meta .juya-feed-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-juya-variant='synthwave-light'].jysynth .juya-feed-meta svg,
+[data-juya-variant='synthwave-dark'].jysynth .juya-feed-meta svg {
+  color: inherit;
+  flex: none;
 }
 
 /* ==========================================================================
-   场景固定层（.juya-scene）：synthwave 太阳/透视网格（dreamcore）、星空/地平网格（y2k 暗）、
+   场景固定层（.juya-scene）：synthwave 太阳/透视网格（synthwave）、星空/地平网格（y2k 暗）、
    尘埃微粒 dust / 静态渐层雾 nebula（共享层预置，2026-10-12 #1；nocturne-dark 已于 #2 接线）。
    sticky 假固定：内容在 uiZoom 缩放容器内，position:fixed 会被 CSS zoom 破坏锚定；
    sticky 相对滚动容器吸附且不随缩放漂移，负 margin 抵消占位。
    动画一律挂 .juya-scene-* 子层（.juya-root 永无 animation，reduced-motion 断言结构保证）。
    【已知根因 · 共享层不改高度】height: 100vh 未扣应用 chrome 高度 128px（标题栏 + 标签栏）：
-   改共享高度会同时波及 dreamcore（太阳/透视网格）与 y2k（星空/地平网格）的既有观感，
+   改共享高度会同时波及 synthwave（太阳/透视网格）与 y2k（星空/地平网格）的既有观感，
    且 .juya-scene 是 sticky + 负 margin 的占位对（高度与 margin-bottom 必须成对改），故**不改**。
    处置约定（段内抬升）：每个挂场景的风格在自己的段内按需抬升装饰底边 —— y2k 暗已用
    [data-juya-variant='y2k-dark'].jyy2k .juya-scene-grid { bottom: 136px }（≈128px chrome + 8px 余量），
@@ -1885,49 +2083,65 @@
     radial-gradient(130% 90% at 50% 100%, var(--jy-nebula-3), transparent 64%);
 }
 
-/* 条纹太阳：实心上弦 + 下弦逐层分离的切面条纹（单 mask 多停靠点手写） */
+/* 条纹太阳：实心上弦 + 下弦逐层分离的切面条纹（单 mask 多停靠点手写）。
+   #36（2026-10-22）：直径提到 min(52vh, 480px)、条纹加到 10 道，圆心位置不动。 */
 .juya-scene-sun {
   top: 7%;
   left: 50%;
   translate: -50% 0;
-  width: min(46vh, 420px);
+  width: min(52vh, 480px);
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(
     circle at 50% 36%,
     var(--jy-scene-sun-1) 0%,
+    var(--jy-scene-sun-mid) 34%,
     var(--jy-scene-sun-2) 62%,
     transparent 74%
   );
   -webkit-mask-image: linear-gradient(
     180deg,
-    #000 0 44%,
-    transparent 44% 52%,
-    #000 52% 62%,
-    transparent 62% 68%,
-    #000 68% 74%,
-    transparent 74% 79%,
-    #000 79% 84%,
-    transparent 84% 88%,
-    #000 88% 92%,
-    transparent 92% 95%,
-    #000 95% 98%,
-    transparent 98% 100%
+    #000 0 34%,
+    transparent 34% 39%,
+    #000 39% 47%,
+    transparent 47% 51%,
+    #000 51% 58%,
+    transparent 58% 61%,
+    #000 61% 67%,
+    transparent 67% 70%,
+    #000 70% 75.5%,
+    transparent 75.5% 78%,
+    #000 78% 82.5%,
+    transparent 82.5% 85%,
+    #000 85% 88.5%,
+    transparent 88.5% 91%,
+    #000 91% 93.5%,
+    transparent 93.5% 95.5%,
+    #000 95.5% 97.5%,
+    transparent 97.5% 98.5%,
+    #000 98.5% 100%
   );
   mask-image: linear-gradient(
     180deg,
-    #000 0 44%,
-    transparent 44% 52%,
-    #000 52% 62%,
-    transparent 62% 68%,
-    #000 68% 74%,
-    transparent 74% 79%,
-    #000 79% 84%,
-    transparent 84% 88%,
-    #000 88% 92%,
-    transparent 92% 95%,
-    #000 95% 98%,
-    transparent 98% 100%
+    #000 0 34%,
+    transparent 34% 39%,
+    #000 39% 47%,
+    transparent 47% 51%,
+    #000 51% 58%,
+    transparent 58% 61%,
+    #000 61% 67%,
+    transparent 67% 70%,
+    #000 70% 75.5%,
+    transparent 75.5% 78%,
+    #000 78% 82.5%,
+    transparent 82.5% 85%,
+    #000 85% 88.5%,
+    transparent 88.5% 91%,
+    #000 91% 93.5%,
+    transparent 93.5% 95.5%,
+    #000 95.5% 97.5%,
+    transparent 97.5% 98.5%,
+    #000 98.5% 100%
   );
   animation: jy-sun-float 12s ease-in-out infinite alternate;
   will-change: transform;
@@ -1942,40 +2156,67 @@
   }
 }
 
-/* 透视霓虹网格：rotateX 压向地平线，mask 渐隐近端，background-position 滚动 = 向观者涌来 */
-.juya-scene-grid-persp {
+/* 透视霓虹网格：rotateX 压向地平线，mask 渐隐近端，纹理层 translateY 滚动 = 向观者涌来。
+   #36（2026-10-22）：原 46vh / perspective 360px / bottom 0 的投影高只有 70.9px，
+   低于窗口 chrome（130px），整块永远落在视口下方。改为 95vh + 1600px + 52deg，
+   bottom 抬到 chrome 之上（136px），平面自带地面底色，避免地平线以下透空。
+   **必须双类选择器**：Scene 同时挂 .juya-scene-grid 与 -persp，
+   单类规则会被后面同特异性的地平网格规则（30vh / 60deg / bottom 0）整体覆盖。
+   #44（2026-10-22）：父层只留几何 / mask / 地面底色 —— 周期纹理挪进 ::after，动画改成
+   只动 transform，落在合成层。原来 animate background-position 会让 95vh 的透视平面
+   每帧重绘（GPU 核查：本机 rAF 回调 14.9–48.9Hz，暂停网格后 129.3Hz）。 */
+.juya-scene-grid.juya-scene-grid-persp {
   left: -25%;
   right: -25%;
-  bottom: 0;
-  height: 46vh;
-  transform: perspective(360px) rotateX(63deg);
+  bottom: 136px;
+  height: 95vh;
+  background-color: #170a2a;
+  /* 必须显式清空：基础 .juya-scene-grid 规则（y2k 地平网格）也带 background-image，
+     双类选择器不再声明该属性时会漏出那套 1px / 44px 纹理，与 ::after 叠加成双网格 */
+  background-image: none;
+  transform: perspective(1600px) rotateX(52deg);
   transform-origin: bottom center;
-  background-image:
-    repeating-linear-gradient(90deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 72px),
-    repeating-linear-gradient(0deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 56px);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 34%);
-  mask-image: linear-gradient(180deg, transparent 0, #000 34%);
-  animation: jy-grid-scroll 3.2s linear infinite;
-  will-change: background-position;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 28%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 28%);
   contain: strict;
 }
 
+/* 网格纹理层（#44）：多出一个周期的高度（top: -56px），translateY 0 → 56px 期间底边始终
+   有料可画，不会露出父层的地面底色。注意位移方向：本地 +y 在 rotateX 平面上下压后仍指向
+   画面下缘 = 观者方向，与原来 background-position 0 → 56px 同向（见 #44 报告的实测截图）。 */
+.juya-scene-grid.juya-scene-grid-persp::after {
+  content: '';
+  position: absolute;
+  top: -56px;
+  left: 0;
+  right: 0;
+  height: calc(100% + 56px);
+  z-index: 0;
+  background-image:
+    repeating-linear-gradient(90deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 72px),
+    repeating-linear-gradient(0deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 56px);
+  animation: jy-grid-scroll 3.2s linear infinite;
+  will-change: transform;
+}
+
+/* 只动 transform：合成层位移，不触发布局/绘制 */
 @keyframes jy-grid-scroll {
   from {
-    background-position: 0 0;
+    transform: translateY(0);
   }
   to {
-    background-position: 0 56px;
+    transform: translateY(56px);
   }
 }
 
-/* 地平线辉光线 */
+/* 地平线辉光线：#44 起纹理层是几何兄弟节点，显式 z-index 保证辉光线压在网格之上 */
 .juya-scene-grid-persp::before {
   content: '';
   position: absolute;
   top: -1px;
   left: 0;
   right: 0;
+  z-index: 1;
   height: 2px;
   background: var(--jy-scene-horizon);
   box-shadow: 0 0 18px 4px var(--jy-scene-horizon);
@@ -2035,7 +2276,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .juya-scene-sun,
-  .juya-scene-grid-persp,
+  .juya-scene-grid.juya-scene-grid-persp::after,
   .juya-scene-stars,
   .juya-scene-dust {
     animation: none;
@@ -2119,7 +2360,7 @@
 }
 
 /* ---- 场景氛围层接线（2026-10-12，#2）：dust（尘埃微粒）+ nebula（静态渐层雾）----
-   模板侧 <Scene dust nebula />（templates/nocturne.tsx，位于 .juya-issue 之前、与 y2k / dreamcore 同位）。
+   模板侧 <Scene dust nebula />（templates/nocturne.tsx，位于 .juya-issue 之前、与 y2k / synthwave 同位）。
    共享层（#1）给的是中性白雾；本段按需求 §3.1 换成 nocturne 自己的三层色，且 alpha 取**减半值**。
    构成色取色来源：三层色相沿用需求 §3.1 表格左列 —— 紫蓝 rgba(110,123,255)=#6E7BFF（与本变体
    --jy-accent #6e7bff 同源）、青蓝 rgba(90,160,255)=#5AA0FF、品红 rgba(200,90,180)=#C85AB4。
@@ -2168,7 +2409,7 @@
    病根：共享 dust 预设的 6 层平铺尺寸是 3×44 + 3×132 —— 132 = 44×3，两组互为整数倍，六层相位
    共锁进一个 132px 的大格点，暗侧背景读出可辨认的规则点阵。
    修法：**只在暗侧作用域**覆写 background-size 为 6 个互不相同、任意两层之比都不贴近整数的尺寸；
-   共享 `.juya-scene-dust` 预设（y2k / dreamcore 也在用）一字节不改。
+   共享 `.juya-scene-dust` 预设（y2k / synthwave 也在用）一字节不改。
    取值来源（脚本搜索，非随手填）：搜索空间 = 小尺寸 [38,60] × 大尺寸 [100,200] 中取 3+3，
    共 295,137,150 组；判据「任意两层之比距最近整数 ≥0.1」+「1280×800 点数 ∈ [1000,2500]」
    ⇒ 2,546,089 组解；取「最小两两余量」最大者（0.2241，是门槛 0.1 的两倍以上），
@@ -2178,7 +2419,7 @@
    **接缝**：jy-dust-drift 是 `infinite alternate` 往复（不是单向循环），终点位移无需为 size 整数倍，
    故不改 keyframe、不改共享层的背景位置序列；RM 下共享层 `animation: none` 原样生效
    （本条只声明 background-size，不碰 animation / transition / 点色 token）。
-   隔离：作用域写复合形态（AGENTS「变体覆盖选择器约定」）；共享预设一字节不改 ⇒ y2k / dreamcore
+   隔离：作用域写复合形态（AGENTS「变体覆盖选择器约定」）；共享预设一字节不改 ⇒ y2k / synthwave
    的 dust 完全不受影响（其模板也不挂本变体的复合选择器）。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust {
   background-size: 38px 38px, 47px 47px, 58px 58px, 129px 129px, 161px 161px, 199px 199px;
@@ -2395,7 +2636,7 @@
    故本段新增**独立于文字**的极光带（两个伪元素 + 弧形径向渐变），h1 保持不变、仍浮在其上。
    **参考物**：Windows Vista「Aurora」壁纸的冷光幕帘 —— 一条横贯的**弧形亮边**，亮边之下垂落
    冷色幕帘，后层另有一道更远更淡的反相幕帘形成纵深；整体读作「冷光穿过大气」，不是霓虹灯管。
-   **与 dreamcore 霓虹的区分（本段不构成语义撞车）**：dreamcore 是**两个独立光源**（条纹太阳 +
+   **与 synthwave 霓虹的区分（本段不构成语义撞车）**：synthwave 是**两个独立光源**（条纹太阳 +
    透视网格）的硬色对；本段是**同一条曲线上的连续冷暖谱**（青 → 靛 → 品红），无第二光源、
    无硬边、无灯管造型。需求 §4.2 原「排除双色霓虹」针对的是前者；本次用户明确要求 Vista 极光，
    故该排除**仅在极光带上**被取代，h1 自身辉光仍是单色靛蓝（#4 决策未动，守卫①③原样通过）。
@@ -3553,7 +3794,7 @@
     column-count: 1;
   }
   .jyfolio .juya-masthead,
-  .jydream .juya-masthead,
+  .jysynth .juya-masthead,
   .jypop .juya-masthead {
     padding: 16px;
   }
@@ -3646,14 +3887,16 @@
   border-radius: 0;
 }
 
-.view-scroll:has([data-juya-variant='dreamcore-light'])::-webkit-scrollbar-thumb {
-  /* dreamcore-light 梦核紫 accent #6d4de0，对淡紫底 #f3ecff 对比 4.82 */
-  background: #6d4de0;
+.view-scroll:has([data-juya-variant='synthwave-light'])::-webkit-scrollbar-thumb {
+  /* synthwave-light 洋红 accent #e0006e（#41 起与 --jy-accent 同值），
+     对最亮日间底 #ffe6cc 对比 3.97、对天空顶 #ffd6e8 对比 3.65 —— 非文本件 ≥3 */
+  background: #e0006e;
 }
 
-.view-scroll:has([data-juya-variant='dreamcore-dark'])::-webkit-scrollbar-thumb {
-  /* dreamcore-dark 梦核紫 accent #8f63ff，对暗紫夜 #0b0918 对比 5.06 */
-  background: #8f63ff;
+.view-scroll:has([data-juya-variant='synthwave-dark'])::-webkit-scrollbar-thumb {
+  /* synthwave-dark 品红 accent #ff2d95（#34 review 起与 --jy-accent 同值，原 #8f63ff 梦核紫已废），
+     对暗紫夜 #0b0918 对比 5.68 —— 非文本件 ≥3 */
+  background: #ff2d95;
 }
 
 .view-scroll:has([data-juya-variant='nocturne-light'])::-webkit-scrollbar-thumb {

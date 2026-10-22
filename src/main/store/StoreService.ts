@@ -15,10 +15,18 @@ import {
 import { resolveThemeScheme } from '../../shared/theme'
 import type { ThemeTokens } from '../../shared/types'
 
+/** 已改名的风格 id → 现行 id（2026-10-22：`dreamcore` 更名为 `synthwave`，界面名「蒸汽梦核式」不变）。
+ *  只做改名映射、不做校验：校验仍由 cleanJuyaStyleId 负责。缺了这一步，旧值会直接落到该侧默认，
+ *  等于静默丢掉用户已选的风格。 */
+function migrateLegacyJuyaStyleId(value: unknown): unknown {
+  return value === 'dreamcore' ? 'synthwave' : value
+}
+
 /** 清洗单个橘鸦风格 id：持久化数据可能残留已移除的 'card' 等旧值（旧数据未经类型校验）。 */
 function cleanJuyaStyleId(value: unknown, fallback: JuyaStyleId): JuyaStyleId {
-  return typeof value === 'string' && (JUYA_STYLE_IDS as readonly string[]).includes(value)
-    ? (value as JuyaStyleId)
+  const normalized = migrateLegacyJuyaStyleId(value)
+  return typeof normalized === 'string' && (JUYA_STYLE_IDS as readonly string[]).includes(normalized)
+    ? (normalized as JuyaStyleId)
     : fallback
 }
 
@@ -63,7 +71,8 @@ export class StoreService {
         ...DEFAULT_SETTINGS.shortcuts,
         ...saved?.shortcuts
       },
-      // 清洗橘鸦风格：'card' 已于 2026-09-24 重设计中移除，旧值回退该侧默认（即时生效，不依赖写盘）
+      // 清洗橘鸦风格：'card' 已于 2026-09-24 重设计中移除，旧值回退该侧默认（即时生效，不依赖写盘）；
+      // 'dreamcore' → 'synthwave' 为 2026-10-22 改名，先映射再校验，用户选择不丢。
       juyaLightStyleId: cleanJuyaStyleId(saved?.juyaLightStyleId, DEFAULT_JUYA_LIGHT),
       juyaDarkStyleId: cleanJuyaStyleId(saved?.juyaDarkStyleId, DEFAULT_JUYA_DARK)
     }

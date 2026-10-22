@@ -3,9 +3,10 @@ import { DefaultFeedItem, FeedShell, Scene } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
-const VARIANT_CLASS = 'jydream'
+const VARIANT_CLASS = 'jysynth'
 
-/** 蒸汽梦核式（第二轮定制排版）：synthwave 场景（条纹太阳 + 透视霓虹网格，Scene 固定层），
+/** 蒸汽梦核式（styleId `synthwave`，2026-10-22 由 `dreamcore` 更名，界面名不变）：
+ *  synthwave 场景（条纹太阳 + 透视霓虹网格，Scene 固定层），
  *  条目首图通栏 21/9 + 其余两列子网格（hero 媒体），毛玻璃卡片即文字遮罩。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
@@ -25,7 +26,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
                 {entry.lead && <Lead lead={entry.lead} />}
                 <Paragraphs paragraphs={entry.paragraphs} />
                 {entry.images.length > 0 && <ImageGrid images={entry.images} mode="hero" />}
-                <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
+                <LinksBlock links={entry.links} onOpenLink={onOpenLink} icon />
               </article>
             ))}
           </section>
@@ -43,11 +44,19 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
       variantId={variantId}
       variantClass={VARIANT_CLASS}
       layout={layout}
+      scene={<Scene sun grid="persp" />}
       renderItem={(a, _i, mode, gates, delay) => (
-        <DefaultFeedItem a={a} mode={mode} gates={gates} delay={delay} onOpen={() => void openArticle(a)} />
+        <DefaultFeedItem
+          a={a}
+          mode={mode}
+          gates={gates}
+          delay={delay}
+          metaIcons
+          onOpen={() => void openArticle(a)}
+        />
       )}
     />
   )
 }
 
-export const dreamcoreTemplate: JuyaTemplate = { IssueView, FeedList }
+export const synthwaveTemplate: JuyaTemplate = { IssueView, FeedList }

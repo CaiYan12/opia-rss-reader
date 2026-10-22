@@ -193,11 +193,11 @@ describe('resolveJuyaVariant（橘鸦风格三态解析）', () => {
 
   it('风格必须同时匹配 styleId 与 colorScheme（不存在跨分类误用）', () => {
     const meta = resolveJuyaVariant(
-      settings({ themeMode: 'dark', juyaDarkStyleId: 'dreamcore' }),
+      settings({ themeMode: 'dark', juyaDarkStyleId: 'synthwave' }),
       false
     )
     expect(meta?.colorScheme).toBe('dark')
-    expect(meta?.styleId).toBe('dreamcore')
+    expect(meta?.styleId).toBe('synthwave')
   })
 
   it('注册表提供八风格 × 亮暗双变体共 16 项', () => {

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ArrowUpRight } from 'lucide-react'
 import type { JuyaEntry, JuyaImage, JuyaLink, JuyaOverviewEntry } from '../parseJuyaIssue'
 
 /** 语义层共享构件：只负责「语义模型 → 安全的 React 元素」映射（文本经 React 转义，
@@ -104,13 +105,18 @@ export function ImageGrid({
   )
 }
 
-/** 「相关链接」块 */
+/** 「相关链接」块。
+ *  icon：外链箭头改用 ArrowUpRight 图标（12px，装饰性故 aria-hidden），并给链接挂
+ *  `.juya-link-icon` 供变体样式接管；基础层 `.juya-links a::after` 的文本 ↗ 由变体 CSS 关闭。
+ *  不传时 DOM 与观感与改造前完全一致。 */
 export function LinksBlock({
   links,
-  onOpenLink
+  onOpenLink,
+  icon = false
 }: {
   links: JuyaLink[]
   onOpenLink: (href: string) => void
+  icon?: boolean
 }): JSX.Element | null {
   if (links.length === 0) return null
   return (
@@ -119,8 +125,13 @@ export function LinksBlock({
       <ul className="juya-links">
         {links.map((l, i) => (
           <li key={i}>
-            <SafeLink href={l.href} onOpenLink={onOpenLink}>
+            <SafeLink
+              href={l.href}
+              className={icon ? 'juya-link-icon' : undefined}
+              onOpenLink={onOpenLink}
+            >
               {l.text}
+              {icon && <ArrowUpRight size={12} aria-hidden />}
             </SafeLink>
           </li>
         ))}

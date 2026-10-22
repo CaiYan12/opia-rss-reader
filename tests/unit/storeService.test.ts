@@ -186,7 +186,7 @@ describe('StoreService.migrateThemeSettings（v0.1.x 单主题 → 三态）', (
 
 describe('StoreService.migrateJuyaStyleSettings（card 移除迁移，2026-09-24 重设计）', () => {
   it('合法值完全不动（不写盘）', () => {
-    seedSettings({ juyaLightStyleId: 'y2k', juyaDarkStyleId: 'dreamcore' })
+    seedSettings({ juyaLightStyleId: 'y2k', juyaDarkStyleId: 'synthwave' })
     const before = structuredClone(raw.data.settings)
     store.migrateJuyaStyleSettings()
     expect(raw.data.settings).toEqual(before)
@@ -212,6 +212,18 @@ describe('StoreService.migrateJuyaStyleSettings（card 移除迁移，2026-09-24
     seedSettings({ juyaLightStyleId: 'card' })
     expect(store.getSettings().juyaLightStyleId).toBe('folio')
     expect(store.getSettings().juyaDarkStyleId).toBe('nocturne')
+  })
+
+  it("旧 'dreamcore' 改名迁移：读写两条路径都落到 'synthwave'，不退回该侧默认", () => {
+    seedSettings({ juyaLightStyleId: 'dreamcore', juyaDarkStyleId: 'dreamcore' })
+    // 读取路径：先映射再校验，运行态即为新 id
+    expect(store.getSettings().juyaLightStyleId).toBe('synthwave')
+    expect(store.getSettings().juyaDarkStyleId).toBe('synthwave')
+    // 写回路径：落盘值被改写
+    store.migrateJuyaStyleSettings()
+    const saved = raw.data.settings as Record<string, unknown>
+    expect(saved.juyaLightStyleId).toBe('synthwave')
+    expect(saved.juyaDarkStyleId).toBe('synthwave')
   })
 })
 

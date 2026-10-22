@@ -13,8 +13,8 @@ export type JuyaStyleVariantId =
   | 'pop-dark'
   | 'newsprint90s-light'
   | 'newsprint90s-dark'
-  | 'dreamcore-light'
-  | 'dreamcore-dark'
+  | 'synthwave-light'
+  | 'synthwave-dark'
   | 'nocturne-light'
   | 'nocturne-dark'
   | 'editorial-light'
@@ -104,16 +104,16 @@ export const JUYA_STYLES: JuyaStyleMeta[] = [
     background: 'css-svg'
   },
   {
-    id: 'dreamcore-light',
-    styleId: 'dreamcore',
+    id: 'synthwave-light',
+    styleId: 'synthwave',
     name: '蒸汽梦核式',
     colorScheme: 'light',
     focusColor: '#7c4dff',
     background: 'css-svg'
   },
   {
-    id: 'dreamcore-dark',
-    styleId: 'dreamcore',
+    id: 'synthwave-dark',
+    styleId: 'synthwave',
     name: '蒸汽梦核式',
     colorScheme: 'dark',
     focusColor: '#b388ff',

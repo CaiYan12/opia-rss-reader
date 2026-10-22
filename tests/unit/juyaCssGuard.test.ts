@@ -115,6 +115,13 @@ const extractBlocks = (src: string, opener: RegExp): string[] => {
   return blocks
 }
 
+/** 按选择器原文取规则块（选择器含 `[` `]` `.` `(` 等正则元字符时不必转义）；找不到返空串 */
+const ruleBySelector = (src: string, selector: string): string => {
+  const head = `\n${selector} {`
+  const i = src.indexOf(head)
+  return i < 0 ? '' : extractBlock(src.slice(i + 1), /^[^{]*\{/)
+}
+
 describe('juya.css 静态守卫', () => {
   it('变体覆盖不得使用「变体前缀 + 空格 + 风格类」的死形态', () => {
     const dead = css.match(/\[data-juya-variant='[^']+'\]\s+\.jy[\w-]*/g) ?? []
@@ -1376,7 +1383,7 @@ describe('nocturne 刊头极光带守卫（2026-10-12，用户指令「头部过
   })
 
   it('⑨ 取消双色霓虹约束的作用域收窄：h1 辉光仍是单色靛蓝（#4 决策未被本次改动推翻）', () => {
-    // 需求 §4.2 原「排除双色霓虹」针对的是「两个独立光源」的硬色对（dreamcore 语义）。
+    // 需求 §4.2 原「排除双色霓虹」针对的是「两个独立光源」的硬色对（synthwave 语义）。
     // 本次用户明确要求 Vista 极光，故该排除**仅在极光带上**被取代；
     // 刊头字自身的辉光必须仍是单色靛蓝 —— 守卫①③ 的既有断言即为这条的闸门，
     // 此处额外确保极光带没有把色相渗进 h1 规则。
@@ -2511,7 +2518,7 @@ describe('Scene 预设守卫（2026-10-12，#1）', () => {
   it('⑦ 128px chrome 抬升：共享 .juya-scene 高度不改，根因与「段内抬升」约定显式记录，y2k 缓解保留', () => {
     expect(
       extractBlock(css, /(?:^|\n)\.juya-scene \{/),
-      '共享 .juya-scene 高度不得改动（会波及 dreamcore/y2k 的既有观感）'
+      '共享 .juya-scene 高度不得改动（会波及 synthwave/y2k 的既有观感）'
     ).toContain('height: 100vh')
     const section = sceneSection()
     expect(section, '须显式记录 128px chrome 未扣的根因').toContain('128px')
@@ -2607,7 +2614,7 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
   const over = (bg: number, layers: { r: number; g: number; b: number; a: number }[]): number =>
     layers.reduce((acc, l) => alphaOver((l.r << 16) | (l.g << 8) | l.b, l.a, acc), bg)
 
-  it('① 模板接线：IssueView 挂 <Scene dust nebula />，源码顺序在 .juya-issue 之前（与 y2k/dreamcore 同位）', () => {
+  it('① 模板接线：IssueView 挂 <Scene dust nebula />，源码顺序在 .juya-issue 之前（与 y2k/synthwave 同位）', () => {
     const partsImport = nocturneTsx.match(/^import \{([^}]*)\} from '\.\/parts'$/m)?.[1] ?? ''
     expect(partsImport, 'Scene 须从共享层 ./parts 引入').toMatch(/\bScene\b/)
     const tag = nocturneTsx.match(/<Scene\b[^>]*\/>/)?.[0] ?? ''
@@ -3890,7 +3897,7 @@ describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20
   it('① 暗侧 dust 只覆写 background-size：共享预设 44/132 与 96s alternate 一字节不改', () => {
     const shared = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
     expect(shared, '共享 dust 预设应存在').toBeTruthy()
-    // 共享层是 y2k / dreamcore 也在用的预置：本票**不得**改它（隔离验证由归档逐字节比对兜底）
+    // 共享层是 y2k / synthwave 也在用的预置：本票**不得**改它（隔离验证由归档逐字节比对兜底）
     expect(decl(shared, 'background-size'), '共享 dust 尺寸必须保持 3×44 + 3×132').toBe(
       '44px 44px, 44px 44px, 44px 44px, 132px 132px, 132px 132px, 132px 132px'
     )
@@ -4026,8 +4033,15 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
     "[data-juya-variant='nocturne-dark'].jynoct-lightbox img"
   ]
 
-  /** 非 nocturne 场景层（太阳/透视网格/星空只有 dreamcore 与 y2k 暗挂载，本变体模板不渲染） */
-  const FOREIGN_SCENE = ['.juya-scene-sun', '.juya-scene-grid-persp', '.juya-scene-stars']
+  /** 非 nocturne 场景层（太阳/透视网格/星空只有 synthwave 与 y2k 暗挂载，本变体模板不渲染）。
+   *  透视网格自 #36 起用双类选择器（.juya-scene-grid.juya-scene-grid-persp）压过地平网格规则；
+   *  #44 起网格动画挂在纹理层伪元素上，载体是 `…-persp::after`。 */
+  const FOREIGN_SCENE = [
+    '.juya-scene-sun',
+    '.juya-scene-grid.juya-scene-grid-persp',
+    '.juya-scene-grid.juya-scene-grid-persp::after',
+    '.juya-scene-stars'
+  ]
 
   /** 全 css 的叶规则（花括号内的声明块；媒体查询/@keyframes 外壳天然不匹配） */
   const rules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, s, b]) => ({
@@ -4043,15 +4057,20 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
   const pausedSels = pauseRules.flatMap((r) => r.sels)
 
   it('① 暂停规则逐一选中全部动画载体（含 ::before / ::after），且只声明 animation-play-state', () => {
-    expect(pauseRules.length, '应恰有一条不可见暂停规则块').toBe(1)
-    const declarations = pauseRules[0]!.body
+    // 2026-10-22（#36）：synthwave 也进入暂停清单，全文件不再只有一条暂停规则块；
+    // 本组只校验 nocturne 暗侧那一条，逐块声明与选择器集合仍完整覆盖其载体。
+    const noctPauseRules = pauseRules.filter((r) =>
+      r.sels.every((s) => s.includes("data-juya-variant='nocturne-dark'"))
+    )
+    expect(noctPauseRules.length, 'nocturne 暗侧应恰有一条不可见暂停规则块').toBe(1)
+    const declarations = noctPauseRules[0]!.body
       .split(';')
       .map((d) => d.trim())
       .filter(Boolean)
     expect(declarations, '暂停态只能改动画播放状态，不得夹带 opacity/filter/animation 等可见属性').toEqual([
       'animation-play-state: paused'
     ])
-    expect([...pausedSels].sort(), '暂停选择器集合须与载体清单逐一对应').toEqual(
+    expect([...noctPauseRules[0]!.sels].sort(), '暂停选择器集合须与载体清单逐一对应').toEqual(
       CARRIERS.map((c) => `${HIDDEN} ${c}`).sort()
     )
   })
@@ -4553,5 +4572,739 @@ describe('newsprint90s 空态守卫（#32：上下 1px 细线的通栏公告框 
   it('公告框在 grid 预设下通栏，不被挤进第一列', () => {
     const empty = newsRule('\.juya-feed-empty')
     expect(decl(empty, 'grid-column'), '公告框须横跨所有列').toBe('1 / -1')
+  })
+})
+
+describe('synthwave 场景守卫（2026-10-22，#36）', () => {
+  /** 变体 + 风格类的复合形态规则（约定：两者恒挂同一根元素）。
+   *  用字符类代替反斜杠转义，避免模板字面量把转义吃掉。 */
+  const synthRule = (rest: string): string =>
+    extractBlock(css, new RegExp(`[[]data-juya-variant='synthwave-dark'].jysynth ${rest} {`))
+
+  it('① 透视网格抬回视口：height 95vh / bottom 136px / rotateX 52deg / perspective 1600px', () => {
+    const grid = (extractBlocks(css, new RegExp('[.]juya-scene-grid-persp [{]')).find((b) => b.includes('perspective(')) ?? '')
+    expect(grid, '透视网格规则必须存在').not.toBe('')
+    expect(decl(grid, 'height')).toBe('95vh')
+    expect(decl(grid, 'bottom'), '底边需抬到窗口 chrome 之上').toBe('136px')
+    expect(decl(grid, 'transform')).toContain('perspective(1600px)')
+    expect(decl(grid, 'transform')).toContain('rotateX(52deg)')
+  })
+
+  it('② 网格平面自带地面底色，否则地平线以下是透空的', () => {
+    const grid = (extractBlocks(css, new RegExp('[.]juya-scene-grid-persp [{]')).find((b) => b.includes('perspective(')) ?? '')
+    expect(decl(grid, 'background-color')).toBe('#170a2a')
+  })
+
+  it('③ 落日：直径 min(52vh, 480px) 且 10 道条纹', () => {
+    const sun = (extractBlocks(css, new RegExp('[.]juya-scene-sun [{]')).find((b) => b.includes('mask-image')) ?? '')
+    expect(decl(sun, 'width')).toBe('min(52vh, 480px)')
+    const mask = decl(sun, '-webkit-mask-image')
+    const bands = (mask.match(/#000/g) ?? []).length
+    expect(bands, '条纹数量决定落日的识别度').toBe(10)
+  })
+
+  it('④ 夜空渐变与扫描线挂在场景层（随内容固定），不在内容根上', () => {
+    const scene = synthRule('.juya-scene')
+    expect(scene, 'synthwave 场景层规则必须存在').not.toBe('')
+    expect(decl(scene, 'background-image')).toContain('linear-gradient(180deg')
+    expect(decl(scene, 'background-image')).toContain('#24103f')
+    expect(decl(scene, 'background-image')).toContain('#ff8a4c')
+    expect(decl(scene, 'background-image'), '扫描线 1px 线 / 3px 间隔').toContain('0 1px, transparent 1px 4px')
+    expect(decl(scene, 'background-image'), '扫描线透明度 0.10').toContain('rgba(0, 0, 0, 0.1)')
+  })
+
+  it('⑤ 窗口不可见时暂停落日与网格（此前只有 nocturne 在暂停清单里）', () => {
+    expect(css, '落日需进入暂停清单').toContain(
+      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-sun {"
+    )
+    // #44：网格动画载体已迁到纹理层伪元素，暂停必须指向 ::after（父层没有动画可暂停）
+    expect(css, '网格需进入暂停清单').toContain(
+      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp::after {"
+    )
+    const sunPause = extractBlock(css, new RegExp('[.]juya-scene-sun [{]'))
+    expect(decl(sunPause, 'animation-play-state')).toBe('paused')
+    const gridPause = ruleBySelector(
+      css,
+      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp::after"
+    )
+    expect(decl(gridPause, 'animation-play-state')).toBe('paused')
+  })
+})
+
+describe('synthwave 字体守卫（2026-10-22，#37）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：字体规则与两条回退必须落在此区间，
+   *  否则「回退限定在 synthwave 作用域」只是选择器上的字面承诺。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 变体块内某 token 的完整右值 */
+  const tok = (block: string, name: string): string =>
+    block.match(new RegExp(`${name}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+
+  /** 段内 `.jysynth .juya-masthead h1` 规则块 */
+  const masthead = (src: string): string =>
+    extractBlock(src, /(?:^|\n)\.jysynth \.juya-masthead h1 \{/)
+
+  it('① 暗侧变体补两条字体 token：标题落黑体栈，刊头落等宽栈', () => {
+    const block = variantBlock('synthwave-dark')
+    expect(tok(block, '--jy-font-heading'), '标题字族').toBe(
+      "'Noto Sans SC', 'Microsoft YaHei', sans-serif"
+    )
+    expect(tok(block, '--jy-font-masthead'), '刊头字族').toBe(
+      "'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif"
+    )
+  })
+
+  it('② 刊头标题 28px、字距 0.02em、消费刊头字体 token', () => {
+    const rule = masthead(synthSection())
+    expect(rule, 'synthwave 刊头标题规则必须存在').not.toBe('')
+    expect(decl(rule, 'font-size')).toBe('28px')
+    expect(decl(rule, 'letter-spacing')).toBe('0.02em')
+    expect(decl(rule, 'font-family'), '刊头走独立字族，不退到标题 token').toContain(
+      'var(--jy-font-masthead'
+    )
+  })
+
+  it('③ 保留 heading→accent 横向渐变（1px 描边改由分变体规则承担，见 ⑦）', () => {
+    const rule = masthead(synthSection())
+    const fill = decl(rule, 'background-image') || decl(rule, 'background')
+    expect(fill, '渐变填充').toContain('linear-gradient(90deg')
+    expect(fill, '渐变起点为标题色').toContain('var(--jy-heading)')
+    expect(fill, '渐变终点为强调色').toContain('var(--jy-accent)')
+    expect(decl(rule, 'background-clip'), '文字裁切').toBe('text')
+    expect(decl(rule, '-webkit-text-stroke'), '基础规则不得再写单色描边').toBe('')
+  })
+
+  it('④ 不做任何倾斜或斜体（中文 skew 会让笔画失真）', () => {
+    const rule = masthead(synthSection())
+    expect(decl(rule, 'transform')).not.toContain('skew')
+    expect(decl(rule, 'font-style')).not.toBe('italic')
+    expect(synthSection(), '段内不得出现斜体声明').not.toMatch(/font-style:\s*italic/)
+  })
+
+  it('⑤ 不支持 background-clip:text 的引擎退回实色标题，且只在 synthwave 作用域', () => {
+    const blocks = extractBlocks(synthSection(), /@supports not \(background-clip: text\) \{/)
+    expect(blocks.length, '段内恰有一条 @supports 回退').toBe(1)
+    const block = blocks[0]
+    expect(block, '回退须限定在 .jysynth 作用域').toContain('.jysynth .juya-masthead h1')
+    expect(decl(block, 'background'), '去掉渐变').toBe('none')
+    expect(decl(block, 'color'), '退回实色标题').toBe('var(--jy-heading)')
+  })
+
+  it('⑥ 高对比模式退回系统色，不留透明字', () => {
+    const blocks = extractBlocks(synthSection(), /@media \(forced-colors: active\) \{/)
+    expect(blocks.length, '段内恰有一条 forced-colors 回退').toBe(1)
+    const block = blocks[0]
+    expect(block, '回退须限定在 .jysynth 作用域').toContain('.jysynth .juya-masthead h1')
+    expect(decl(block, 'background'), '去掉渐变').toBe('none')
+    expect(decl(block, 'color'), '退回系统前景色').toBe('CanvasText')
+  })
+
+  it('⑦ 1px 描边分亮/暗两套，且各自与 --jy-heading 同源（#34 review）', () => {
+    /** `1px rgba(r, g, b, a)` → { rgb, alpha } */
+    const stroke = (value: string): { rgb: number; alpha: number } => {
+      const m = value.match(/^1px\s+rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/)
+      if (!m) throw new Error(`不是 1px rgba() 描边：${value}`)
+      return {
+        rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+        alpha: m[4] === undefined ? 1 : Number(m[4])
+      }
+    }
+    const strokeRule = (variant: string): string =>
+      extractBlock(
+        synthSection(),
+        new RegExp(
+          `(?:^|\\n)\\[data-juya-variant='${variant}'\\]\\.jysynth \\.juya-masthead h1 \\{`
+        )
+      )
+    // 亮暗各一条，且都写在复合形态选择器上（带空格的后代形式永不匹配）
+    const rules = [...synthSection().matchAll(/(?:^|\n)([^\n{}]*\.juya-masthead h1[^\n{}]*)\{([^}]*)\}/g)].map(
+      (m) => ({ selector: m[1].trim(), block: m[2] })
+    )
+    const withStroke = rules.filter((r) => decl(r.block, '-webkit-text-stroke') !== '')
+    expect(withStroke.map((r) => r.selector).sort()).toEqual(
+      [
+        "[data-juya-variant='synthwave-dark'].jysynth .juya-masthead h1",
+        "[data-juya-variant='synthwave-light'].jysynth .juya-masthead h1"
+      ].sort()
+    )
+
+    for (const [variant, alpha] of [
+      ['synthwave-dark', 0.45],
+      ['synthwave-light', 0.28]
+    ] as const) {
+      const rule = strokeRule(variant)
+      expect(rule, `${variant} 描边规则必须存在`).not.toBe('')
+      const s = stroke(decl(rule, '-webkit-text-stroke'))
+      expect(s.rgb, `${variant} 描边 RGB 须与 --jy-heading 同源`).toBe(
+        tokenHex(variantBlock(variant), '--jy-heading')
+      )
+      expect(s.alpha, `${variant} 描边 alpha`).toBe(alpha)
+    }
+    // 暗侧近白紫（#ffe6ff）压在白卡上等于没有描边：两色必须真的不同源
+    expect(
+      tokenHex(variantBlock('synthwave-dark'), '--jy-heading'),
+      '亮暗标题色必须不同，描边才可能分变体'
+    ).not.toBe(tokenHex(variantBlock('synthwave-light'), '--jy-heading'))
+  })
+})
+
+describe('synthwave 链接箭头守卫（2026-10-22，#38）', () => {
+  /** 全文件所有 `.juya-links a::after` 规则（选择器与块体成对）；选择器限单行（本仓库书写约定）。 */
+  const arrowRules = [...css.matchAll(/(?:^|\n)([^\n{}]*\.juya-links a::after[^\n{}]*)\{([^}]*)\}/g)].map((m) => ({
+    selector: m[1].trim(),
+    block: m[2]
+  }))
+
+  it('① 基础层文本箭头保留（未传图标的七个风格观感不变）', () => {
+    const base = arrowRules.find((r) => r.selector === '.juya-links a::after')
+    expect(base, '基础 ::after 箭头规则必须存在').toBeTruthy()
+    expect(decl(base!.block, 'content')).toContain('↗')
+  })
+
+  it('② synthwave 亮/暗双侧在作用域内关闭基础文本箭头，避免与 SVG 并存', () => {
+    for (const variant of ['synthwave-light', 'synthwave-dark']) {
+      const selector = `[data-juya-variant='${variant}'].jysynth .juya-links a::after`
+      const rule = arrowRules.find((r) => r.selector === selector)
+      expect(rule, `${variant} 必须关闭基础文本箭头`).toBeTruthy()
+      expect(decl(rule!.block, 'content')).toBe('none')
+    }
+  })
+
+  it('③ 关闭文本箭头的规则不外溢到其它变体', () => {
+    const nulled = arrowRules.filter((r) => /^(none|normal)$/.test(decl(r.block, 'content')))
+    for (const rule of nulled) {
+      expect(rule.selector, '置空箭头必须限定在 synthwave 作用域').toContain(
+        "[data-juya-variant='synthwave-"
+      )
+    }
+    expect(nulled.length, '亮暗两侧各一条').toBe(2)
+  })
+})
+
+describe('synthwave 暗侧卡面守卫（2026-10-22，#39）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：卡面规则必须落在此区间，
+   *  否则「只改 synthwave」只是选择器上的字面承诺，其它七个风格随时被顺手波及。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 段内首条匹配 opener 的规则块（opener 自带 `{`，与 #36 组同一写法） */
+  const synthRule = (opener: RegExp): string => extractBlock(synthSection(), opener)
+
+  /** 变体块内某 token 的完整右值 */
+  const tok = (block: string, name: string): string =>
+    block.match(new RegExp(`${name}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+
+  /** `rgba(r, g, b, a)` / `rgb(r, g, b)` → `{ rgb, alpha }`（tokenHex 读不了 rgba，故自行解析） */
+  const rgba = (value: string): { rgb: number; alpha: number } => {
+    const m = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/)
+    if (!m) throw new Error(`不是 rgb()/rgba() 字面量：${value}`)
+    return {
+      rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+      alpha: m[4] === undefined ? 1 : Number(m[4])
+    }
+  }
+
+  /** 落日最亮处 #ff9a3c（场景渐变 88% 停靠的 #ff8a4c 与其下沉到地平线前的峰）。
+   *  0.62 卡面压在这里时合成底最亮，是次要文字的最不利场景。 */
+  const SUN_PEAK = 0xff9a3c
+
+  it('① 暗侧卡面 = rgba(20, 8, 38, 0.62)', () => {
+    const card = rgba(tok(variantBlock('synthwave-dark'), '--jy-card'))
+    expect(card.rgb, '卡面底色').toBe(0x140826)
+    expect(card.alpha, '卡面 alpha 决定毛玻璃强度与文字对比').toBe(0.62)
+  })
+
+  it('② 刊头与条目：blur(18px) saturate(1.15)', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-entry,/)
+    expect(rule, '刊头 + 条目共用一条卡面规则').not.toBe('')
+    expect(rule, '刊头必须与条目同一套外观').toContain('.jysynth .juya-masthead')
+    expect(decl(rule, 'backdrop-filter')).toBe('blur(18px) saturate(1.15)')
+  })
+
+  it('③ 订阅页条目同强度毛玻璃', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-feed-item \{/)
+    expect(rule, '订阅页条目规则必须存在').not.toBe('')
+    expect(decl(rule, 'backdrop-filter')).toBe('blur(18px) saturate(1.15)')
+  })
+
+  it('④ 概览底板与卡片同源：四项声明 + 同强度毛玻璃，且不动条目字号/行高', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-overview \{/)
+    expect(rule, '概览底板规则必须存在').not.toBe('')
+    expect(decl(rule, 'background')).toBe('var(--jy-card)')
+    expect(decl(rule, 'border')).toBe('1px solid var(--jy-border)')
+    expect(decl(rule, 'border-radius')).toBe('var(--jy-radius)')
+    expect(decl(rule, 'padding')).toBe('12px 16px')
+    expect(decl(rule, 'backdrop-filter'), '与卡片同强度').toBe('blur(18px) saturate(1.15)')
+    expect(decl(rule, 'font-size'), '概览条目字号由基类决定').toBe('')
+    expect(decl(rule, 'line-height'), '概览条目行高由基类决定').toBe('')
+  })
+
+  it('⑤ 配图：1px 品红描边走 token，并降饱和到 0.92', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-media img \{/)
+    expect(rule, '配图规则必须存在').not.toBe('')
+    const border = decl(rule, 'border')
+    expect(border, '描边宽度').toContain('1px')
+    expect(border, '描边走 token，不写死新色值').toContain('var(--jy-')
+    expect(decl(rule, 'filter')).toBe('saturate(0.92)')
+  })
+
+  it('⑥ 悬停取消基础层的 −2px 上浮，只保留加深的外发光', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-feed-item:hover \{/)
+    expect(rule, '悬停规则必须存在').not.toBe('')
+    expect(decl(rule, 'transform')).toBe('none')
+    expect(decl(rule, 'box-shadow'), '外发光需比常态更深').toContain('22px')
+  })
+
+  it('⑦ 实算：0.62 卡面压在落日最亮处的合成底上，次要文字 ≥ 4.5', () => {
+    const block = variantBlock('synthwave-dark')
+    const card = rgba(tok(block, '--jy-card'))
+    const base = alphaOver(card.rgb, card.alpha, SUN_PEAK)
+    expect(base, '合成底应落在 rgb(109, 63, 46) 附近').toEqual(0x6d3f2e)
+    expect(contrast(tokenHex(block, '--jy-muted'), base), '次要文字 / 最不利合成底').toBeGreaterThanOrEqual(
+      4.5
+    )
+  })
+})
+
+describe('synthwave 订阅页场景守卫（2026-10-22，#40）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：订阅页场景补偿规则必须落在此区间。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 段内订阅页网格补偿规则 */
+  const feedGrid = (): string =>
+    extractBlock(synthSection(), /(?:^|\n)\.jysynth:has\(> \.juya-feed\) \.juya-scene-grid-persp \{/)
+
+  /** 全文件所有 `.juya-scene-grid-persp` 规则（选择器与块体成对），用于确认覆盖不外溢。 */
+  const gridRules = [...css.matchAll(/(?:^|\n)([^\n{}]*\.juya-scene-grid-persp[^\n{}]*)\{([^}]*)\}/g)].map(
+    (m) => ({ selector: m[1].trim(), block: m[2] })
+  )
+
+  it('① 订阅页把网格底边补到可视区下缘：只有 .jysynth + :has(> .juya-feed) 作用域内的一条规则', () => {
+    const rule = feedGrid()
+    expect(rule, '订阅页网格补偿规则必须存在，且落在蒸汽梦核式段内').not.toBe('')
+    expect(decl(rule, 'bottom'), '订阅页 chrome 80px + 8px 余量').toBe('88px')
+  })
+
+  it('② 网格底边覆盖只出现在 .jysynth 作用域内，共享网格规则仍为 136px', () => {
+    const withBottom = gridRules.filter((r) => decl(r.block, 'bottom') !== '')
+    expect(withBottom.map((r) => r.selector).sort()).toEqual(
+      ['.juya-scene-grid.juya-scene-grid-persp', '.jysynth:has(> .juya-feed) .juya-scene-grid-persp'].sort()
+    )
+    const shared = withBottom.find((r) => r.selector === '.juya-scene-grid.juya-scene-grid-persp')!
+    expect(decl(shared.block, 'bottom'), '共享规则的阅读页补偿值不得改动').toBe('136px')
+    for (const rule of withBottom) {
+      if (rule.selector === '.juya-scene-grid.juya-scene-grid-persp') continue
+      expect(rule.selector, '订阅页补偿必须限定在 .jysynth 作用域').toContain('.jysynth')
+    }
+  })
+})
+
+describe('synthwave 亮侧守卫（2026-10-22，#41）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：亮侧规则必须落在此区间，
+   *  否则「只改 synthwave」只是选择器上的字面承诺。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 变体块内某 token 的完整右值 */
+  const tok = (block: string, name: string): string =>
+    block.match(new RegExp(`${name}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+
+  /** `rgba(r, g, b, a)` / `rgb(r, g, b)` → `{ rgb, alpha }`（tokenHex 读不了 rgba） */
+  const rgba = (value: string): { rgb: number; alpha: number } => {
+    const m = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/)
+    if (!m) throw new Error(`不是 rgb()/rgba() 字面量：${value}`)
+    return {
+      rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+      alpha: m[4] === undefined ? 1 : Number(m[4])
+    }
+  }
+
+  /** 亮侧场景最亮停靠 #ffd6e8（0%）与最深停靠 #ffb27a（82%）：0.62 白卡压在其上的两种合成底。 */
+  const SKY_TOP = 0xffd6e8
+  const SKY_DEEP = 0xffb27a
+  /** 亮侧地面（#41）：共享网格面的 #170a2a 是暗侧地面，亮侧在段内覆盖为浅粉，
+   *  否则卡片压在网格区时合成底变 #a7a2ae、次要文字掉到 2.78。 */
+  const GROUND = 0xffcadb
+
+  it('① 亮侧 token：洋红橙日间版取代旧淡紫（底/卡/边/字/强调/导语/场景）', () => {
+    expect(synthSection(), '亮侧变体块必须落在蒸汽梦核式段内').toContain(
+      "[data-juya-variant='synthwave-light'] {"
+    )
+    const block = variantBlock('synthwave-light')
+    expect(block, '亮侧变体块必须存在').not.toBe('')
+    // 场景会覆盖底色，--jy-bg 只是兜底（加载瞬间 / 无场景时）
+    expect(tok(block, '--jy-bg'), '兜底底色').toBe('#ffe6cc')
+    const card = rgba(tok(block, '--jy-card'))
+    expect(card.rgb, '亮侧卡面为白').toBe(0xffffff)
+    expect(card.alpha, '亮侧卡面与暗侧同 alpha（0.62 毛玻璃）').toBe(0.62)
+    expect(tok(block, '--jy-border')).toBe('rgba(224, 0, 110, 0.30)')
+    expect(tok(block, '--jy-heading')).toBe('#4a0736')
+    expect(tok(block, '--jy-text')).toBe('#3d0a2c')
+    expect(tok(block, '--jy-muted')).toBe('#8c3f6a')
+    expect(tok(block, '--jy-accent')).toBe('#e0006e')
+    expect(tok(block, '--jy-on-accent')).toBe('#ffffff')
+    expect(tok(block, '--jy-link')).toBe('#b0005a')
+    expect(tok(block, '--jy-lead-bg')).toBe('rgba(224, 0, 110, 0.12)')
+    expect(tok(block, '--jy-focus'), '焦点环与暗侧同值').toBe('#7c4dff')
+    expect(tok(block, '--jy-radius'), '圆角统一 16px').toBe('16px')
+    // 字体 token 两侧同值：亮侧不再退到兜底栈
+    expect(tok(block, '--jy-font-heading')).toBe("'Noto Sans SC', 'Microsoft YaHei', sans-serif")
+    expect(tok(block, '--jy-font-masthead')).toBe(
+      "'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif"
+    )
+    // 场景 token：日轮黄 → 品红，网格线比暗侧淡（0.55 → 0.35）
+    expect(tok(block, '--jy-scene-sun-1')).toBe('#fff04d')
+    expect(tok(block, '--jy-scene-sun-2')).toBe('#ff2d95')
+    expect(tok(block, '--jy-scene-grid-line')).toBe('rgba(255, 45, 149, 0.35)')
+    expect(tok(block, '--jy-scene-horizon')).toBe('rgba(255, 120, 60, 0.85)')
+  })
+
+  it('② 日间天空四段渐变 + 更淡的扫描线，规则限定在亮侧作用域', () => {
+    const scene = extractBlock(
+      synthSection(),
+      /(?:^|\n)\[data-juya-variant='synthwave-light'\]\.jysynth \.juya-scene \{/
+    )
+    expect(scene, '亮侧场景层规则必须存在').not.toBe('')
+    const bg = decl(scene, 'background-image')
+    for (const stop of ['#ffd6e8', '#ffc4d8', '#ffb27a', '#ffe6cc']) {
+      expect(bg, `渐变停靠 ${stop}`).toContain(stop)
+    }
+    expect(bg, '顶部 0% → 底部 100% 的垂直渐变').toContain('linear-gradient(180deg')
+    expect(bg, '扫描线比暗侧更淡（0.06 vs 0.10）').toContain(
+      'rgba(0, 0, 0, 0.06) 0 1px, transparent 1px 4px'
+    )
+    // 场景层规则只允许亮/暗两条：亮侧不得写成无变体限定的裸 .juya-scene（会在暗侧/其它风格上叠加）
+    const sceneRules = [...css.matchAll(/(?:^|\n)([^\n{}]*\.jysynth \.juya-scene)\s*\{/g)].map((m) =>
+      m[1].trim()
+    )
+    expect(sceneRules.sort()).toEqual(
+      [
+        "[data-juya-variant='synthwave-dark'].jysynth .juya-scene",
+        "[data-juya-variant='synthwave-light'].jysynth .juya-scene"
+      ].sort()
+    )
+  })
+
+  it('③ 亮侧落日与网格也纳入「窗口不可见时暂停」，暂停规则不落到无变体限定的选择器上', () => {
+    // #44：网格的动画载体是纹理层伪元素，暂停选择器必须带 ::after
+    for (const [name, selector] of [
+      [
+        '落日',
+        "[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-sun"
+      ],
+      [
+        '网格',
+        "[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp::after"
+      ]
+    ] as const) {
+      expect(css, `${name}需进入亮侧暂停清单`).toContain(`${selector} {`)
+      const rule = ruleBySelector(css, selector)
+      expect(decl(rule, 'animation-play-state'), `${name}在窗口不可见时暂停`).toBe('paused')
+    }
+    // 亮暗两侧各两条，共四条；每条都必须带变体限定（裸选择器会波及 y2k / nocturne 的动画载体）
+    const pauseRules = [
+      ...css.matchAll(/(?:^|\n)([^\n{}]*\[data-app-hidden\][^\n{}]*\.juya-scene-(?:sun|grid-persp)[^\n{}]*)\{([^}]*)\}/g)
+    ].map((m) => m[1].trim())
+    expect(pauseRules, '落日与网格各两条（亮/暗）').toHaveLength(4)
+    for (const selector of pauseRules) {
+      expect(selector, '暂停规则必须限定在具体变体').toMatch(
+        /\[data-juya-variant='synthwave-(light|dark)'\]/
+      )
+    }
+  })
+
+  it('④ 实算：0.62 白卡叠天空顶与亮侧地面两种合成底，正文/次要/链接 ≥ 4.5，accent ≥ 3（非文本件）', () => {
+    const block = variantBlock('synthwave-light')
+    const card = rgba(tok(block, '--jy-card'))
+    // 亮侧卡片实际压过的两种底：天空顶 #ffd6e8，以及地面（已改浅色 #ffcadb）——
+    // 后者此前是共享的 #170a2a，合成底 #a7a2ae 上次要文字只有 2.78（#41 修掉的那条）。
+    const bases = [
+      { name: '天空顶 #ffd6e8', color: SKY_TOP, expect: 0xffeff6 },
+      { name: '地面 #ffcadb', color: GROUND, expect: 0xffebf1 }
+    ]
+    for (const b of bases) {
+      const base = alphaOver(card.rgb, card.alpha, b.color)
+      expect(base, `${b.name} 的合成底`).toBe(b.expect)
+      expect(contrast(tokenHex(block, '--jy-heading'), base), `标题 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(tokenHex(block, '--jy-text'), base), `正文 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(tokenHex(block, '--jy-muted'), base), `次要文字 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(tokenHex(block, '--jy-link'), base), `链接 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      // accent #e0006e 在亮侧的用途全为非文本件（1px 边框、栏目条、徽章底、滚动条 thumb）与
+      // 28px 粗体刊头渐变的末端 —— 分别按非文本 3:1 / 大字 3:1 的门槛。
+      // 若将来把 accent 用作小字号正文，本断言须收紧到 4.5（届时需换更深的品红）。
+      expect(contrast(tokenHex(block, '--jy-accent'), base), `accent / ${b.name}（非文本件）`).toBeGreaterThanOrEqual(3)
+    }
+
+    // 天空最深的一段（#ffb27a 82%）合成底更暗：正文与次要文字仍须过 AA
+    const deep = alphaOver(card.rgb, card.alpha, SKY_DEEP)
+    expect(deep, '合成底应落在 #ffe2cc').toBe(0xffe2cc)
+    expect(contrast(tokenHex(block, '--jy-text'), deep), '正文 / 天空最深段').toBeGreaterThanOrEqual(4.5)
+    expect(contrast(tokenHex(block, '--jy-muted'), deep), '次要文字 / 天空最深段').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('⑤ 亮侧地面改浅色：只覆盖 background-color 且限定亮侧作用域，共享地面与暗侧仍为 #170a2a', () => {
+    const lightGround = extractBlock(
+      synthSection(),
+      /(?:^|\n)\[data-juya-variant='synthwave-light'\]\.jysynth \.juya-scene-grid-persp \{/
+    )
+    expect(lightGround, '亮侧地面覆盖规则必须存在，且落在蒸汽梦核式段内').not.toBe('')
+    expect(decl(lightGround, 'background-color'), '亮侧地面色').toBe('#ffcadb')
+    // 只改颜色：几何（bottom / height / transform）仍归共享规则与 #40 的订阅页补偿
+    for (const prop of ['bottom', 'height', 'transform', 'background-image']) {
+      expect(decl(lightGround, prop), `地面色覆盖不得顺手改 ${prop}`).toBe('')
+    }
+
+    // 共享规则（暗侧地面）仍是 #170a2a —— 亮侧覆盖不得上移到裸选择器
+    const shared = extractBlock(css, /(?:^|\n)\.juya-scene-grid\.juya-scene-grid-persp \{/)
+    expect(decl(shared, 'background-color'), '暗侧地面维持现状').toBe('#170a2a')
+
+    // 全文件只有两条规则给网格平面设地面色：共享一条，亮侧一条
+    const groundRules = [
+      ...css.matchAll(/(?:^|\n)([^\n{}]*\.juya-scene-grid-persp[^\n{}]*)\s*\{([^}]*)\}/g)
+    ]
+      .map((m) => ({ selector: m[1].trim(), block: m[2] }))
+      .filter((r) => decl(r.block, 'background-color') !== '')
+    expect(groundRules.map((r) => r.selector).sort()).toEqual(
+      [
+        '.juya-scene-grid.juya-scene-grid-persp',
+        "[data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp"
+      ].sort()
+    )
+  })
+})
+
+describe('synthwave 网格合成层守卫（2026-10-22，#44）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：网格规则必须落在此区间。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 剥注释后的段内代码：注释里叙述旧实现（background-position）不算实现 */
+  const code = (): string => synthSection().replace(/\/\*[\s\S]*?\*\//g, '')
+
+  /** 父层：几何 / mask / 地面底色 */
+  const plane = (): string =>
+    extractBlock(css, /(?:^|\n)\.juya-scene-grid\.juya-scene-grid-persp \{/)
+
+  /** 纹理层：周期网格 + 位移动画 */
+  const texture = (): string =>
+    extractBlock(css, /(?:^|\n)\.juya-scene-grid\.juya-scene-grid-persp::after \{/)
+
+  it('① 父层不再承担动画：无 animation / will-change / 背景纹理', () => {
+    expect(plane(), '父层规则必须存在').not.toBe('')
+    expect(decl(plane(), 'animation'), '父层动画须迁到纹理层').toBe('')
+    expect(decl(plane(), 'will-change'), '父层不得再声明 will-change').toBe('')
+    // 网格作用域的规则一律不得再碰 background-position（段内的 dust 是另一个预设，不在本条范围）
+    const gridBg = [...code().matchAll(/([^{}]*\.juya-scene-grid[^{}]*)\{([^{}]*)\}/g)]
+      .filter(([, , body]) => /background-position/.test(body))
+      .map(([, selector]) => selector.trim())
+    expect(gridBg, '网格规则不得再用 background-position 做动画').toEqual([])
+    // 基础 .juya-scene-grid（y2k 地平网格）自带 background-image；父层不显式清空会漏出
+    // 那套 1px / 44px 纹理，与纹理层叠加成双网格（实施时实测到过，故立此守卫）
+    expect(decl(plane(), 'background-image'), '基础网格纹理必须显式清掉').toBe('none')
+    // 几何 / mask / 地面底色仍归父层
+    expect(decl(plane(), 'height')).toBe('95vh')
+    expect(decl(plane(), 'bottom')).toBe('136px')
+    expect(decl(plane(), 'background-color')).toBe('#170a2a')
+    expect(decl(plane(), 'mask-image')).toContain('linear-gradient(180deg')
+  })
+
+  it('② 纹理层：多留一个周期的高度、两条渐变，位移全程不露底', () => {
+    const t = texture()
+    expect(t, '纹理层规则必须存在').not.toBe('')
+    expect(decl(t, 'position')).toBe('absolute')
+    expect(decl(t, 'top'), '整体上移一个周期').toBe('-56px')
+    expect(decl(t, 'height'), '高度多一个周期，translateY 到 56px 时底边仍有料').toBe(
+      'calc(100% + 56px)'
+    )
+    expect(decl(t, 'left')).toBe('0')
+    expect(decl(t, 'right')).toBe('0')
+    const bg = decl(t, 'background-image')
+    expect(bg, '竖线周期 72px').toContain('repeating-linear-gradient(90deg')
+    expect(bg, '横线周期 56px').toContain('repeating-linear-gradient(0deg')
+    expect(bg.match(/72px/g), '竖线周期只出现一次').toHaveLength(1)
+    expect(bg.match(/56px/g), '横线周期只出现一次').toHaveLength(1)
+    expect(bg, '线色走变体 token（亮侧 0.35 / 暗侧 0.55）').toContain('var(--jy-scene-grid-line)')
+  })
+
+  it('③ 关键帧只动 transform、周期 56px / 3.2s linear infinite，will-change 挂在纹理层', () => {
+    const t = texture()
+    expect(decl(t, 'animation')).toBe('jy-grid-scroll 3.2s linear infinite')
+    expect(decl(t, 'will-change'), 'will-change 必须在纹理层').toBe('transform')
+    const kf = extractBlock(css, /(?:^|\n)@keyframes jy-grid-scroll \{/)
+    expect(kf, '网格关键帧必须存在').not.toBe('')
+    expect(kf, '关键帧不得再动 background-position').not.toContain('background-position')
+    const decls = [...kf.matchAll(/([a-z-]+)\s*:\s*([^;}]+)/g)].map(([, p, v]) => [p, v.trim()] as const)
+    expect(decls.map(([p]) => p), '关键帧只允许 transform').toEqual(['transform', 'transform'])
+    expect(decls[0]![1]).toBe('translateY(0)')
+    expect(decls[1]![1], '位移量 = 横向网格周期').toBe('translateY(56px)')
+  })
+
+  it('④ 地平线 ::before 仍压在纹理层之上', () => {
+    const before = extractBlock(css, /(?:^|\n)\.juya-scene-grid-persp::before \{/)
+    expect(before, '地平线伪元素必须存在').not.toBe('')
+    const z = (block: string): number => Number.parseInt(decl(block, 'z-index'), 10)
+    expect(Number.isNaN(z(before)), '地平线必须显式声明 z-index').toBe(false)
+    expect(Number.isNaN(z(texture())), '纹理层必须显式声明 z-index').toBe(false)
+    expect(z(before), '纹理层伪元素在树序上靠后，只能靠 z-index 让地平线压住它').toBeGreaterThan(
+      z(texture())
+    )
+  })
+
+  it('⑤ 不可见暂停与 reduced-motion 也指向纹理层（父层已无动画可暂停）', () => {
+    for (const variant of ['synthwave-dark', 'synthwave-light']) {
+      const selector = `[data-app-hidden] [data-juya-variant='${variant}'].jysynth .juya-scene-grid-persp::after`
+      const rule = ruleBySelector(css, selector)
+      expect(rule, `${variant} 的网格暂停规则必须选中纹理层`).not.toBe('')
+      expect(decl(rule, 'animation-play-state')).toBe('paused')
+    }
+    const rm = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).find((b) =>
+      b.includes('.juya-scene-sun')
+    )
+    expect(rm, '场景 reduced-motion 块必须存在').toBeTruthy()
+    expect(rm, '网格静止必须选中纹理层').toContain(
+      '.juya-scene-grid.juya-scene-grid-persp::after'
+    )
+  })
+})
+
+describe('synthwave 暗侧调色板守卫（2026-10-22，#34 review）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：调色板规则必须落在此区间，
+   *  否则「只改 synthwave」只是选择器上的字面承诺。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 变体块内某 token 的完整右值 */
+  const tok = (block: string, name: string): string =>
+    block.match(new RegExp(`${name}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+
+  /** `rgba(r, g, b, a)` / `rgb(r, g, b)` → `{ rgb, alpha }` */
+  const rgba = (value: string): { rgb: number; alpha: number } => {
+    const m = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/)
+    if (!m) throw new Error(`不是 rgb()/rgba() 字面量：${value}`)
+    return {
+      rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+      alpha: m[4] === undefined ? 1 : Number(m[4])
+    }
+  }
+
+  /** 段内首条匹配 opener 的规则块 */
+  const synthRule = (opener: RegExp): string => extractBlock(synthSection(), opener)
+
+  it('① 暗侧 token 与 SPEC「卡片与文字」逐项对齐（梦核紫残留清零）', () => {
+    const block = variantBlock('synthwave-dark')
+    expect(block, '暗侧变体块必须存在').not.toBe('')
+    expect(tok(block, '--jy-heading'), '标题').toBe('#ffe6ff')
+    expect(tok(block, '--jy-text'), '正文').toBe('#f0dcff')
+    expect(tok(block, '--jy-muted'), '次要文字（#39 上调值，4.72 仍成立）').toBe('#c9b7e0')
+    expect(tok(block, '--jy-accent'), '强调色').toBe('#ff2d95')
+    expect(tok(block, '--jy-on-accent'), 'accent 上文字').toBe('#1a0010')
+    expect(tok(block, '--jy-link'), '链接').toBe('#ff8ad0')
+    expect(tok(block, '--jy-lead-bg'), '导语底色 = accent 12%').toBe('rgba(255, 45, 149, 0.12)')
+    expect(tok(block, '--jy-radius')).toBe('16px')
+    expect(tok(block, '--jy-bg')).toBe('#0b0918')
+    const card = rgba(tok(block, '--jy-card'))
+    expect(card.rgb, '卡面底色（#39 定值，不动）').toBe(0x140826)
+    expect(card.alpha).toBe(0.62)
+    // 边框与导语底色必须与 accent 同色相：换个紫就会立刻和新调色板异色
+    const accent = tokenHex(block, '--jy-accent')
+    expect(rgba(tok(block, '--jy-border')).rgb, '边框与 accent 同色相').toBe(accent)
+    expect(rgba(tok(block, '--jy-border')).alpha, '边框 1px 半透明').toBe(0.32)
+    expect(rgba(tok(block, '--jy-lead-bg')).rgb, '导语底色与 accent 同色相').toBe(accent)
+  })
+
+  it('② 焦点色刻意未随迁移改动（SPEC 未规定，属待裁决的设计决策）', () => {
+    // 锁死「不要顺手改」：改它需要单独裁决，不属于本轮 review 修复
+    expect(tok(variantBlock('synthwave-dark'), '--jy-focus')).toBe('#b89aff')
+    expect(tok(variantBlock('synthwave-light'), '--jy-focus')).toBe('#7c4dff')
+  })
+
+  it('③ 段内不再有梦核紫字面值（外发光 / 边框 / 链接一起迁移）', () => {
+    const section = synthSection()
+    for (const purple of [
+      '#8f63ff',
+      '#c3a9ff',
+      '#e6dcff',
+      'rgba(124, 92, 255',
+      'rgba(158, 132, 255',
+      'rgba(143, 99, 255'
+    ]) {
+      expect(section, `段内不得残留 ${purple}`).not.toContain(purple)
+    }
+  })
+
+  it('④ 三处外发光字面色为品红，悬停只加深（0.12 → 0.28）', () => {
+    // 取色来源：暗侧 --jy-accent #ff2d95（亮侧 #e0006e 同色相）；两条共享规则故字面值统一
+    const cards = synthRule(/(?:^|\n)\.jysynth \.juya-entry,/)
+    expect(decl(cards, 'box-shadow')).toBe('0 0 18px rgba(255, 45, 149, 0.12)')
+    const feedItem = synthRule(/(?:^|\n)\.jysynth \.juya-feed-item \{/)
+    expect(decl(feedItem, 'box-shadow')).toBe('0 0 14px rgba(255, 45, 149, 0.12)')
+    const hover = synthRule(/(?:^|\n)\.jysynth \.juya-feed-item:hover \{/)
+    const shadow = rgba(decl(hover, 'box-shadow').replace(/^0 0 22px\s+/, ''))
+    expect(shadow.rgb, '悬停发光与常态同色相').toBe(0xff2d95)
+    expect(shadow.alpha, '悬停加深').toBe(0.28)
+  })
+
+  it('⑤ 悬停补上「边框亮度」：border-color 走分变体 token，alpha 由 .32/.30 提到 .55', () => {
+    const hover = synthRule(/(?:^|\n)\.jysynth \.juya-feed-item:hover \{/)
+    expect(decl(hover, 'transform'), '仍不上浮').toBe('none')
+    expect(decl(hover, 'border-color'), '边框提亮走 token，不写死字面色').toBe(
+      'var(--jy-border-hover)'
+    )
+    for (const [variant, accent, base] of [
+      ['synthwave-dark', 0xff2d95, 0.32],
+      ['synthwave-light', 0xe0006e, 0.3]
+    ] as const) {
+      const block = variantBlock(variant)
+      const normal = rgba(tok(block, '--jy-border'))
+      const hoverB = rgba(tok(block, '--jy-border-hover'))
+      expect(normal.rgb, `${variant} 常态边框与 accent 同色相`).toBe(accent)
+      expect(normal.alpha, `${variant} 常态边框 alpha`).toBe(base)
+      expect(hoverB.rgb, `${variant} 悬停边框同色相`).toBe(accent)
+      expect(hoverB.alpha, `${variant} 悬停边框提亮`).toBe(0.55)
+      expect(hoverB.alpha, `${variant} 悬停只提亮，不得反向变淡`).toBeGreaterThan(normal.alpha)
+    }
+  })
+
+  it('⑥ 落日三色（#ffe14d → #ff9a3c → #ff2d95）：中段色站补在共享径向渐变里', () => {
+    const sun = extractBlock(css, /(?:^|\n)\.juya-scene-sun \{/)
+    expect(sun, '落日规则必须存在').not.toBe('')
+    const bg = decl(sun, 'background').replace(/\s+/g, ' ')
+    expect(bg, '三站按黄 → 橙 → 品红排列').toContain(
+      'var(--jy-scene-sun-1) 0%, var(--jy-scene-sun-mid) 34%, var(--jy-scene-sun-2) 62%'
+    )
+    // 两侧 token 与 SPEC 色带一致；中段亮暗同值（日间版只把最高光调亮）
+    expect(tok(variantBlock('synthwave-dark'), '--jy-scene-sun-1')).toBe('#ffe14d')
+    expect(tok(variantBlock('synthwave-dark'), '--jy-scene-sun-mid')).toBe('#ff9a3c')
+    expect(tok(variantBlock('synthwave-dark'), '--jy-scene-sun-2')).toBe('#ff2d95')
+    expect(tok(variantBlock('synthwave-light'), '--jy-scene-sun-mid')).toBe('#ff9a3c')
+    // 中段必须落在两侧停靠点之间，否则橙带会被前/后一站盖掉
+    const at = (token: string): number => bg.indexOf(token)
+    expect(at('var(--jy-scene-sun-1)'), '首站存在').toBeGreaterThanOrEqual(0)
+    expect(at('var(--jy-scene-sun-mid)')).toBeGreaterThan(at('var(--jy-scene-sun-1)'))
+    expect(at('var(--jy-scene-sun-2)')).toBeGreaterThan(at('var(--jy-scene-sun-mid)'))
+  })
+
+  it('⑦ 滚动条 thumb 与 accent 同步：暗侧 #ff2d95，对 #0b0918 ≥ 3', () => {
+    const rule = extractBlock(
+      css,
+      /(?:^|\n)\.view-scroll:has\(\[data-juya-variant='synthwave-dark'\]\)::-webkit-scrollbar-thumb \{/
+    )
+    expect(rule, '暗侧 thumb 规则必须存在').not.toBe('')
+    expect(decl(rule, 'background'), 'thumb 取 accent 字面色').toBe('#ff2d95')
+    const ratio = contrast(0xff2d95, 0x0b0918)
+    expect(ratio, 'thumb 对滚动槽底（暗紫夜）须 ≥ 3').toBeGreaterThanOrEqual(3)
+    expect(ratio, '实算 5.68').toBeCloseTo(5.68, 2)
+  })
+
+  it('⑧ 实算：accent 上的文字 ≥ 4.5，标题/正文/次要文字在最不利合成底上 ≥ 4.5', () => {
+    const block = variantBlock('synthwave-dark')
+    expect(
+      contrast(tokenHex(block, '--jy-on-accent'), tokenHex(block, '--jy-accent')),
+      'accent 上的文字（on-accent）'
+    ).toBeGreaterThanOrEqual(4.5)
+    // 最不利合成底：0.62 卡面压落日峰 #ff9a3c → #6d3f2e（模块级 alphaOver 合成原语）
+    const card = rgba(tok(block, '--jy-card'))
+    const base = alphaOver(card.rgb, card.alpha, 0xff9a3c)
+    for (const name of ['--jy-heading', '--jy-text', '--jy-muted']) {
+      expect(contrast(tokenHex(block, name), base), `${name} / 最不利合成底`).toBeGreaterThanOrEqual(
+        4.5
+      )
+    }
   })
 })

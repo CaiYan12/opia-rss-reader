@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { loadApp, openFirstArticle, activeTab } from './setup'
+import { readGridPlane, SYNTHWAVE_GRID, type GridPlaneFacts } from './helpers'
 
 /** 阅读页分流与降级：橘鸦定制路径三重判据（源身份 + 风格开启 + 解析成功）。
  *  keep-alive 下主页与阅读页同时在 DOM，故断言限定活动标签容器。 */
@@ -50,13 +51,454 @@ test('非橘鸦源文章：永不进定制路径', async ({ page }) => {
   await expect(tab.locator('.article-content')).toBeVisible()
 })
 
-test('暗色模式 + 梦核式：变体切换为 dreamcore-dark', async ({ page }) => {
+test('暗色模式 + 蒸汽梦核式：变体切换为 synthwave-dark', async ({ page }) => {
   await loadApp(page, 'dark')
   await openFirstArticle(page)
 
   const root = activeTab(page).locator('.juya-root')
-  await expect(root).toHaveAttribute('data-juya-variant', 'dreamcore-dark')
-  await expect(root).toHaveClass(/jydream/)
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-dark')
+  await expect(root).toHaveClass(/jysynth/)
+})
+
+test('蒸汽梦核式暗侧卡面（#39）：刊头/条目 18px 毛玻璃、概览底板、配图描边与降饱和', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-dark')
+
+  // 刊头与条目同一套 18px 毛玻璃（此前 6px，落日与网格几乎透底）
+  for (const [name, locator] of [
+    ['刊头', root.locator('.juya-masthead')],
+    ['条目', root.locator('.juya-entry').first()]
+  ] as const) {
+    const filter = await locator.evaluate((el) => getComputedStyle(el).backdropFilter)
+    expect(filter, `${name}毛玻璃半径`).toContain('blur(18px)')
+    expect(filter, `${name}饱和度补偿`).toContain('saturate(1.15)')
+  }
+
+  // 概览底板：与卡片同源（有底色、有边框、有内衬），不是裸列表
+  const overview = root.locator('.juya-overview')
+  await expect(overview).toBeVisible()
+  const panel = await overview.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      bg: cs.backgroundColor,
+      border: cs.borderTopWidth,
+      radius: cs.borderTopLeftRadius,
+      padding: `${cs.paddingTop} ${cs.paddingRight}`,
+      backdrop: cs.backdropFilter
+    }
+  })
+  expect(panel.bg, '概览底板须有底色（不能是 transparent）').not.toBe('rgba(0, 0, 0, 0)')
+  expect(panel.border, '底板 1px 边框').toBe('1px')
+  expect(panel.radius, '底板圆角与卡片统一').toBe('16px')
+  expect(panel.padding, '内衬 12×16').toBe('12px 16px')
+  expect(panel.backdrop, '底板同强度毛玻璃').toContain('blur(18px)')
+
+  // 配图：1px 霓虹描边 + 降饱和，别让落日色把照片冲得过艳
+  const img = root.locator('.juya-media img').first()
+  await expect(img).toBeVisible()
+  const media = await img.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { filter: cs.filter, border: cs.borderTopWidth, color: cs.borderTopColor }
+  })
+  expect(media.filter, '配图降饱和').toContain('saturate(0.92)')
+  expect(media.border, '配图 1px 描边').toBe('1px')
+})
+
+test('蒸汽梦核暗侧调色板（#34 review）：token 对齐 SPEC、落日三色、刊头描边与亮侧分色', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-dark')
+
+  // 走真实级联读 token，而不是读 CSS 文本：梦核紫残留在计算值上会立刻显形
+  const tokens = await root.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    const pick = (name: string): string => cs.getPropertyValue(name).replace(/\s+/g, '')
+    return {
+      heading: pick('--jy-heading'),
+      text: pick('--jy-text'),
+      muted: pick('--jy-muted'),
+      accent: pick('--jy-accent'),
+      onAccent: pick('--jy-on-accent'),
+      link: pick('--jy-link'),
+      border: pick('--jy-border'),
+      leadBg: pick('--jy-lead-bg'),
+      focus: pick('--jy-focus'),
+      sunMid: pick('--jy-scene-sun-mid')
+    }
+  })
+  expect(tokens).toEqual({
+    heading: '#ffe6ff',
+    text: '#f0dcff',
+    muted: '#c9b7e0',
+    accent: '#ff2d95',
+    onAccent: '#1a0010',
+    link: '#ff8ad0',
+    border: 'rgba(255,45,149,0.32)',
+    leadBg: 'rgba(255,45,149,0.12)',
+    // 焦点色未随迁移改动：SPEC 未规定，属待单独裁决
+    focus: '#b89aff',
+    sunMid: '#ff9a3c'
+  })
+
+  // 落日三色（#ffe14d → #ff9a3c → #ff2d95）：中段橙带必须真的进了径向渐变
+  const sun = root.locator('.juya-scene-sun')
+  await expect(sun).toBeVisible()
+  const sunBg = await sun.evaluate((el) => getComputedStyle(el).backgroundImage)
+  for (const [name, rgb] of [
+    ['首站黄', 'rgb(255, 225, 77)'],
+    ['中段橙', 'rgb(255, 154, 60)'],
+    ['末端品红', 'rgb(255, 45, 149)']
+  ] as const) {
+    expect(sunBg, `落日${name}`).toContain(rgb)
+  }
+
+  // 刊头描边：暗侧与 --jy-heading 同源（近白紫），亮侧另取深色低透 —— 见下一个用例
+  const stroke = await root.locator('.juya-masthead h1').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { color: cs.webkitTextStrokeColor, width: cs.webkitTextStrokeWidth }
+  })
+  expect(stroke.width, '1px 描边').toBe('1px')
+  expect(stroke.color, '暗侧描边取 --jy-heading 的 45% alpha').toBe('rgba(255, 230, 255, 0.45)')
+})
+
+test('蒸汽梦核亮侧（#41）：日间版天空挂载、网格底边在视口内、卡面同为 18px 毛玻璃', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'synthwaveLight')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-light')
+  await expect(root).toHaveClass(/jysynth/)
+
+  // 场景层必须真的画出日间天空（顶 #ffd6e8 → 底 #ffe6cc）与更淡的扫描线：
+  // 只有变体属性与场景节点时，亮侧仍是「淡紫底 + 通用卡片」，看不出合成波母题。
+  const scene = root.locator('.juya-scene')
+  await expect(scene).toBeVisible()
+  const sky = await scene.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(sky, '日间天空顶部色').toContain('rgb(255, 214, 232)')
+  expect(sky, '日间天空底部色').toContain('rgb(255, 230, 204)')
+  expect(sky, '扫描线层').toContain('repeating-linear-gradient')
+  await expect(scene.locator('.juya-scene-sun')).toBeVisible()
+  await expect(scene.locator('.juya-scene-grid-persp')).toBeVisible()
+
+  // 几何：网格底边必须落在滚动口可视区内（#36 的教训 —— 只看 CSS 可见性会漏检「被推出视口」）
+  const geom = await root.evaluate((el) => {
+    const scroller = el.closest('.view-scroll') as HTMLElement
+    const grid = el.querySelector('.juya-scene-grid.juya-scene-grid-persp') as HTMLElement
+    const g = grid.getBoundingClientRect()
+    const s = scroller.getBoundingClientRect()
+    return { height: g.height, bottom: g.bottom, portBottom: s.bottom }
+  })
+  expect(geom.height, '透视投影后网格应有可辨高度').toBeGreaterThan(120)
+  expect(geom.bottom, '网格底边不得落到可视区下缘之外').toBeLessThanOrEqual(geom.portBottom + 1)
+  expect(geom.bottom, '网格底边应贴住可视区下缘').toBeGreaterThan(geom.portBottom - 40)
+
+  // 地面必须是浅色（#ffcadb）：共享的 #170a2a 是暗侧地面，亮侧沿用会让卡片压在网格区时变灰卡，
+  // 0.62 白卡合成底上次要文字只有 2.78（AA 不过）
+  await expect(scene.locator('.juya-scene-grid.juya-scene-grid-persp')).toHaveCSS(
+    'background-color',
+    'rgb(255, 202, 219)'
+  )
+
+  // 卡面与暗侧同强度毛玻璃（亮侧卡面 rgba(255,255,255,.62)，滤镜不变）
+  for (const [name, locator] of [
+    ['刊头', root.locator('.juya-masthead')],
+    ['条目', root.locator('.juya-entry').first()]
+  ] as const) {
+    const filter = await locator.evaluate((el) => getComputedStyle(el).backdropFilter)
+    expect(filter, `${name}毛玻璃半径`).toContain('blur(18px)')
+  }
+
+  // 刊头描边（#34 review）：亮侧改深紫低透；沿用暗侧的近白紫会在白卡上等于没有描边
+  const stroke = await root.locator('.juya-masthead h1').evaluate((el) => ({
+    color: getComputedStyle(el).webkitTextStrokeColor,
+    width: getComputedStyle(el).webkitTextStrokeWidth
+  }))
+  expect(stroke.width, '1px 描边').toBe('1px')
+  expect(stroke.color, '亮侧描边取 --jy-heading #4a0736 的 28% alpha').toBe(
+    'rgba(74, 7, 54, 0.28)'
+  )
+})
+
+test('蒸汽梦核式（#44）：网格纹理层改用合成层位移，父层不再 animate 背景', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const plane = activeTab(page).locator('.juya-scene-grid.juya-scene-grid-persp')
+  await expect(plane).toBeVisible()
+
+  // 静态守卫只读 CSS 文本；这里读的是真实 computed style —— 确认动画真的挂在纹理层伪元素上
+  const read = await plane.evaluate((el) => {
+    const parent = getComputedStyle(el)
+    const tex = getComputedStyle(el, '::after')
+    return {
+      parentAnimation: parent.animationName,
+      parentWillChange: parent.willChange,
+      textureAnimation: tex.animationName,
+      textureDuration: tex.animationDuration,
+      textureWillChange: tex.willChange,
+      textureTop: tex.top,
+      textureHeight: tex.height,
+      parentHeight: parent.height,
+      textureTransform: tex.transform
+    }
+  })
+  expect(read.parentAnimation, '父层不再有动画').toBe('none')
+  expect(read.parentWillChange, '父层不再 will-change background-position').not.toContain(
+    'background-position'
+  )
+  expect(read.textureAnimation, '动画落在纹理层').toContain('jy-grid-scroll')
+  expect(read.textureDuration).toBe('3.2s')
+  expect(read.textureWillChange).toBe('transform')
+  expect(read.textureTop, '纹理层上移一个周期').toBe('-56px')
+  expect(parseFloat(read.textureHeight), '纹理层高度多出一个周期').toBe(
+    parseFloat(read.parentHeight) + 56
+  )
+
+  /** computed transform → translateY（matrix 第 6 位 / matrix3d 第 14 位） */
+  const translateY = (value: string): number => {
+    const m = value.match(/matrix(3d)?\(([^)]+)\)/)
+    if (!m) return Number.NaN
+    const nums = (m[2] ?? '').split(',').map(Number)
+    return m[1] ? (nums[13] as number) : (nums[5] as number)
+  }
+
+  const y0 = translateY(read.textureTransform)
+  await page.waitForTimeout(500)
+  const y1 = translateY(await plane.evaluate((el) => getComputedStyle(el, '::after').transform))
+  expect(Number.isFinite(y0) && Number.isFinite(y1), '纹理层应带 translateY 位移').toBe(true)
+  expect(y1, '两次采样之间 transform 必须变化（动画真的在跑）').not.toBe(y0)
+  expect(Math.abs(y1 - y0), '3.2s / 56px ⇒ 500ms 约 8.75px').toBeGreaterThan(1)
+})
+
+/* ---- #45 边界回归：网格搬进合成层之后的确定性断言 ---- */
+
+/** 纹理层在任意相位都必须盖住父层高度：缺口 > 0 就是地面底色透出来的「露底」。
+ *  左右 0 内缩 + 平面居中于滚动口 = 纹理与地面仍在同一个透视平面上（否则网格线与地平线错位）。 */
+function assertTextureCoversPlane(facts: GridPlaneFacts, label: string): void {
+  expect(facts.texture.animationName, `${label}：动画挂在纹理层`).toContain('jy-grid-scroll')
+  expect(facts.texture.animationDuration, `${label}：周期 3.2s`).toBe('3.2s')
+  expect(facts.texture.willChange, `${label}：位移在合成层`).toBe('transform')
+  expect(Number.isFinite(facts.texture.translateY), `${label}：纹理层应带 translateY 位移`).toBe(true)
+  expect(facts.topGap, `${label}：纹理层上缘缺口（>0 即露底）`).toBeLessThanOrEqual(0.5)
+  expect(facts.bottomGap, `${label}：纹理层下缘缺口（>0 即露底）`).toBeLessThanOrEqual(0.5)
+  expect(facts.texture.left, `${label}：纹理层左缘贴父层`).toBe(0)
+  expect(facts.texture.right, `${label}：纹理层右缘贴父层`).toBe(0)
+  expect(
+    Math.abs(facts.plane.centerX - facts.port.centerX),
+    `${label}：透视平面应居中于滚动口`
+  ).toBeLessThanOrEqual(1)
+}
+
+/** 两次采样之间 translateY 必须真的变化：证明动画在跑，而不是只有一条静态声明。 */
+async function expectGridAnimating(
+  page: import('@playwright/test').Page,
+  plane: import('@playwright/test').Locator,
+  label: string
+): Promise<{ before: GridPlaneFacts; after: GridPlaneFacts }> {
+  const before = await readGridPlane(plane)
+  await page.waitForTimeout(450)
+  const after = await readGridPlane(plane)
+  expect(after.texture.translateY, `${label}：两次采样 translateY 必须变化（动画在跑）`).not.toBe(
+    before.texture.translateY
+  )
+  expect(
+    Math.abs(after.texture.translateY - before.texture.translateY),
+    `${label}：3.2s / 56px ⇒ 450ms 约 7.9px`
+  ).toBeGreaterThan(1)
+  return { before, after }
+}
+
+// 四组合之阅读页两条：亮 / 暗 × 阅读页
+for (const [scenario, variant] of [
+  ['dark', 'synthwave-dark'],
+  ['synthwaveLight', 'synthwave-light']
+] as const) {
+  test(`蒸汽梦核式（#45）阅读页 ${variant}：网格可见、底边在视口内、纹理层在跑且不露底`, async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await loadApp(page, scenario)
+    await openFirstArticle(page)
+
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root).toHaveAttribute('data-juya-variant', variant)
+    const plane = activeTab(page).locator(SYNTHWAVE_GRID)
+    await expect(plane).toBeVisible()
+
+    const { before } = await expectGridAnimating(page, plane, variant)
+    assertTextureCoversPlane(before, variant)
+
+    // 底边必须落在滚动口可视区内（#36 的教训：CSS 可见不等于视口相交）
+    expect(before.plane.height, `${variant}：投影后应可辨高度`).toBeGreaterThan(120)
+    expect(before.plane.bottom, `${variant}：网格底边不得落到可视区下缘之外`).toBeLessThanOrEqual(
+      before.port.bottom + 1
+    )
+    expect(before.plane.bottom, `${variant}：网格底边应贴住可视区下缘`).toBeGreaterThan(
+      before.port.bottom - 40
+    )
+  })
+}
+
+test('蒸汽梦核式（#45）uiZoom 1.2：亮/暗两侧纹理层仍盖满父层、左右不错位', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  for (const [scenario, variant] of [
+    ['synthwaveZoom', 'synthwave-dark'],
+    ['synthwaveLightZoom', 'synthwave-light']
+  ] as const) {
+    await loadApp(page, scenario)
+    await openFirstArticle(page)
+
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root).toHaveAttribute('data-juya-variant', variant)
+    // 缩放真的生效（否则这条用例测的是 1.0 的旧状态）
+    const zoom = await page.evaluate(() => {
+      const host = document.querySelector('.view-scroll')?.firstElementChild
+      return host ? Number.parseFloat(getComputedStyle(host).zoom) : Number.NaN
+    })
+    expect(zoom, `${variant}：uiZoom 应为 1.2`).toBeCloseTo(1.2, 2)
+
+    const plane = activeTab(page).locator(SYNTHWAVE_GRID)
+    await expect(plane).toBeVisible()
+    const { before, after } = await expectGridAnimating(page, plane, `${variant}@zoom1.2`)
+    assertTextureCoversPlane(before, `${variant}@zoom1.2`)
+    // 动画跑起来之后仍不能露底：缺口随相位变化，只测一个相位容易漏掉尾部露底
+    assertTextureCoversPlane(after, `${variant}@zoom1.2（第二相位）`)
+
+  }
+})
+
+test('蒸汽梦核式（#45）≤520px 窄窗：底边在视口内、纹理层不露底不横向溢出', async ({ page }) => {
+  for (const width of [520, 480]) {
+    for (const [scenario, variant] of [
+      ['dark', 'synthwave-dark'],
+      ['synthwaveLight', 'synthwave-light']
+    ] as const) {
+      await page.setViewportSize({ width, height: 800 })
+      await loadApp(page, scenario)
+      await openFirstArticle(page)
+
+      const plane = activeTab(page).locator(SYNTHWAVE_GRID)
+      await expect(plane).toBeVisible()
+      const { before } = await expectGridAnimating(page, plane, `${variant}@${width}`)
+      assertTextureCoversPlane(before, `${variant}@${width}`)
+      expect(before.plane.bottom, `${variant}@${width}：网格底边须在可视区内`).toBeLessThanOrEqual(
+        before.port.bottom + 1
+      )
+
+      // 网格比滚动口宽是设计（left/right -25%），不得因此产生横向滚动
+      const overflow = await page.evaluate(() => {
+        const scroller = document.querySelector('.view-scroll')
+        return scroller ? scroller.scrollWidth - scroller.clientWidth : -1
+      })
+      expect(overflow, `${variant}@${width}：横向溢出`).toBeLessThanOrEqual(0)
+    }
+  }
+})
+
+test('蒸汽梦核式（#45）prefers-reduced-motion：纹理层 animation-name 为 none 且静止', async ({
+  page
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 1280, height: 900 })
+  for (const [scenario, variant] of [
+    ['dark', 'synthwave-dark'],
+    ['synthwaveLight', 'synthwave-light']
+  ] as const) {
+    await loadApp(page, scenario)
+    await openFirstArticle(page)
+
+    const plane = activeTab(page).locator(SYNTHWAVE_GRID)
+    await expect(plane).toBeVisible()
+    const before = await readGridPlane(plane)
+    expect(before.texture.animationName, `${variant}：降级动态效果后动画必须为 none`).toBe('none')
+    await page.waitForTimeout(450)
+    const after = await readGridPlane(plane)
+    expect(after.texture.translateY, `${variant}：降级后纹理层应静止`).toBe(
+      before.texture.translateY
+    )
+  }
+})
+
+test('蒸汽梦核式（#45）[data-app-hidden]：纹理层 animation-play-state 转为 paused', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  for (const [scenario, variant] of [
+    ['dark', 'synthwave-dark'],
+    ['synthwaveLight', 'synthwave-light']
+  ] as const) {
+    await loadApp(page, scenario)
+    await openFirstArticle(page)
+
+    const plane = activeTab(page).locator(SYNTHWAVE_GRID)
+    await expect(plane).toBeVisible()
+    const running = await readGridPlane(plane)
+    expect(running.texture.animationPlayState, `${variant}：可见时应为 running`).toBe('running')
+
+    // 主进程在窗口不可见时给 documentElement 打标记（src/renderer/visibilityPause.ts）
+    await page.evaluate(() => document.documentElement.setAttribute('data-app-hidden', ''))
+    const paused = await readGridPlane(plane)
+    expect(paused.texture.animationPlayState, `${variant}：窗口不可见时应为 paused`).toBe('paused')
+
+    await page.evaluate(() => document.documentElement.removeAttribute('data-app-hidden'))
+    const resumed = await readGridPlane(plane)
+    expect(resumed.texture.animationPlayState, `${variant}：恢复可见后应回到 running`).toBe(
+      'running'
+    )
+  }
+})
+
+test('蒸汽梦核式（#45）多标签 keep-alive：切走再切回仍在动，且每个阅读根只有一个网格纹理层', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'synthwaveTabs')
+
+  // 每个 .juya-root 只允许一个透视网格平面（它的 ::after 才是唯一纹理层）——
+  // 重复挂载会叠出两层网格（双倍亮度 + 双倍位移）
+  const planesPerRoot = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.juya-root.jysynth')].map(
+        (root) => root.querySelectorAll('.juya-scene-grid.juya-scene-grid-persp').length
+      )
+    )
+  const roots = await page.evaluate(
+    () => document.querySelectorAll('.juya-root.jysynth').length
+  )
+  expect(roots, '订阅页与阅读页应同时存活（keep-alive）').toBe(2)
+  expect(await planesPerRoot(), '每个根恰好一个网格平面').toEqual([1, 1])
+
+  const readerPlane = page
+    .locator('.juya-root', { has: page.locator('.juya-issue') })
+    .locator(SYNTHWAVE_GRID)
+  await expect(readerPlane).toBeVisible()
+  await expectGridAnimating(page, readerPlane, '切走前')
+
+  const tabs = page.locator('[data-tab-id]')
+  await tabs.nth(0).click()
+  await expect(page.locator('.juya-root', { has: page.locator('.juya-feed') })).toBeVisible()
+  await tabs.nth(1).click()
+  await expect(readerPlane).toBeVisible()
+
+  // 切回后仍在动：两次采样必须不同
+  await expectGridAnimating(page, readerPlane, '切回后')
+  // 没有叠层：文档任务数仍是两个根、每根一个平面
+  expect(await planesPerRoot(), '切回后不得出现重复的网格平面').toEqual([1, 1])
 })
 
 test('波普式：结构类 jypop 挂载', async ({ page }) => {
@@ -476,6 +918,29 @@ test('基层规则：相关链接标签为 12px 小标签，相关链接 hover �
   const link = root.locator('.juya-links a').first()
   await link.hover()
   await expect(link).toHaveCSS('text-decoration-line', 'underline')
+  // #38 未传图标开关的风格：文本箭头仍在（基础层 ::after），DOM 不变
+  expect(await link.evaluate((el) => getComputedStyle(el, '::after').content)).toContain('↗')
+  await expect(link.locator('svg')).toHaveCount(0)
+})
+
+test('蒸汽梦核式相关链接（#38）：外链箭头为 12px SVG 图标，基础层文本 ↗ 关闭', async ({ page }) => {
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root.jysynth')
+  const link = root.locator('.juya-links a').first()
+  await expect(link).toBeVisible()
+  const icon = link.locator('svg')
+  await expect(icon).toHaveCount(1)
+  await expect(icon).toHaveAttribute('aria-hidden', 'true')
+  const size = await icon.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    return { w: Math.round(rect.width), h: Math.round(rect.height) }
+  })
+  expect(size).toEqual({ w: 12, h: 12 })
+  // 文本箭头与 SVG 不得并存：::after 置空，链接文本里也没有 ↗ 字符
+  expect(await link.evaluate((el) => getComputedStyle(el, '::after').content)).toBe('none')
+  expect(await link.evaluate((el) => (el.textContent ?? '').includes('↗'))).toBe(false)
 })
 
 test('序号徽章统一宽度：与位数无关（一位数与两位数同宽，全风格 base 约定）', async ({ page }) => {
@@ -675,4 +1140,25 @@ test('nocturne 概览键盘焦点（#20）：Tab 到目录链接时焦点环 + �
     body: await page.screenshot(),
     contentType: 'image/png'
   })
+})
+
+test('蒸汽梦核式：透视网格在四档窗高下都落在视口内', async ({ page }) => {
+  // #36 回归：旧实现投影高 70.9px，低于窗口 chrome 130px，整块永远在视口下方，
+  // 而 toBeVisible() 只查 CSS 可见性、不查视口相交，所以一直绿灯。
+  for (const height of [620, 800, 1000, 1440]) {
+    await page.setViewportSize({ width: 1280, height })
+    await loadApp(page, 'dark')
+    await openFirstArticle(page)
+    const m = await activeTab(page)
+      .locator('.juya-scene-grid-persp')
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        return { bottom: r.bottom, height: r.height }
+      })
+    const content = height - 130
+    expect(m.bottom, `${height}px 窗高：网格底边须在视口内`).toBeLessThanOrEqual(height + 1)
+    expect(m.bottom, `${height}px 窗高：网格底边须贴近视口下缘`).toBeGreaterThan(height - 40)
+    expect(m.height, `${height}px 窗高：投影高占内容区 35%–65%`).toBeGreaterThan(content * 0.35)
+    expect(m.height, `${height}px 窗高：投影高占内容区 35%–65%`).toBeLessThan(content * 0.65)
+  }
 })

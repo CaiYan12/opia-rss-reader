@@ -4719,3 +4719,87 @@ describe('synthwave 链接箭头守卫（2026-10-22，#38）', () => {
     expect(nulled.length, '亮暗两侧各一条').toBe(2)
   })
 })
+
+describe('synthwave 暗侧卡面守卫（2026-10-22，#39）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：卡面规则必须落在此区间，
+   *  否则「只改 synthwave」只是选择器上的字面承诺，其它七个风格随时被顺手波及。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 段内首条匹配 opener 的规则块（opener 自带 `{`，与 #36 组同一写法） */
+  const synthRule = (opener: RegExp): string => extractBlock(synthSection(), opener)
+
+  /** 变体块内某 token 的完整右值 */
+  const tok = (block: string, name: string): string =>
+    block.match(new RegExp(`${name}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+
+  /** `rgba(r, g, b, a)` / `rgb(r, g, b)` → `{ rgb, alpha }`（tokenHex 读不了 rgba，故自行解析） */
+  const rgba = (value: string): { rgb: number; alpha: number } => {
+    const m = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/)
+    if (!m) throw new Error(`不是 rgb()/rgba() 字面量：${value}`)
+    return {
+      rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+      alpha: m[4] === undefined ? 1 : Number(m[4])
+    }
+  }
+
+  /** 落日最亮处 #ff9a3c（场景渐变 88% 停靠的 #ff8a4c 与其下沉到地平线前的峰）。
+   *  0.62 卡面压在这里时合成底最亮，是次要文字的最不利场景。 */
+  const SUN_PEAK = 0xff9a3c
+
+  it('① 暗侧卡面 = rgba(20, 8, 38, 0.62)', () => {
+    const card = rgba(tok(variantBlock('synthwave-dark'), '--jy-card'))
+    expect(card.rgb, '卡面底色').toBe(0x140826)
+    expect(card.alpha, '卡面 alpha 决定毛玻璃强度与文字对比').toBe(0.62)
+  })
+
+  it('② 刊头与条目：blur(18px) saturate(1.15)', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-entry,/)
+    expect(rule, '刊头 + 条目共用一条卡面规则').not.toBe('')
+    expect(rule, '刊头必须与条目同一套外观').toContain('.jysynth .juya-masthead')
+    expect(decl(rule, 'backdrop-filter')).toBe('blur(18px) saturate(1.15)')
+  })
+
+  it('③ 订阅页条目同强度毛玻璃', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-feed-item \{/)
+    expect(rule, '订阅页条目规则必须存在').not.toBe('')
+    expect(decl(rule, 'backdrop-filter')).toBe('blur(18px) saturate(1.15)')
+  })
+
+  it('④ 概览底板与卡片同源：四项声明 + 同强度毛玻璃，且不动条目字号/行高', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-overview \{/)
+    expect(rule, '概览底板规则必须存在').not.toBe('')
+    expect(decl(rule, 'background')).toBe('var(--jy-card)')
+    expect(decl(rule, 'border')).toBe('1px solid var(--jy-border)')
+    expect(decl(rule, 'border-radius')).toBe('var(--jy-radius)')
+    expect(decl(rule, 'padding')).toBe('12px 16px')
+    expect(decl(rule, 'backdrop-filter'), '与卡片同强度').toBe('blur(18px) saturate(1.15)')
+    expect(decl(rule, 'font-size'), '概览条目字号由基类决定').toBe('')
+    expect(decl(rule, 'line-height'), '概览条目行高由基类决定').toBe('')
+  })
+
+  it('⑤ 配图：1px 品红描边走 token，并降饱和到 0.92', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-media img \{/)
+    expect(rule, '配图规则必须存在').not.toBe('')
+    const border = decl(rule, 'border')
+    expect(border, '描边宽度').toContain('1px')
+    expect(border, '描边走 token，不写死新色值').toContain('var(--jy-')
+    expect(decl(rule, 'filter')).toBe('saturate(0.92)')
+  })
+
+  it('⑥ 悬停取消基础层的 −2px 上浮，只保留加深的外发光', () => {
+    const rule = synthRule(/(?:^|\n)\.jysynth \.juya-feed-item:hover \{/)
+    expect(rule, '悬停规则必须存在').not.toBe('')
+    expect(decl(rule, 'transform')).toBe('none')
+    expect(decl(rule, 'box-shadow'), '外发光需比常态更深').toContain('22px')
+  })
+
+  it('⑦ 实算：0.62 卡面压在落日最亮处的合成底上，次要文字 ≥ 4.5', () => {
+    const block = variantBlock('synthwave-dark')
+    const card = rgba(tok(block, '--jy-card'))
+    const base = alphaOver(card.rgb, card.alpha, SUN_PEAK)
+    expect(base, '合成底应落在 rgb(109, 63, 46) 附近').toEqual(0x6d3f2e)
+    expect(contrast(tokenHex(block, '--jy-muted'), base), '次要文字 / 最不利合成底').toBeGreaterThanOrEqual(
+      4.5
+    )
+  })
+})

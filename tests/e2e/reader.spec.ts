@@ -59,6 +59,56 @@ test('暗色模式 + 蒸汽梦核式：变体切换为 synthwave-dark', async ({
   await expect(root).toHaveClass(/jysynth/)
 })
 
+test('蒸汽梦核式暗侧卡面（#39）：刊头/条目 18px 毛玻璃、概览底板、配图描边与降饱和', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-dark')
+
+  // 刊头与条目同一套 18px 毛玻璃（此前 6px，落日与网格几乎透底）
+  for (const [name, locator] of [
+    ['刊头', root.locator('.juya-masthead')],
+    ['条目', root.locator('.juya-entry').first()]
+  ] as const) {
+    const filter = await locator.evaluate((el) => getComputedStyle(el).backdropFilter)
+    expect(filter, `${name}毛玻璃半径`).toContain('blur(18px)')
+    expect(filter, `${name}饱和度补偿`).toContain('saturate(1.15)')
+  }
+
+  // 概览底板：与卡片同源（有底色、有边框、有内衬），不是裸列表
+  const overview = root.locator('.juya-overview')
+  await expect(overview).toBeVisible()
+  const panel = await overview.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      bg: cs.backgroundColor,
+      border: cs.borderTopWidth,
+      radius: cs.borderTopLeftRadius,
+      padding: `${cs.paddingTop} ${cs.paddingRight}`,
+      backdrop: cs.backdropFilter
+    }
+  })
+  expect(panel.bg, '概览底板须有底色（不能是 transparent）').not.toBe('rgba(0, 0, 0, 0)')
+  expect(panel.border, '底板 1px 边框').toBe('1px')
+  expect(panel.radius, '底板圆角与卡片统一').toBe('16px')
+  expect(panel.padding, '内衬 12×16').toBe('12px 16px')
+  expect(panel.backdrop, '底板同强度毛玻璃').toContain('blur(18px)')
+
+  // 配图：1px 霓虹描边 + 降饱和，别让落日色把照片冲得过艳
+  const img = root.locator('.juya-media img').first()
+  await expect(img).toBeVisible()
+  const media = await img.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { filter: cs.filter, border: cs.borderTopWidth, color: cs.borderTopColor }
+  })
+  expect(media.filter, '配图降饱和').toContain('saturate(0.92)')
+  expect(media.border, '配图 1px 描边').toBe('1px')
+})
+
 test('波普式：结构类 jypop 挂载', async ({ page }) => {
   await loadApp(page, 'pop')
   await openFirstArticle(page)

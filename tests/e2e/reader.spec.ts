@@ -256,9 +256,16 @@ test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋�
     await expect(badge).toHaveCSS('color', 'rgb(236, 226, 198)')
   }
 
-  // 正文：2em 首行缩进（14.5px × 2 = 29px）、段距 6px、宋体优先
+  // 正文：2em 首行缩进（按字号比例断言，不锁死像素）、段距 6px、宋体优先
   const para = root.locator('.juya-entry p:not(.juya-links-label)').first()
-  await expect(para).toHaveCSS('text-indent', '29px')
+  const paraMetrics = await para.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { indent: cs.textIndent, fontSize: cs.fontSize }
+  })
+  expect(
+    Number.parseFloat(paraMetrics.indent) / Number.parseFloat(paraMetrics.fontSize),
+    '首行缩进应为 2em（与基准字号比例）'
+  ).toBeCloseTo(2, 1)
   await expect(para).toHaveCSS('margin-bottom', '6px')
   await expect(para).toHaveCSS('font-family', /SimSun/)
 

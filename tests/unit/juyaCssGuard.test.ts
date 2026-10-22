@@ -4318,29 +4318,15 @@ describe('newsprint90s 条目版式守卫（#28：字体栈 / 方角徽章 / 2em
   })
 })
 
-describe('newsprint90s 框线导读守卫（#29：真实导读小标 / 概览上下框线 / 单列 / 不新增色值）', () => {
-  // 只锁 #29 票面：导读小标必须是模板里的真实 DOM（伪元素 content 不进可访问性树，
-  // 也无法被定位/复制）、概览块上下 1px 框线、单列（沿用基类 flex column），
-  // 且框线与字色全部走现有 token（本段不得出现字面颜色）。
+describe('newsprint90s 框线导读守卫（#29：概览上下框线 / 单列 / 不新增色值）', () => {
+  // 只锁 #29 的样式面：概览块上下 1px 框线、单列（沿用基类 flex column），且框线与字色
+  // 全部走现有 token（本段不得出现字面颜色）。「导读」真实 DOM 由 reader E2E 覆盖
+  // （#32 删除了读模板源码 + 正则锁 JSX 的脆弱守卫）。
   const newsSection = (): string =>
     css.slice(css.indexOf('90 年代报刊式'), css.indexOf('蒸汽梦核式'))
   /** 行首锚定的 `.jynews-overview… { … }` 规则块 */
   const overviewRule = (rest: string): string =>
     css.match(new RegExp(`(?:^|\n)\\.jynews-overview${rest} \\{[^}]*\\}`))?.[0] ?? ''
-
-  it('模板输出真实「导读」小标与包裹层，且继续复用共享 OverviewItems', () => {
-    const tsx = readFileSync(
-      join(process.cwd(), 'src/renderer/juya/templates/newsprint90s.tsx'),
-      'utf-8'
-    )
-    expect(tsx, '概览包裹层必须存在').toContain('jynews-overview')
-    expect(tsx, '「导读」必须是模板产出的真实元素').toMatch(
-      /<p className="jynews-overview-label">导读<\/p>/
-    )
-    expect(tsx, '共享 OverviewItems 未被替换').toMatch(
-      /<OverviewItems\s+overview=\{issue\.overview\}\s+onOpenLink=\{onOpenLink\}\s*\/>/
-    )
-  })
 
   it('概览块上下各 1px 框线，颜色走 --jy-border token', () => {
     const box = overviewRule('')

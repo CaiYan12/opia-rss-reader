@@ -109,6 +109,68 @@ test('蒸汽梦核式暗侧卡面（#39）：刊头/条目 18px 毛玻璃、概�
   expect(media.border, '配图 1px 描边').toBe('1px')
 })
 
+test('蒸汽梦核暗侧调色板（#34 review）：token 对齐 SPEC、落日三色、刊头描边与亮侧分色', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-dark')
+
+  // 走真实级联读 token，而不是读 CSS 文本：梦核紫残留在计算值上会立刻显形
+  const tokens = await root.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    const pick = (name: string): string => cs.getPropertyValue(name).replace(/\s+/g, '')
+    return {
+      heading: pick('--jy-heading'),
+      text: pick('--jy-text'),
+      muted: pick('--jy-muted'),
+      accent: pick('--jy-accent'),
+      onAccent: pick('--jy-on-accent'),
+      link: pick('--jy-link'),
+      border: pick('--jy-border'),
+      leadBg: pick('--jy-lead-bg'),
+      focus: pick('--jy-focus'),
+      sunMid: pick('--jy-scene-sun-mid')
+    }
+  })
+  expect(tokens).toEqual({
+    heading: '#ffe6ff',
+    text: '#f0dcff',
+    muted: '#c9b7e0',
+    accent: '#ff2d95',
+    onAccent: '#1a0010',
+    link: '#ff8ad0',
+    border: 'rgba(255,45,149,0.32)',
+    leadBg: 'rgba(255,45,149,0.12)',
+    // 焦点色未随迁移改动：SPEC 未规定，属待单独裁决
+    focus: '#b89aff',
+    sunMid: '#ff9a3c'
+  })
+
+  // 落日三色（#ffe14d → #ff9a3c → #ff2d95）：中段橙带必须真的进了径向渐变
+  const sun = root.locator('.juya-scene-sun')
+  await expect(sun).toBeVisible()
+  const sunBg = await sun.evaluate((el) => getComputedStyle(el).backgroundImage)
+  for (const [name, rgb] of [
+    ['首站黄', 'rgb(255, 225, 77)'],
+    ['中段橙', 'rgb(255, 154, 60)'],
+    ['末端品红', 'rgb(255, 45, 149)']
+  ] as const) {
+    expect(sunBg, `落日${name}`).toContain(rgb)
+  }
+
+  // 刊头描边：暗侧与 --jy-heading 同源（近白紫），亮侧另取深色低透 —— 见下一个用例
+  const stroke = await root.locator('.juya-masthead h1').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { color: cs.webkitTextStrokeColor, width: cs.webkitTextStrokeWidth }
+  })
+  expect(stroke.width, '1px 描边').toBe('1px')
+  expect(stroke.color, '暗侧描边取 --jy-heading 的 45% alpha').toBe('rgba(255, 230, 255, 0.45)')
+})
+
 test('蒸汽梦核亮侧（#41）：日间版天空挂载、网格底边在视口内、卡面同为 18px 毛玻璃', async ({
   page
 }) => {
@@ -158,6 +220,16 @@ test('蒸汽梦核亮侧（#41）：日间版天空挂载、网格底边在视�
     const filter = await locator.evaluate((el) => getComputedStyle(el).backdropFilter)
     expect(filter, `${name}毛玻璃半径`).toContain('blur(18px)')
   }
+
+  // 刊头描边（#34 review）：亮侧改深紫低透；沿用暗侧的近白紫会在白卡上等于没有描边
+  const stroke = await root.locator('.juya-masthead h1').evaluate((el) => ({
+    color: getComputedStyle(el).webkitTextStrokeColor,
+    width: getComputedStyle(el).webkitTextStrokeWidth
+  }))
+  expect(stroke.width, '1px 描边').toBe('1px')
+  expect(stroke.color, '亮侧描边取 --jy-heading #4a0736 的 28% alpha').toBe(
+    'rgba(74, 7, 54, 0.28)'
+  )
 })
 
 test('波普式：结构类 jypop 挂载', async ({ page }) => {

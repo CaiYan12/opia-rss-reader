@@ -196,6 +196,49 @@ test('订阅页亮侧（#41）：日间版场景同样挂载，网格底边在�
   expect(await item.evaluate((el) => getComputedStyle(el).backdropFilter)).toContain('blur(18px)')
 })
 
+test('订阅页悬停（#34 review）：只提亮边框并加深品红发光，仍不上浮，亮暗各一套值', async ({
+  page
+}) => {
+  const read = async (
+    locator: Locator
+  ): Promise<{ border: string; shadow: string; transform: string }> =>
+    locator.evaluate((el) => {
+      const cs = getComputedStyle(el)
+      return { border: cs.borderTopColor, shadow: cs.boxShadow, transform: cs.transform }
+    })
+
+  for (const [scenario, normalBorder, hoverBorder] of [
+    ['dark', 'rgba(255, 45, 149, 0.32)', 'rgba(255, 45, 149, 0.55)'],
+    ['synthwaveLight', 'rgba(224, 0, 110, 0.3)', 'rgba(224, 0, 110, 0.55)']
+  ] as const) {
+    await loadApp(page, scenario)
+    const item = activeTab(page).locator('.juya-feed-item').first()
+    await expect(item).toBeVisible()
+
+    // .juya-feed-item 有 220ms 入场动画（jy-enter，from translateY(8px)）：等它跑完再读常态，
+    // 否则读到的是动画中途的 matrix
+    await expect
+      .poll(async () => (await read(item)).transform, { message: `${scenario} 入场动效收尾` })
+      .toBe('none')
+
+    const before = await read(item)
+    expect(before.border, `${scenario} 常态边框`).toBe(normalBorder)
+    expect(before.shadow, `${scenario} 常态发光为品红 0.12`).toContain('0.12')
+    expect(before.transform, `${scenario} 常态不上浮`).toBe('none')
+
+    await item.hover()
+    // 边框色无过渡（瞬时），发光有 160ms 过渡 —— 轮询到稳定态再断言，避免抢时序假阴性
+    await expect
+      .poll(async () => (await read(item)).border, { message: `${scenario} 悬停边框提亮` })
+      .toBe(hoverBorder)
+    await page.waitForTimeout(250)
+    const after = await read(item)
+    expect(after.shadow, `${scenario} 悬停发光加深为 0.28`).toContain('0.28')
+    expect(after.shadow, `${scenario} 发光色相仍是品红`).toContain('255, 45, 149')
+    expect(after.transform, `${scenario} 悬停仍不上浮（SPEC：取消 −2px）`).toBe('none')
+  }
+})
+
 test('订阅页图标（#38）：蒸汽梦核式日期与来源前各有 12px 图标，folio 无图标节点', async ({ page }) => {
   await loadApp(page, 'dark')
   const tabs = activeTab(page)

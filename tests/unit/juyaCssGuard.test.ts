@@ -4287,3 +4287,71 @@ describe('newsprint90s 条目版式守卫（#28：字体栈 / 方角徽章 / 2em
     expect(decl(entry, 'border-bottom'), '条目分隔线仍为 1px').toBe('1px solid var(--jy-border)')
   })
 })
+
+describe('newsprint90s 订阅页头版守卫（#30：160×4:3 图版 / 18px 黑体 / 去卡片 / 无胶囊 / 无上浮）', () => {
+  // 只锁 #30 票面的 card/grid 两态：图版尺寸、标题字号与字体栈、去卡片化与细线分隔、
+  // hover 无上浮、来源无框、未读点方形、窄窗回落。compact / magazine / 空态归 #31，不在本组。
+  const newsSection = (): string => css.slice(css.indexOf('90 年代报刊式'), css.indexOf('蒸汽梦核式'))
+  /** 首条形如 `.jynews <rest> { … }` 的规则块（行首锚定） */
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('card/grid 图版 160px × 4:3、直角、不参与 flex 伸缩', () => {
+    const cover = newsRule('\.juya-feed-grid \.juya-feed-cover')
+    expect(cover, '图版规则应存在').toBeTruthy()
+    expect(decl(cover, 'width')).toBe('160px')
+    expect(decl(cover, 'aspect-ratio'), '图版必须 4:3').toBe('4 / 3')
+    expect(decl(cover, 'border-radius'), '图版必须直角').toBe('0')
+    expect(decl(cover, 'flex'), '图版不得被正文挤压').toBe('none')
+  })
+
+  it('期号标题 18px + 黑体优先（SimHei），摘要 13px', () => {
+    const title = newsRule('\.juya-feed-grid \.juya-feed-title')
+    expect(title, '标题规则应存在').toBeTruthy()
+    expect(decl(title, 'font-size'), '标题第一视觉 18px').toBe('18px')
+    expect(decl(title, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+    const summary = newsRule('\.juya-feed-grid \.juya-feed-summary')
+    expect(decl(summary, 'font-size')).toBe('13px')
+  })
+
+  it('去卡片化：无底色 / 无阴影 / 直角，条目之间以 1px 细线分隔', () => {
+    const item = newsRule('\.juya-feed-grid \.juya-feed-item')
+    expect(item, '条目规则应存在').toBeTruthy()
+    expect(decl(item, 'border'), '卡片边框退役').toBe('0')
+    expect(decl(item, 'border-bottom'), '细线分隔保留').toBe('1px solid var(--jy-border)')
+    expect(decl(item, 'background'), '卡片底色退役').toBe('transparent')
+    expect(decl(item, 'box-shadow')).toBe('none')
+    expect(decl(item, 'border-radius')).toBe('0')
+  })
+
+  it('hover 不再上浮：transform: none，且 newsprint 段内无 translateY 位移', () => {
+    const hover = newsRule('\.juya-feed-grid \.juya-feed-item:hover')
+    expect(hover, 'hover 覆盖规则应存在').toBeTruthy()
+    expect(decl(hover, 'transform'), 'hover 不得产生位移').toBe('none')
+    // 只扫声明，注释里提到基础层的 translateY 不算（避免守卫因说明文字误报）
+    expect(newsSection().replace(/\/\*[\s\S]*?\*\//g, ''), 'newsprint 段不得再出现上浮位移').not.toMatch(
+      /translateY/
+    )
+  })
+
+  it('来源无框小字、未读点 4px 方形，且不使用 999px 胶囊', () => {
+    const source = newsRule('\.juya-feed-grid \.juya-feed-source')
+    expect(decl(source, 'border'), '来源无边框').toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background'), '来源无底色').toBe('none')
+    expect(decl(source, 'padding'), '来源无内衬').toBe('0')
+    const dot = newsRule('\.juya-feed-grid \.juya-feed-read-dot')
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+    expect(newsSection(), '段内不得出现 999px 胶囊').not.toContain('999px')
+  })
+
+  it('窄窗（≤560）图版回落纵向堆叠，避免固定 160px 图版撑破网格单元格', () => {
+    const at = css.indexOf('@media (max-width: 560px)')
+    expect(at, '560px 媒体块应存在').toBeGreaterThan(0)
+    const block = css.slice(at, css.indexOf('蒸汽梦核式', at))
+    expect(block, '窄窗覆盖必须在 newsprint 段内').toContain('.jynews .juya-feed-grid .juya-feed-item')
+    expect(block).toContain('flex-direction: column')
+  })
+})

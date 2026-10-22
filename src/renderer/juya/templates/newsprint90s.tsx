@@ -6,9 +6,10 @@ import { EntryBlocks, OverviewItems } from './shared'
 /** 90 年代报刊式：锚定真实 90 年代中文报刊语言——刊头（三栏报头）、栏目栏、
  *  宽窗口正文两栏、宋体系衬线。非现代 broadsheet hairline 模板。
  *
- *  结构分工（#26）：订阅页继续用工厂生成的 FeedList（骨架/预设/门控单一来源在 parts.tsx），
- *  本文件只覆盖阅读页 IssueView —— 刊头需要真实三栏 DOM（左日期/中期号/右星期），
- *  伪元素做不到；概览、栏目、条目仍走共享语义构件，视觉由 juya.css 的 jynews 段承担。 */
+ *  结构分工（#26/#32）：订阅页非空时委托工厂 FeedList（骨架/预设/门控单一来源在 parts.tsx），
+ *  本文件只覆盖阅读页 IssueView 与空态 —— 刊头需要真实三栏 DOM（左日期/中期号/右星期），
+ *  伪元素做不到；空态需要「黑体标题 + 小字提示」两级真实元素。概览、栏目、条目仍走共享语义构件，
+ *  视觉由 juya.css 的 jynews 段承担。 */
 const factory = makeJuyaTemplate({ variantClass: 'jynews', entryColumns: true })
 
 /** 刊头三段文字全部取自真实发布字段：日期与星期来自同一 pubDate（不编造期号/版次）。 */

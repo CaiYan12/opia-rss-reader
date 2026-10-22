@@ -1337,8 +1337,9 @@
   color: var(--jy-muted);
 }
 
-/* ≤900：刊头回落单列居中堆叠（日期 → 期号 → 星期），期号 30px / 4px 字距。 */
-@media (max-width: 900px) {
+/* ≤899：刊头回落单列居中堆叠（日期 → 期号 → 星期），期号 30px / 4px 字距。
+   与双栏 min-width: 900 互斥（#32）：900 恰好宽时保持三栏刊头，不再与两栏同时命中。 */
+@media (max-width: 899px) {
   .jynews .juya-masthead {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 4px;

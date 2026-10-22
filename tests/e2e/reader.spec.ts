@@ -163,6 +163,43 @@ test('90 年代报刊式刊头（#26）：1280 三栏——日期最左、期号
   assertWide(await mastheadBoxes(masthead))
 })
 
+test('90 年代报刊式刊头（#32）：900 宽度三栏刊头与双栏正文互斥命中、不溢出 752 版心', async ({
+  page
+}) => {
+  // 断点收敛：刊头堆叠 max-width 899 与正文双栏 min-width 900 互斥，900 恰好宽时两者同时成立
+  // 是刻意的（三栏刊头在 752 内容宽内放得下），此用例把该边界钉住。
+  await page.setViewportSize({ width: 900, height: 900 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.juya-masthead')
+  const title = masthead.locator('h1')
+
+  // 900 命中宽窗态：期号仍是 38px（堆叠态为 30px），正文两栏
+  await expect(title).toHaveCSS('font-size', '38px')
+  await expect(title).toHaveCSS('letter-spacing', '6px')
+  const columnCount = await root
+    .locator('.juya-entry-columns')
+    .first()
+    .evaluate((el) => getComputedStyle(el).columnCount)
+  expect(columnCount, '900 宽度正文应保持双栏').toBe('2')
+
+  // 三栏几何：日期 < 期号 < 星期，互不重叠；刊头内容不溢出自身盒子
+  const g = await mastheadBoxes(masthead)
+  expect(g, '刊头三栏元素必须齐备').not.toBeNull()
+  expect(g!.date.right, '日期与期号不得重叠').toBeLessThanOrEqual(g!.title.left)
+  expect(g!.title.right, '期号与星期不得重叠').toBeLessThanOrEqual(g!.weekday.left)
+  expect(g!.self.right - g!.self.left, '刊头宽度即 752 版心').toBeLessThanOrEqual(752 + 1)
+  // 期号单行（换行会让三栏刊头读成两行标题）
+  expect(g!.title.bottom - g!.title.top, '900 宽度期号应保持单行').toBeLessThan(60)
+  const overflow = await masthead.evaluate((el) => ({
+    sw: el.scrollWidth,
+    cw: el.clientWidth
+  }))
+  expect(overflow.sw, '刊头内容不得溢出').toBeLessThanOrEqual(overflow.cw + 1)
+})
+
 test('90 年代报刊式刊头（#26）：560 宽度回落居中堆叠、页面无横向溢出', async ({ page }) => {
   await page.setViewportSize({ width: 560, height: 800 })
   await loadApp(page, 'newsprint')

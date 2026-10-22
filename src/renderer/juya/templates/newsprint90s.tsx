@@ -24,7 +24,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
   return (
     <div className="juya-root jynews" data-juya-variant={variantId}>
       <div className="juya-issue">
-        {/* 刊头三栏：左日期 / 中期号标题 / 右星期；≤900 由 CSS 回落为居中堆叠。
+        {/* 刊头三栏：左日期 / 中期号标题 / 右星期；≤899 由 CSS 回落为居中堆叠（#32 与 900 双栏互斥）。
             日期线语义类保留：既有端到端用例以 .juya-date-line 定位日期行 */}
         <header className="juya-masthead">
           <div className="juya-date-line">{date}</div>

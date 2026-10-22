@@ -266,10 +266,19 @@ describe('拖动排序（Pointer Events）', () => {
 
     const scrollLeft = await scroller.evaluate((el) => el.scrollLeft)
     const floatingCount = await dragging(page).count()
-    const floatingBox = floatingCount ? await dragging(page).boundingBox() : null
     expect(scrollLeft).toBeGreaterThan(0)
-    expect(floatingBox).not.toBeNull()
-    expect(Math.abs(floatingBox!.x - (targetX - (startX - fromBox.x)))).toBeLessThan(16)
+    expect(floatingCount).toBeGreaterThan(0)
+    // 自动滚动与浮动标签跟随都受 CI 帧率影响：轮询等待位置收敛，
+    // 不用固定 160ms 后的一次性断言（曾在小 runner 上滞后 16px+）。
+    await expect
+      .poll(
+        async () => {
+          const box = await dragging(page).boundingBox()
+          return box ? Math.abs(box.x - (targetX - (startX - fromBox.x))) : Number.POSITIVE_INFINITY
+        },
+        { timeout: 3000 }
+      )
+      .toBeLessThan(16)
 
     await page.mouse.up()
   })

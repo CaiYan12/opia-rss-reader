@@ -6,7 +6,8 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 30000,
-  retries: 0,
+  // CI 的共享 runner 偶发帧率抖动；只给 CI 一次重试，本地仍为 0。
+  retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: 'http://localhost:4173',
     viewport: { width: 1280, height: 800 },

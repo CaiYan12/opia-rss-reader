@@ -1246,6 +1246,9 @@
   /* 链接改墨色（原 Web 蓝已退役）；下划线由模板层负责 */
   --jy-link: #2b2620;
   --jy-lead-bg: rgba(139, 26, 26, 0.07);
+  /* 订阅页 hover 纸面微亮（#32）：中性墨色微层，不再借用 accent 色相的 --jy-lead-bg。
+     0.045 的中性叠加让暗侧 muted 对 hover 面仍有 ≥4.5（守卫实算）。 */
+  --jy-feed-hover: rgba(47, 42, 32, 0.045);
   --jy-focus: #8b1a1a;
   --jy-radius: 0px;
   /* #28 字面：正文宋体优先（印刷正文），标题与栏目条黑体优先（报眼题字），刊头楷体优先（#32 收进 token） */
@@ -1280,6 +1283,8 @@
   /* 暗侧链接为灯下蓝墨（对纸 8.45），非 Web 蓝 */
   --jy-link: #9fb4e8;
   --jy-lead-bg: rgba(208, 85, 85, 0.12);
+  /* 灯下读报的 hover 纸面微亮（#32）：暖白中性微层，非 accent 红；muted 对比度由守卫实算 */
+  --jy-feed-hover: rgba(255, 248, 230, 0.045);
   --jy-focus: #e8b4b4;
   --jy-radius: 0px;
   --jy-font-heading: SimHei, 'Noto Sans SC', sans-serif;
@@ -1490,12 +1495,13 @@
   padding: 14px 0;
 }
 
-/* hover 只留下划线与纸面微亮：覆盖基础层 .juya-feed-item:hover 的 translateY(-2px)。
+/* hover 只留下划线与纸面微亮（#32 中性微层，不再借用 accent 色相的导语底）：
+   覆盖基础层 .juya-feed-item:hover 的 translateY(-2px)。
    刻意不声明 transition —— 基础层 transition 只描述 transform/box-shadow，
    这两者 hover 不再变化即无新增过渡，减少动态效果设置无需额外处理。 */
 .jynews .juya-feed-grid .juya-feed-item:hover {
   transform: none;
-  background: var(--jy-lead-bg);
+  background: var(--jy-feed-hover);
 }
 
 .jynews .juya-feed-grid .juya-feed-item:hover .juya-feed-title {
@@ -1584,10 +1590,10 @@
   font-size: 14px;
 }
 
-/* hover 同 #30：纸面微亮 + 标题下划线，无上浮位移 */
+/* hover 同 #30：纸面中性微亮（--jy-feed-hover）+ 标题下划线，无上浮位移 */
 .jynews .juya-feed-compact .juya-feed-item:hover {
   transform: none;
-  background: var(--jy-lead-bg);
+  background: var(--jy-feed-hover);
 }
 
 .jynews .juya-feed-compact .juya-feed-item:hover .juya-feed-title {
@@ -1659,10 +1665,10 @@
   border-radius: 0;
 }
 
-/* hover 同 #30：纸面微亮 + 标题下划线，无上浮位移。 */
+/* hover 同 #30：纸面中性微亮（--jy-feed-hover）+ 标题下划线，无上浮位移。 */
 .jynews .juya-feed-featured:hover {
   transform: none;
-  background: var(--jy-lead-bg);
+  background: var(--jy-feed-hover);
 }
 
 .jynews .juya-feed-featured:hover .juya-feed-title {

@@ -4193,6 +4193,25 @@ describe('newsprint90s 旧纸面守卫（#27：纸纹最不利行 AA，链接墨
     }
   })
 
+  it('订阅页 hover 面（#32）：中性微层叠加纸纹后 muted / 正文 / 标题仍 ≥4.5', () => {
+    for (const [variant, want] of Object.entries(EXPECTED)) {
+      const block = variantBlock(variant)
+      const hover = decl(block, '--jy-feed-hover')
+      const m = hover.match(/^rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)$/)
+      expect(m, `${variant} --jy-feed-hover 应为 rgba 中性层`).not.toBeNull()
+      const fg = (Number(m![1]) << 16) | (Number(m![2]) << 8) | Number(m![3])
+      // 中性：低彩度（不是 accent 色相），避免 hover 微亮带红
+      const channels = [(fg >> 16) & 0xff, (fg >> 8) & 0xff, fg & 0xff]
+      expect(Math.max(...channels) - Math.min(...channels), `${variant} hover 微层应为中性`).toBeLessThanOrEqual(
+        0x20
+      )
+      const surface = alphaOver(fg, Number(m![4]), worstPaper(variant as keyof typeof EXPECTED))
+      expect(contrast(want.muted, surface), `${variant} muted/订阅页 hover 面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.text, surface), `${variant} text/订阅页 hover 面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.heading, surface), `${variant} heading/订阅页 hover 面`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
   it('纸纹只存在于背景层：3px 横纹 + 纤维噪点 + 暗角，零 filter、零动画', () => {
     for (const variant of Object.keys(EXPECTED)) {
       const block = variantBlock(variant)
@@ -4406,6 +4425,18 @@ describe('newsprint90s 订阅页头版守卫（#30：160×4:3 图版 / 18px 黑�
     expect(newsSection().replace(/\/\*[\s\S]*?\*\//g, ''), 'newsprint 段不得再出现上浮位移').not.toMatch(
       /translateY/
     )
+  })
+
+  it('三处订阅页 hover 都用中性 --jy-feed-hover（#32 不再借导语底做微亮）', () => {
+    for (const rest of [
+      '\\.juya-feed-grid \\.juya-feed-item:hover',
+      '\\.juya-feed-compact \\.juya-feed-item:hover',
+      '\\.juya-feed-featured:hover'
+    ]) {
+      expect(decl(newsRule(rest), 'background'), `${rest} 应使用 --jy-feed-hover`).toBe(
+        'var(--jy-feed-hover)'
+      )
+    }
   })
 
   it('来源无框小字、未读点 4px 方形，且不使用 999px 胶囊', () => {

@@ -1421,6 +1421,91 @@
   }
 }
 
+/* ---- 订阅页头版（#30）：card/grid 两态 ----
+   去卡片化：期号条目不再有卡片底色/边框/阴影，改用 1px 细线分隔，标题成为第一视觉。
+   只接 .juya-feed-grid（通用 card/grid；magazine 的其余条目复用该网格，故一并回到 card 形态）。
+   compact / magazine 首条 / 空态归 #31，本段不碰。 */
+.jynews .juya-feed-grid .juya-feed-item {
+  /* 卡片语言退役：无底色、无卡片边框、无阴影，只留条目底部的 1px 细线 */
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  /* 图版与标题/摘要并排；条目无水平内衬，故无封面时正文列（flex: 1）自然独占整行 */
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 14px 0;
+}
+
+/* hover 只留下划线与纸面微亮：覆盖基础层 .juya-feed-item:hover 的 translateY(-2px)。
+   刻意不声明 transition —— 基础层 transition 只描述 transform/box-shadow，
+   这两者 hover 不再变化即无新增过渡，减少动态效果设置无需额外处理。 */
+.jynews .juya-feed-grid .juya-feed-item:hover {
+  transform: none;
+  background: var(--jy-lead-bg);
+}
+
+.jynews .juya-feed-grid .juya-feed-item:hover .juya-feed-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 图版：160px 宽、4:3（高 120px），直角细框；flex: none 保证图片不被正文挤压。 */
+.jynews .juya-feed-grid .juya-feed-cover {
+  width: 160px;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  flex: none;
+  border: 1px solid var(--jy-border);
+  border-radius: 0;
+}
+
+.jynews .juya-feed-grid .juya-feed-body {
+  padding: 0;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 标题 18px 黑体优先（SimHei，与栏目条同一套字体语言），压过摘要与元信息成为第一视觉。 */
+.jynews .juya-feed-grid .juya-feed-title {
+  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: 0.5px;
+}
+
+.jynews .juya-feed-grid .juya-feed-summary {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 来源：无框小字，与日期同处 .juya-feed-meta 一行（不另起行、不做胶囊）。 */
+.jynews .juya-feed-grid .juya-feed-source {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+}
+
+/* 未读点：4px 方形（90 年代直角语言，不用圆点）。 */
+.jynews .juya-feed-grid .juya-feed-read-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+}
+
+/* ≤560：固定 160px 图版与正文并排会把两列网格的单元格挤爆，回落纵向堆叠（图版仍 160 × 4:3）。 */
+@media (max-width: 560px) {
+  .jynews .juya-feed-grid .juya-feed-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
 /* ---- 蒸汽梦核式 ---- */
 [data-juya-variant='dreamcore-light'] {
   --jy-bg: #f3ecff;

@@ -164,6 +164,137 @@ test('橘鸦订阅页遵循「布局」显示字段：全关后隐藏封面/摘�
   await expect(feed.locator('.juya-feed-meta > span:not(.juya-feed-read-dot)')).toHaveCount(0)
 })
 
+/* ---- #30 订阅页头版（newsprint90s card/grid） ---- */
+
+test('newsprint 头版（card/grid）：160×4:3 图版与标题并排、标题 18px 黑体、条目去卡片化', async ({ page }) => {
+  await loadApp(page, 'newsprintGrid')
+  const tab = activeTab(page)
+  const grid = tab.locator('.juya-feed-grid')
+  const items = grid.locator('> .juya-feed-item')
+  await expect(items).toHaveCount(4)
+
+  // 列数设置继续生效（2 列）
+  const colCount = await grid.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
+  expect(colCount).toBe(2)
+
+  const first = items.first()
+  // 图版：160px × 4:3
+  const cover = (await first.locator('.juya-feed-cover').boundingBox())!
+  expect(cover.width).toBeCloseTo(160, 0)
+  expect(cover.height).toBeCloseTo(120, 0)
+  expect(cover.width / cover.height).toBeCloseTo(4 / 3, 1)
+
+  // 去卡片化：无底色/边框/阴影，条目之间以 1px 细线分隔
+  const box = await first.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      bg: cs.backgroundColor,
+      topBorder: cs.borderTopWidth,
+      bottomBorder: cs.borderBottomWidth,
+      bottomStyle: cs.borderBottomStyle,
+      shadow: cs.boxShadow,
+      radius: cs.borderTopLeftRadius
+    }
+  })
+  expect(box.bg).toBe('rgba(0, 0, 0, 0)')
+  expect(box.topBorder).toBe('0px')
+  expect(box.bottomBorder).toBe('1px')
+  expect(box.bottomStyle).toBe('solid')
+  expect(box.shadow).toBe('none')
+  expect(box.radius).toBe('0px')
+
+  // 标题第一视觉：18px 黑体优先；摘要 13px
+  const title = await first.locator('.juya-feed-title').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { size: cs.fontSize, family: cs.fontFamily }
+  })
+  expect(title.size).toBe('18px')
+  expect(title.family.split(',')[0].trim().replace(/["']/g, '')).toBe('SimHei')
+  expect(await first.locator('.juya-feed-summary').evaluate((el) => getComputedStyle(el).fontSize)).toBe(
+    '13px'
+  )
+
+  // 图版与标题/摘要并排：图版右缘在图版正文左缘之前，顶端大致对齐
+  const body = (await first.locator('.juya-feed-body').boundingBox())!
+  expect(cover.x + cover.width).toBeLessThanOrEqual(body.x + 1)
+  expect(Math.abs(cover.y - body.y)).toBeLessThanOrEqual(4)
+})
+
+test('newsprint 头版 hover：标题下划线 + 纸面微亮，不再产生上浮位移', async ({ page }) => {
+  await loadApp(page, 'newsprintGrid')
+  const tab = activeTab(page)
+  const grid = tab.locator('.juya-feed-grid')
+  const item = grid.locator('> .juya-feed-item').first()
+  // 等基础入场动画（jy-enter 的 translateY(8px)）结束，否则位移量会混入动画相位
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== 'running')
+  )
+  // 相对网格顶部量取（hover 可能触发滚动，绝对视口坐标会被滚动污染）
+  const relTop = async (): Promise<number> =>
+    (await item.boundingBox())!.y - (await grid.boundingBox())!.y
+  const before = await relTop()
+  await item.hover()
+  // 上浮被覆盖：transform 无位移（toHaveCSS 带重试，等过渡结束）
+  await expect(item).toHaveCSS('transform', 'none')
+  expect(await relTop()).toBeCloseTo(before, 0)
+  // 纸面微亮 + 标题下划线
+  await expect(item).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(item.locator('.juya-feed-title')).toHaveCSS('text-decoration-line', 'underline')
+})
+
+test('newsprint 头版元信息：来源为无框小字，未读点为 4px 方形', async ({ page }) => {
+  await loadApp(page, 'newsprintGrid')
+  const first = activeTab(page).locator('.juya-feed-grid > .juya-feed-item').first()
+  const source = await first.locator('.juya-feed-source').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      border: cs.borderTopWidth,
+      radius: cs.borderTopLeftRadius,
+      bg: cs.backgroundColor,
+      padding: cs.paddingLeft
+    }
+  })
+  expect(source.border, '来源无边框').toBe('0px')
+  expect(source.radius, '来源无胶囊').toBe('0px')
+  expect(source.bg, '来源无底色').toBe('rgba(0, 0, 0, 0)')
+  expect(source.padding, '来源无内衬').toBe('0px')
+
+  const dot = await first.locator('.juya-feed-read-dot').evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    return { w: r.width, h: r.height, radius: getComputedStyle(el).borderTopLeftRadius }
+  })
+  expect(dot.w).toBeCloseTo(4, 0)
+  expect(dot.h).toBeCloseTo(4, 0)
+  expect(dot.radius, '未读点方角').toBe('0px')
+})
+
+test('newsprint 头版：关闭封面字段后无封面，标题独占整行', async ({ page }) => {
+  await loadApp(page, 'newsprintNoCover')
+  const tab = activeTab(page)
+  await expect(tab.locator('.juya-feed-cover')).toHaveCount(0)
+  const item = tab.locator('.juya-feed-grid > .juya-feed-item').first()
+  const itemBox = (await item.boundingBox())!
+  const bodyBox = (await item.locator('.juya-feed-body').boundingBox())!
+  // 条目无水平内衬，正文列铺满整行
+  expect(bodyBox.width).toBeCloseTo(itemBox.width, 0)
+  await expect(item.locator('.juya-feed-summary')).toBeVisible()
+})
+
+test('窄窗口（480/560px）：newsprint 头版无横向溢出', async ({ page }) => {
+  for (const width of [480, 560]) {
+    await page.setViewportSize({ width, height: 800 })
+    await loadApp(page, 'newsprintGrid')
+    await expect(activeTab(page).locator('.juya-feed-grid')).toBeVisible()
+    const overflow = await page.evaluate(() => {
+      const scrollers = [...document.querySelectorAll('.overflow-y-auto')]
+      const scroller = scrollers.find((el) => el.closest('div:not([class*="hidden"])')) ?? document.scrollingElement
+      if (!scroller) return -1
+      return scroller.scrollWidth - scroller.clientWidth
+    })
+    expect(overflow, `${width}px 视口横向溢出`).toBeLessThanOrEqual(0)
+  }
+})
+
 /* ---- 程序化视觉合理性断言（无视觉模型，纯几何校验） ---- */
 
 type Box = { left: number; top: number; right: number; bottom: number; width: number; height: number }

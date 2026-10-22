@@ -437,7 +437,10 @@ export async function readGridPlane(plane: Locator): Promise<GridPlaneFacts> {
   return plane.evaluate((el) => {
     const rect = el.getBoundingClientRect()
     const scroller = el.closest('.view-scroll')
-    const port = (scroller ?? el).getBoundingClientRect()
+    // 没有滚动口就不能「以滚动口为基准」：拿平面自己当基准会让居中/底边断言自证成立，
+    // 所以这里显式失败，而不是安静地退化成空断言。
+    if (!scroller) throw new Error('网格平面不在 .view-scroll 滚动容器内，无法量取可视区')
+    const port = scroller.getBoundingClientRect()
     // 伪元素的 top / height 是布局长度（未乘父层 transform），故父层高度也必须取布局值，
     // 不能用 getBoundingClientRect 的投影高 —— 两者在不同坐标系里，比出来的缺口没有意义。
     const layoutHeight = Number.parseFloat(getComputedStyle(el).height)

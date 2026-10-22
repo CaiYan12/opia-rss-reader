@@ -78,6 +78,25 @@ const LIGHTBOX_ISSUE_HTML = `<div style="max-width:760px">
 <p><img src="${svgImage(480, 320, '2f6f6a', 'bare-2')}" alt="裸图二"></p>
 </div>`
 
+const EDITORIAL_T1_ISSUE_HTML = `<div>
+<h1>杂志编辑式 T1</h1>
+<h2>概览</h2>
+<ul><li><a href="https://example.com/overview">目录链接</a> <code>#1</code></li></ul>
+<h2>首篇</h2>
+<h3><a href="https://example.com/title">中文开篇</a> <code>#1</code></h3>
+<blockquote>中文开篇导语，字形应完整显示。</blockquote>
+<h3>英文条目</h3>
+<blockquote>English opening lead stays in normal typesetting.</blockquote>
+<p>普通正文用来确认条目标题与正文层级。</p>
+<p><img src="${svgImage(480, 320, '3b4a8f', 'editorial')}" alt="图片题注可读"></p>
+<p>相关链接：</p><ul><li><a href="https://example.com/related">相关链接文字</a></li></ul>
+<h3>引号条目</h3>
+<blockquote>“引号开头的导语”应完整显示。</blockquote>
+<h2>第二篇</h2>
+<h3>英文开篇 <code>#4</code></h3>
+<blockquote>Another English opening lead.</blockquote>
+</div>`
+
 export function juyaArticle(overrides: Partial<Article> = {}): Article {
   return {
     guid: 'https://daily.juya.uk/issues/2026-08-28/',
@@ -119,6 +138,7 @@ export type Scenario =
   | 'nocturneSvg'
   | 'nocturneLightbox'
   | 'editorial'
+  | 'editorialT1'
   | 'wabi'
   | 'system'
   | 'grid4'
@@ -198,6 +218,11 @@ export function makeStubScript(scenario: Scenario): string {
     articles = [juyaArticle({ contentHtml: LIGHTBOX_ISSUE_HTML })]
   } else if (scenario === 'editorial') {
     settings.juyaLightStyleId = 'editorial'
+  } else if (scenario === 'editorialT1') {
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    articles = [juyaArticle({ contentHtml: EDITORIAL_T1_ISSUE_HTML })]
   } else if (scenario === 'wabi') {
     settings.juyaLightStyleId = 'wabi'
   } else if (scenario === 'system') {

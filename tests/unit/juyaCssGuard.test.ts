@@ -141,6 +141,56 @@ describe('juya.css 静态守卫', () => {
       expect(contrast(muted, leadBg), `${variant} muted/lead-bg`).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  it('editorial 亮暗文本、序号、焦点和滚动条在纸纹合成背景上达标', () => {
+    const cases = [
+      {
+        variant: 'editorial-light',
+        base: 0xfbf9f4,
+        textureRgb: 0x8c8575,
+        alpha: 0.03,
+        textureMarker: "0 0 0 0 0.55 0 0 0 0 0.52 0 0 0 0 0.46 0 0 0 0.03 0"
+      },
+      {
+        variant: 'editorial-dark',
+        base: 0x131210,
+        textureRgb: 0xbfb8a6,
+        alpha: 0.04,
+        textureMarker: "0 0 0 0 0.75 0 0 0 0 0.72 0 0 0 0 0.65 0 0 0 0.04 0"
+      }
+    ] as const
+
+    for (const item of cases) {
+      const block = variantBlock(item.variant)
+      expect(block, `${item.variant} 纸纹来源应保持可审计`).toContain(item.textureMarker)
+      const paper = alphaOver(item.textureRgb, item.alpha, item.base)
+      const bg = tokenHex(block, '--jy-bg')
+      const card = tokenHex(block, '--jy-card')
+      const leadBg = tokenHex(block, '--jy-lead-bg')
+      const text = tokenHex(block, '--jy-text')
+      const muted = tokenHex(block, '--jy-muted')
+      const link = tokenHex(block, '--jy-link')
+      const accent = tokenHex(block, '--jy-accent')
+      const onAccent = tokenHex(block, '--jy-on-accent')
+      const focus = tokenHex(block, '--jy-focus')
+      expect(contrast(text, paper), `${item.variant} 正文/纸纹合成面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(text, card), `${item.variant} 正文/卡面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(muted, paper), `${item.variant} 日期、摘要、题注与刊尾/纸纹合成面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(muted, leadBg), `${item.variant} 导语次要文字/导语底`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(link, paper), `${item.variant} 文字链接/纸纹合成面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(accent, paper), `${item.variant} 常规字重栏目序号/纸纹合成面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(onAccent, accent), `${item.variant} 12px 徽章文字/徽章底`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(focus, paper), `${item.variant} 焦点环/纸纹合成面`).toBeGreaterThanOrEqual(3)
+      expect(contrast(accent, paper), `${item.variant} 滚动条 thumb/纸纹合成面`).toBeGreaterThanOrEqual(3)
+      expect(bg, `${item.variant} 基底 token 应存在`).not.toBeNaN()
+    }
+  })
+
+  it('editorial 首字下沉的选择器只命中模板标记的栏目开篇', () => {
+    const editorial = css.slice(css.indexOf('杂志编辑式'), css.indexOf('侘寂日杂式'))
+    expect(editorial).toContain('.jyedit .jyedit-opening .juya-lead::first-letter')
+    expect(editorial).not.toMatch(/\.jyedit \.juya-lead::first-letter/)
+  })
 })
 
 describe('y2k 视觉审计守卫（2026-10-11 建议①-⑦）', () => {

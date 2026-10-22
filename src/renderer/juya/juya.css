@@ -3495,7 +3495,7 @@
   --jy-heading: #ede8dd;
   --jy-text: #c5bfb2;
   --jy-muted: #8b8577;
-  --jy-accent: #b3564c;
+  --jy-accent: #c86b5f;
   --jy-on-accent: #161310;
   --jy-link: #cf7d6f;
   --jy-lead-bg: #1e1c18;
@@ -3528,8 +3528,9 @@
 }
 
 .jyedit .juya-masthead h1 {
-  font-size: 40px;
-  letter-spacing: -0.01em;
+  font-size: 42px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .jyedit .juya-date-line {
@@ -3542,9 +3543,12 @@
 
 .jyedit .juya-section > h2 {
   counter-increment: jysec;
-  font-size: 22px;
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
   border-bottom: 1px solid var(--jy-border);
-  padding-bottom: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
 }
 
 .jyedit .juya-section > h2::before {
@@ -3554,7 +3558,7 @@
   color: var(--jy-accent);
 }
 
-.jyedit .juya-lead::first-letter {
+.jyedit .jyedit-opening .juya-lead::first-letter {
   font-family: var(--jy-font-heading);
   font-size: 2.6em;
   float: left;
@@ -3570,6 +3574,15 @@
 
 .jyedit .juya-entry p {
   max-width: 68ch;
+}
+
+.jyedit .juya-section {
+  margin-top: 44px;
+}
+
+.jyedit .juya-entry p:not(.juya-links-label) {
+  font-size: 15px;
+  line-height: 1.85;
 }
 
 /* 第二轮定制排版：deck 副题、封面故事节奏、colophon 刊尾、裁切角标 */
@@ -3916,8 +3929,8 @@
 }
 
 .view-scroll:has([data-juya-variant='editorial-dark'])::-webkit-scrollbar-thumb {
-  /* editorial-dark 砖红 accent #b3564c，对暗底 #131210 对比 3.88；圆角随 --jy-radius 2px */
-  background: #b3564c;
+  /* editorial-dark 砖红 accent #c86b5f，对纹理合成纸面 #1a1916 对比 4.79；圆角随 --jy-radius 2px */
+  background: #c86b5f;
   border-radius: 2px;
 }
 

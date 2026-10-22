@@ -4086,8 +4086,468 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
   })
 
   it('④ 项目文档写明「不做动画 filter→opacity 重构」及其理由', () => {
+    // 2026-10-21 /retro 后：施工历史下沉到 docs/STYLE-WORKLOG.md，AGENTS.md 只留导航指针。
+    // 故断言改为「两份文档合起来必须有」，而不是钉死在哪一个文件里 —— 否则每次重组文档都会误报。
     const agents = readFileSync(join(process.cwd(), 'AGENTS.md'), 'utf-8')
-    expect(agents, 'AGENTS.md 须记录本次不做该重构').toContain('`filter`→`opacity` 重构')
-    expect(agents, '须写明理由：无实测数据').toContain('无实测数据')
+    const worklog = readFileSync(join(process.cwd(), 'docs/STYLE-WORKLOG.md'), 'utf-8')
+    const docs = `${agents}\n${worklog}`
+    expect(docs, '项目文档须记录本次不做该重构').toContain('`filter`→`opacity` 重构')
+    expect(docs, '须写明理由：无实测数据').toContain('无实测数据')
+  })
+})
+
+describe('newsprint90s 旧纸面守卫（#27：纸纹最不利行 AA，链接墨色）', () => {
+  // 实测（本文件实算，纹理全叠的保守上界）：亮 muted 纸 5.09 / 卡片 5.79 / 导语 4.55；
+  // 暗 5.65 / 5.66 / 4.98。先前提交信息里写的 5.02/4.52、5.86/5.13 是初版写错的数字，以此处为准。
+  // 本票已确认的取值集合（grilling 结论，SPEC 2026-10-21 §「字体与颜色」）。
+  // 断言取值而非规则文本：改色必须同步改这里，避免纸面被静默改回纯色。
+  const EXPECTED = {
+    'newsprint90s-light': {
+      bg: 0xece2c6,
+      card: 0xf0e7cf,
+      text: 0x33301f,
+      heading: 0x211d14,
+      muted: 0x5f5747,
+      link: 0x2b2620,
+      accent: 0x8b1a1a,
+      leadAlpha: 0.07
+    },
+    'newsprint90s-dark': {
+      bg: 0x1e1913,
+      card: 0x262019,
+      text: 0xd6cbb2,
+      heading: 0xefe6cf,
+      muted: 0xa2997b,
+      link: 0x9fb4e8,
+      accent: 0xd05555,
+      leadAlpha: 0.12
+    }
+  } as const
+
+  /** 变体块背景层里的全部 rgba() 纹理层（纤维噪点 / 暗角 / 3px 横纹） */
+  const textureLayers = (block: string): { rgb: number; alpha: number }[] =>
+    [...decl(block, 'background-image').matchAll(/rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)/g)].map(
+      (m) => ({
+        rgb: (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]),
+        alpha: Number(m[4])
+      })
+    )
+
+  /** 「最不利纸纹行」：所有纹理层叠到纸底色上（各层可同处一行，取上界；比单层更保守）。
+   *  WCAG 不定义半透明色，故先按 source-over 合成再算对比度。 */
+  const worstPaper = (variant: keyof typeof EXPECTED): number => {
+    const block = variantBlock(variant)
+    return textureLayers(block).reduce(
+      (surface, layer) => alphaOver(layer.rgb, layer.alpha, surface),
+      EXPECTED[variant].bg
+    )
+  }
+
+  it('rgba 纹理层解析 helper 自身可用（颜色 + alpha 逐个还原）', () => {
+    const layers = textureLayers(
+      "[data-juya-variant='x'] { background-image: repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.035) 0 1px, transparent 1px 3px); }"
+    )
+    expect(layers).toEqual([{ rgb: 0x78643c, alpha: 0.035 }])
+  })
+
+  it('纸色 / 卡片 / 正文 / 标题 / 次要文字 / 链接 / accent 均取本轮决定的集合', () => {
+    for (const [variant, want] of Object.entries(EXPECTED)) {
+      const block = variantBlock(variant)
+      expect(tokenHex(block, '--jy-bg'), `${variant} --jy-bg`).toBe(want.bg)
+      expect(tokenHex(block, '--jy-card'), `${variant} --jy-card`).toBe(want.card)
+      expect(tokenHex(block, '--jy-text'), `${variant} --jy-text`).toBe(want.text)
+      expect(tokenHex(block, '--jy-heading'), `${variant} --jy-heading`).toBe(want.heading)
+      expect(tokenHex(block, '--jy-muted'), `${variant} --jy-muted`).toBe(want.muted)
+      expect(tokenHex(block, '--jy-link'), `${variant} --jy-link`).toBe(want.link)
+      expect(tokenHex(block, '--jy-accent'), `${variant} --jy-accent`).toBe(want.accent)
+    }
+  })
+
+  it('链接为墨色而非 Web 蓝（亮侧 #1a3c8b 已退役）', () => {
+    const light = variantBlock('newsprint90s-light')
+    expect(tokenHex(light, '--jy-link'), '亮侧链接应改墨色').toBe(0x2b2620)
+    expect(light, '旧 Web 蓝 #1a3c8b 不应残留').not.toContain('#1a3c8b')
+    // 墨色：R>G>B 且彩度（max-min）≤ 0x20，排除任何高饱和蓝
+    const link = tokenHex(light, '--jy-link')
+    const [r, g, b] = [(link >> 16) & 0xff, (link >> 8) & 0xff, link & 0xff]
+    expect(Math.max(r, g, b) - Math.min(r, g, b), '墨色彩度应很低').toBeLessThanOrEqual(0x20)
+    expect(tokenHex(variantBlock('newsprint90s-dark'), '--jy-link'), '暗侧灯下链接').toBe(0x9fb4e8)
+  })
+
+  it('次要文字对纸纹最不利行 / 卡片 / 导语底均 ≥ 4.5（两变体）', () => {
+    for (const [variant, want] of Object.entries(EXPECTED)) {
+      const block = variantBlock(variant)
+      const paper = worstPaper(variant as keyof typeof EXPECTED)
+      const leadSurface = alphaOver(want.accent, want.leadAlpha, paper)
+      expect(contrast(want.muted, paper), `${variant} muted/纸纹最不利行`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.muted, want.card), `${variant} muted/卡片`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.muted, leadSurface), `${variant} muted/导语底`).toBeGreaterThanOrEqual(4.5)
+      // 正文与标题不得低于次要文字（层级不倒挂）
+      expect(contrast(want.text, paper), `${variant} text/纸纹`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.heading, paper), `${variant} heading/纸纹`).toBeGreaterThanOrEqual(4.5)
+      // 导语底必须是 accent 的同色相半透明层，而不是另一种灰
+      const lead = decl(block, '--jy-lead-bg')
+      expect(lead, `${variant} --jy-lead-bg 应为 accent 色相`).toContain(
+        `rgba(${(want.accent >> 16) & 0xff}, ${(want.accent >> 8) & 0xff}, ${want.accent & 0xff}, ${want.leadAlpha})`
+      )
+    }
+  })
+
+  it('订阅页 hover 面（#32）：中性微层叠加纸纹后 muted / 正文 / 标题仍 ≥4.5', () => {
+    for (const [variant, want] of Object.entries(EXPECTED)) {
+      const block = variantBlock(variant)
+      const hover = decl(block, '--jy-feed-hover')
+      const m = hover.match(/^rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)$/)
+      expect(m, `${variant} --jy-feed-hover 应为 rgba 中性层`).not.toBeNull()
+      const fg = (Number(m![1]) << 16) | (Number(m![2]) << 8) | Number(m![3])
+      // 中性：低彩度（不是 accent 色相），避免 hover 微亮带红
+      const channels = [(fg >> 16) & 0xff, (fg >> 8) & 0xff, fg & 0xff]
+      expect(Math.max(...channels) - Math.min(...channels), `${variant} hover 微层应为中性`).toBeLessThanOrEqual(
+        0x20
+      )
+      const surface = alphaOver(fg, Number(m![4]), worstPaper(variant as keyof typeof EXPECTED))
+      expect(contrast(want.muted, surface), `${variant} muted/订阅页 hover 面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.text, surface), `${variant} text/订阅页 hover 面`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(want.heading, surface), `${variant} heading/订阅页 hover 面`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('纸纹只存在于背景层：3px 横纹 + 纤维噪点 + 暗角，零 filter、零动画', () => {
+    for (const variant of Object.keys(EXPECTED)) {
+      const block = variantBlock(variant)
+      const image = decl(block, 'background-image')
+      expect(image, `${variant} 须保留 3px 横纹`).toMatch(/repeating-linear-gradient\(\s*0deg/)
+      expect(image, `${variant} 横纹仍为 3px 周期`).toContain('transparent 3px')
+      expect(image, `${variant} 须叠加纤维噪点/暗角（radial-gradient）`).toContain('radial-gradient')
+      expect(textureLayers(block).length, `${variant} 纹理层数 ≥ 3`).toBeGreaterThanOrEqual(3)
+      expect(block, `${variant} 不得用 filter 作用于文字`).not.toContain('filter:')
+      expect(block, `${variant} 不新增动画`).not.toMatch(/animation|@keyframes/)
+    }
+  })
+
+  it('滚动条字面 thumb 色注释按新纸色更新（亮 7.19 / 暗 4.25，均 ≥3）', () => {
+    // 用 indexOf 切片取规则块：选择器含 `::`/`-` 与 `:has()`，正则转义易错且无收益
+    const thumb = (variant: string): string => {
+      const at = css.indexOf(`[data-juya-variant='${variant}'])::-webkit-scrollbar-thumb`)
+      return at < 0 ? '' : css.slice(at, css.indexOf('}', at) + 1)
+    }
+    expect(thumb('newsprint90s-light'), '亮侧注释须引用新纸色').toContain('#ece2c6')
+    expect(thumb('newsprint90s-light'), '亮侧旧纸色注释应退役').not.toContain('#f2ecd9')
+    expect(thumb('newsprint90s-dark'), '暗侧注释须引用新纸色').toContain('#1e1913')
+    expect(thumb('newsprint90s-dark'), '暗侧旧纸色注释应退役').not.toContain('#221f19')
+    // 字面色本身不变，仍对纯纸底 ≥3（非文本件）
+    expect(contrast(0x8b1a1a, 0xece2c6), '亮 thumb/纸').toBeGreaterThanOrEqual(3)
+    expect(contrast(0xd05555, 0x1e1913), '暗 thumb/纸').toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('newsprint90s 条目版式守卫（#28：字体栈 / 方角徽章 / 2em 缩进 / 资料条）', () => {
+  // 只锁 #28 票面的印刷记号：字体栈顺序、方角徽章、2em 首行缩进与收紧段距、
+  // 导语上下细线、相关链接上沿细线 + 常驻下划线、1px 栏线。不锁规则文本之外的实现细节。
+  const newsSection = (): string =>
+    css.slice(css.indexOf('90 年代报刊式'), css.indexOf('蒸汽梦核式'))
+  /** 首条形如 `.jynews <rest> { … }` 的规则块（行首锚定，同 y2kRule） */
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jynews ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  it('字体 token：正文宋体优先（SimSun），标题黑体优先（SimHei），刊头楷体优先（KaiTi）', () => {
+    for (const variant of ['newsprint90s-light', 'newsprint90s-dark']) {
+      const block = variantBlock(variant)
+      expect(decl(block, '--jy-font-body'), `${variant} 正文宋体优先`).toContain('SimSun')
+      expect(decl(block, '--jy-font-heading'), `${variant} 标题黑体优先`).toContain('SimHei')
+      expect(decl(block, '--jy-font-masthead'), `${variant} 刊头楷体优先`).toContain('KaiTi')
+    }
+    // 关键规则消费 token，而不是各自复制字面字体栈（#32 收敛）
+    expect(decl(newsRule('\\.juya-masthead'), 'font-family'), '刊头应使用刊头字体 token').toBe(
+      'var(--jy-font-masthead)'
+    )
+    expect(decl(newsRule('\\.juya-masthead h1'), 'font-family'), '期号标题应使用刊头字体 token').toBe(
+      'var(--jy-font-masthead)'
+    )
+    for (const [rest, label] of [
+      ['\\.juya-section > h2', '栏目条'],
+      ['\\.juya-links-label', '相关链接小标'],
+      ['\\.juya-feed-grid \\.juya-feed-title', '订阅页网格标题'],
+      ['\\.juya-feed-featured \\.juya-feed-title', '订阅页首条标题']
+    ] as const) {
+      expect(decl(newsRule(rest), 'font-family'), `${label}应使用标题字体 token`).toBe(
+        'var(--jy-font-heading)'
+      )
+    }
+  })
+
+  it('序号徽章方角：标题色底、纸色字，且 newsprint 段不再出现 999px 胶囊', () => {
+    const badge = newsRule('\\.juya-index')
+    expect(badge, '徽章规则应存在（概览与条目标题共用 .juya-index）').toBeTruthy()
+    expect(decl(badge, 'border-radius'), '徽章必须方角').toBe('0')
+    expect(decl(badge, 'background'), '徽章底改为标题色').toBe('var(--jy-heading)')
+    expect(decl(badge, 'color'), '徽章字改为纸色').toBe('var(--jy-bg)')
+    expect(newsSection(), '段内不得残留 999px 胶囊').not.toContain('999px')
+  })
+
+  it('正文 2em 首行缩进、段距收紧（不靠空行），且保留两端对齐', () => {
+    const para = newsRule('\\.juya-entry p:not\\(\\.juya-links-label\\)')
+    expect(para, '正文段落规则应存在').toBeTruthy()
+    expect(decl(para, 'text-indent'), '首行缩进 2em').toBe('2em')
+    expect(decl(para, 'margin'), '段距应比基类 10px 收紧').toBe('0 0 6px')
+    expect(decl(para, 'text-align'), '正文仍两端对齐').toBe('justify')
+  })
+
+  it('导语保留上下 1px 细线与浅底、文字走 --jy-muted', () => {
+    const lead = newsRule('\\.juya-lead')
+    expect(decl(lead, 'border-top')).toBe('1px solid var(--jy-border)')
+    expect(decl(lead, 'border-bottom')).toBe('1px solid var(--jy-border)')
+    expect(decl(lead, 'background')).toBe('var(--jy-lead-bg)')
+    expect(decl(lead, 'color'), '导语文字用次要文字色').toBe('var(--jy-muted)')
+  })
+
+  it('相关链接：上沿 1px 细线 + 小标 + 墨色常驻下划线', () => {
+    const label = newsRule('\\.juya-links-label')
+    expect(label, '相关链接小标规则应存在').toBeTruthy()
+    expect(decl(label, 'border-top'), '资料条上沿细线').toBe('1px solid var(--jy-border)')
+    const link = newsRule('\\.juya-links a')
+    expect(decl(link, 'color'), '链接走墨色 token').toBe('var(--jy-link)')
+    expect(decl(link, 'text-decoration'), '相关链接常驻下划线').toContain('underline')
+  })
+
+  it('1px 栏线保持（双栏与条目分隔）', () => {
+    const columns = css.match(/\.jynews \.juya-entry-columns \{[^}]*\}/)?.[0] ?? ''
+    expect(decl(columns, 'column-rule'), '双栏 1px 栏线不回退').toBe('1px solid var(--jy-border)')
+    const entry = newsRule('\\.juya-entry')
+    expect(decl(entry, 'border-bottom'), '条目分隔线仍为 1px').toBe('1px solid var(--jy-border)')
+  })
+})
+
+describe('newsprint90s 框线导读守卫（#29：概览上下框线 / 单列 / 不新增色值）', () => {
+  // 只锁 #29 的样式面：概览块上下 1px 框线、单列（沿用基类 flex column），且框线与字色
+  // 全部走现有 token（本段不得出现字面颜色）。「导读」真实 DOM 由 reader E2E 覆盖
+  // （#32 删除了读模板源码 + 正则锁 JSX 的脆弱守卫）。
+  const newsSection = (): string =>
+    css.slice(css.indexOf('90 年代报刊式'), css.indexOf('蒸汽梦核式'))
+  /** 行首锚定的 `.jynews-overview… { … }` 规则块 */
+  const overviewRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\\.jynews-overview${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  it('概览块上下各 1px 框线，颜色走 --jy-border token', () => {
+    const box = overviewRule('')
+    expect(box, '概览框线块规则应存在').toBeTruthy()
+    expect(decl(box, 'border-top'), '上框线').toBe('1px solid var(--jy-border)')
+    expect(decl(box, 'border-bottom'), '下框线').toBe('1px solid var(--jy-border)')
+  })
+
+  it('「导读」小标与栏目条同字体（标题 token），并为真实块级元素', () => {
+    const label = overviewRule('-label')
+    expect(label, '导读小标规则应存在').toBeTruthy()
+    expect(decl(label, 'font-family')).toBe('var(--jy-font-heading)')
+    expect(decl(label, 'display'), '小标需自成一行且可被定位').toBe('inline-block')
+  })
+
+  it('概览保持单列：基类 flex column 不变，newsprint 段不改成多列/网格', () => {
+    const base = css.match(/(?:^|\n)\.juya-overview \{[^}]*\}/)?.[0] ?? ''
+    expect(decl(base, 'display')).toBe('flex')
+    expect(decl(base, 'flex-direction')).toBe('column')
+    const code = newsSection().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(code, 'newsprint 段不得把概览改成多列或网格').not.toMatch(
+      /\.jynews-overview[^{]*\{[^}]*(?:column-count|grid-template-columns)/
+    )
+  })
+
+  it('「导读」不得由伪元素生成，且概览框线/小标不新增字面颜色', () => {
+    const code = newsSection().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(code, '不得用 ::before/::after 生成导读小标').not.toMatch(
+      /\.jynews-overview(?:-label)?::(?:before|after)/
+    )
+    expect(code, '不得用 content 写死「导读」').not.toMatch(/content:\s*['"]导读['"]/)
+    for (const rest of ['', '-label']) {
+      const rule = overviewRule(rest)
+      expect(rule, `概览规则 ${rest || '(块)'} 不得出现字面颜色`).not.toMatch(
+        /#[0-9a-fA-F]{3,8}|rgba?\(/
+      )
+    }
+  })
+})
+
+describe('newsprint90s 订阅页头版守卫（#30：160×4:3 图版 / 18px 黑体 / 去卡片 / 无胶囊 / 无上浮）', () => {
+  // 只锁 #30 票面的 card/grid 两态：图版尺寸、标题字号与字体栈、去卡片化与细线分隔、
+  // hover 无上浮、来源无框、未读点方形、窄窗回落。compact / magazine / 空态归 #31，不在本组。
+  const newsSection = (): string => css.slice(css.indexOf('90 年代报刊式'), css.indexOf('蒸汽梦核式'))
+  /** 首条形如 `.jynews <rest> { … }` 的规则块（行首锚定） */
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('card/grid 图版 160px × 4:3、直角、不参与 flex 伸缩', () => {
+    const cover = newsRule('\.juya-feed-grid \.juya-feed-cover')
+    expect(cover, '图版规则应存在').toBeTruthy()
+    expect(decl(cover, 'width')).toBe('160px')
+    expect(decl(cover, 'aspect-ratio'), '图版必须 4:3').toBe('4 / 3')
+    expect(decl(cover, 'border-radius'), '图版必须直角').toBe('0')
+    expect(decl(cover, 'flex'), '图版不得被正文挤压').toBe('none')
+  })
+
+  it('期号标题 18px + 标题字体 token，摘要 13px', () => {
+    const title = newsRule('\.juya-feed-grid \.juya-feed-title')
+    expect(title, '标题规则应存在').toBeTruthy()
+    expect(decl(title, 'font-size'), '标题第一视觉 18px').toBe('18px')
+    expect(decl(title, 'font-family')).toBe('var(--jy-font-heading)')
+    const summary = newsRule('\.juya-feed-grid \.juya-feed-summary')
+    expect(decl(summary, 'font-size')).toBe('13px')
+  })
+
+  it('去卡片化：无底色 / 无阴影 / 直角，条目之间以 1px 细线分隔', () => {
+    const item = newsRule('\.juya-feed-grid \.juya-feed-item')
+    expect(item, '条目规则应存在').toBeTruthy()
+    expect(decl(item, 'border'), '卡片边框退役').toBe('0')
+    expect(decl(item, 'border-bottom'), '细线分隔保留').toBe('1px solid var(--jy-border)')
+    expect(decl(item, 'background'), '卡片底色退役').toBe('transparent')
+    expect(decl(item, 'box-shadow')).toBe('none')
+    expect(decl(item, 'border-radius')).toBe('0')
+  })
+
+  it('hover 不再上浮：transform: none，且 newsprint 段内无 translateY 位移', () => {
+    const hover = newsRule('\.juya-feed-grid \.juya-feed-item:hover')
+    expect(hover, 'hover 覆盖规则应存在').toBeTruthy()
+    expect(decl(hover, 'transform'), 'hover 不得产生位移').toBe('none')
+    // 只扫声明，注释里提到基础层的 translateY 不算（避免守卫因说明文字误报）
+    expect(newsSection().replace(/\/\*[\s\S]*?\*\//g, ''), 'newsprint 段不得再出现上浮位移').not.toMatch(
+      /translateY/
+    )
+  })
+
+  it('三处订阅页 hover 都用中性 --jy-feed-hover（#32 不再借导语底做微亮）', () => {
+    for (const rest of [
+      '\\.juya-feed-grid \\.juya-feed-item:hover',
+      '\\.juya-feed-compact \\.juya-feed-item:hover',
+      '\\.juya-feed-featured:hover'
+    ]) {
+      expect(decl(newsRule(rest), 'background'), `${rest} 应使用 --jy-feed-hover`).toBe(
+        'var(--jy-feed-hover)'
+      )
+    }
+  })
+
+  it('来源无框小字、未读点 4px 方形，且不使用 999px 胶囊', () => {
+    const source = newsRule('\.juya-feed-grid \.juya-feed-source')
+    expect(decl(source, 'border'), '来源无边框').toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background'), '来源无底色').toBe('none')
+    expect(decl(source, 'padding'), '来源无内衬').toBe('0')
+    const dot = newsRule('\.juya-feed-grid \.juya-feed-read-dot')
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+    expect(newsSection(), '段内不得出现 999px 胶囊').not.toContain('999px')
+  })
+
+  it('窄窗（≤560）图版回落纵向堆叠，避免固定 160px 图版撑破网格单元格', () => {
+    const at = css.indexOf('@media (max-width: 560px)')
+    expect(at, '560px 媒体块应存在').toBeGreaterThan(0)
+    const block = css.slice(at, css.indexOf('蒸汽梦核式', at))
+    expect(block, '窄窗覆盖必须在 newsprint 段内').toContain('.jynews .juya-feed-grid .juya-feed-item')
+    expect(block).toContain('flex-direction: column')
+  })
+})
+
+describe('newsprint90s 订阅页 compact 态守卫（#31：72×40 直角缩略图 / 14px 标题 / 元信息同 #30）', () => {
+  // #30 的订阅页规则只接 .juya-feed-grid；compact 是另一条 DOM 路径
+  // （.juya-feed-compact 容器、无网格），故本态的形状与元信息必须自成一套声明。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('compact 缩略图保留 72 × 40 且必须直角', () => {
+    const cover = newsRule('\.juya-feed-compact \.juya-feed-cover')
+    expect(cover, 'compact 缩略图规则应存在').toBeTruthy()
+    expect(decl(cover, 'width'), '小缩略图尺寸不缩水').toBe('72px')
+    expect(decl(cover, 'height')).toBe('40px')
+    expect(decl(cover, 'border-radius'), '缩略图必须直角').toBe('0')
+  })
+
+  it('compact 标题 14px，条目与 #30 同样去卡片化', () => {
+    const title = newsRule('\.juya-feed-compact \.juya-feed-title')
+    expect(decl(title, 'font-size'), '行式标题 14px').toBe('14px')
+    const item = newsRule('\.juya-feed-compact \.juya-feed-item')
+    expect(decl(item, 'border'), '卡片边框退役').toBe('0')
+    expect(decl(item, 'border-bottom'), '细线分隔保留').toBe('1px solid var(--jy-border)')
+    expect(decl(item, 'background')).toBe('transparent')
+    expect(decl(item, 'box-shadow')).toBe('none')
+  })
+
+  it('compact 来源无框（非 999px 胶囊）、未读点方形', () => {
+    const source = newsRule('\.juya-feed-compact \.juya-feed-source')
+    expect(decl(source, 'border')).toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background')).toBe('none')
+    expect(decl(source, 'padding')).toBe('0')
+    const dot = newsRule('\.juya-feed-compact \.juya-feed-read-dot')
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+  })
+})
+
+describe('newsprint90s 订阅页 magazine 态守卫（#31：首条 3:2 / 26px）', () => {
+  // magazine 首条（.juya-feed-featured）是 .juya-feed 的直接子元素、不经 .juya-feed-grid，
+  // 故 #30 的网格规则接不到它；其余条目复用网格，继续由 #30 守卫。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('首条封面 3:2 直角（基础层 21:9 必须被覆盖）', () => {
+    const cover = newsRule('\.juya-feed-featured \.juya-feed-cover')
+    expect(cover, 'magazine 首条图版规则应存在').toBeTruthy()
+    expect(decl(cover, 'aspect-ratio'), '首条封面 3:2').toBe('3 / 2')
+    expect(decl(cover, 'border-radius'), '首条封面直角').toBe('0')
+  })
+
+  it('首条标题 26px + 标题字体 token', () => {
+    const title = newsRule('\.juya-feed-featured \.juya-feed-title')
+    expect(title, 'magazine 首条标题规则应存在').toBeTruthy()
+    expect(decl(title, 'font-size'), '首条标题 26px').toBe('26px')
+    expect(decl(title, 'font-family')).toBe('var(--jy-font-heading)')
+  })
+
+  it('首条来源无框（非胶囊）、未读点方形，与 #30 一致', () => {
+    const source = newsRule('\.juya-feed-featured \.juya-feed-source')
+    expect(source, '首条来源覆盖规则应存在').toBeTruthy()
+    expect(decl(source, 'border')).toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background')).toBe('none')
+    expect(decl(source, 'padding')).toBe('0')
+    const dot = newsRule('\.juya-feed-featured \.juya-feed-read-dot')
+    expect(dot, '首条未读点覆盖规则应存在').toBeTruthy()
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+  })
+})
+
+describe('newsprint90s 空态守卫（#32：上下 1px 细线的通栏公告框 + 两级公告文案）', () => {
+  // 空态的 strong/span 由本风格模板自渲染（共享骨架未拆），本组只锁框线与两级排印的取值。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('公告框上下各 1px 细线、居中', () => {
+    const empty = newsRule('\.juya-feed-empty')
+    expect(empty, '空态公告规则应存在').toBeTruthy()
+    expect(decl(empty, 'border-top'), '上沿细线').toBe('1px solid var(--jy-border)')
+    expect(decl(empty, 'border-bottom'), '下沿细线').toBe('1px solid var(--jy-border)')
+    expect(decl(empty, 'text-align'), '居中公告').toBe('center')
+  })
+
+  it('公告文案两级：标题 15px 标题字体 token、提示 12px 次要文字色', () => {
+    const strong = newsRule('\.juya-feed-empty strong')
+    expect(strong, '公告标题规则应存在').toBeTruthy()
+    expect(decl(strong, 'display'), '标题为块级').toBe('block')
+    expect(decl(strong, 'font-family'), '标题走标题字体 token').toBe('var(--jy-font-heading)')
+    expect(decl(strong, 'font-size')).toBe('15px')
+    const span = newsRule('\.juya-feed-empty span')
+    expect(span, '公告提示规则应存在').toBeTruthy()
+    expect(decl(span, 'display'), '提示为块级').toBe('block')
+    expect(decl(span, 'margin-top'), '两级公告间距 4px').toBe('4px')
+    expect(decl(span, 'font-size')).toBe('12px')
+    expect(decl(span, 'color'), '提示走次要文字色').toBe('var(--jy-muted)')
+  })
+
+  it('公告框在 grid 预设下通栏，不被挤进第一列', () => {
+    const empty = newsRule('\.juya-feed-empty')
+    expect(decl(empty, 'grid-column'), '公告框须横跨所有列').toBe('1 / -1')
   })
 })

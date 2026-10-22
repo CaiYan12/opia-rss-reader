@@ -1216,81 +1216,197 @@
 }
 
 /* ---- 90 年代报刊式 ---- */
+/* 纸面（#27）：中度泛黄的旧新闻纸。纹理全部是 .juya-root 的背景层——
+   极轻暗角（四角）+ 两道错位纤维噪点（7px / 11px 平铺）+ 3px 横纹；
+   零 DOM、零动画、不用 filter（filter 会作用于文字）。对比度以「纸纹最不利行」
+   （全部纹理层叠到 --jy-bg 上）实算，守卫见 tests/unit/juyaCssGuard.test.ts。 */
 [data-juya-variant='newsprint90s-light'] {
-  --jy-bg: #f2ecd9;
-  background-image: repeating-linear-gradient(
-    0deg,
-    rgba(120, 100, 60, 0.035) 0px,
-    rgba(120, 100, 60, 0.035) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  --jy-card: #f7f2e2;
+  --jy-bg: #ece2c6;
+  background-image:
+    radial-gradient(115% 85% at 50% 35%, transparent 58%, rgba(86, 68, 38, 0.016) 100%),
+    radial-gradient(circle at 32% 38%, rgba(104, 86, 52, 0.010) 0.5px, transparent 1px),
+    radial-gradient(circle at 68% 62%, rgba(104, 86, 52, 0.010) 0.5px, transparent 1px),
+    repeating-linear-gradient(
+      0deg,
+      rgba(120, 100, 60, 0.018) 0px,
+      rgba(120, 100, 60, 0.018) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  background-size: auto, 7px 7px, 11px 11px, auto;
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  --jy-card: #f0e7cf;
   --jy-border: #2f2a20;
   --jy-heading: #211d14;
   --jy-text: #33301f;
-  --jy-muted: #6d6350;
+  /* 一个 muted token 同时管日期线 / 来源 / 导语：对纸纹最不利行 ≥4.5，换色须过守卫 */
+  --jy-muted: #5f5747;
   --jy-accent: #8b1a1a;
-  --jy-on-accent: #f7f2e2;
-  --jy-link: #1a3c8b;
+  --jy-on-accent: #f0e7cf;
+  /* 链接改墨色（原 Web 蓝已退役）；下划线由模板层负责 */
+  --jy-link: #2b2620;
   --jy-lead-bg: rgba(139, 26, 26, 0.07);
+  /* 订阅页 hover 纸面微亮（#32）：中性墨色微层，不再借用 accent 色相的 --jy-lead-bg。
+     0.045 的中性叠加让暗侧 muted 对 hover 面仍有 ≥4.5（守卫实算）。 */
+  --jy-feed-hover: rgba(47, 42, 32, 0.045);
   --jy-focus: #8b1a1a;
   --jy-radius: 0px;
-  --jy-font-heading: 'Noto Serif SC', SimSun, 'Songti SC', serif;
-  --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+  /* #28 字面：正文宋体优先（印刷正文），标题与栏目条黑体优先（报眼题字），刊头楷体优先（#32 收进 token） */
+  --jy-font-heading: SimHei, 'Noto Sans SC', sans-serif;
+  --jy-font-body: SimSun, 'Noto Serif SC', 'Songti SC', serif;
+  --jy-font-masthead: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
 }
 
+/* 灯下读报的暖暗纸（#27）：纹理层为极轻黑角 + 两道暖纸纤维 + 极淡白噪点。 */
 [data-juya-variant='newsprint90s-dark'] {
-  --jy-bg: #221f19;
-  background-image: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.028) 0px,
-    rgba(255, 255, 255, 0.028) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  --jy-card: #2a261e;
+  --jy-bg: #1e1913;
+  background-image:
+    radial-gradient(115% 85% at 50% 35%, transparent 58%, rgba(0, 0, 0, 0.025) 100%),
+    radial-gradient(circle at 32% 38%, rgba(107, 92, 60, 0.02) 0.5px, transparent 1px),
+    radial-gradient(circle at 68% 62%, rgba(107, 92, 60, 0.016) 0.5px, transparent 1px),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.015) 0px,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  background-size: auto, 7px 7px, 11px 11px, auto;
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  --jy-card: #262019;
   --jy-border: #c9bfa4;
-  --jy-heading: #ece4cd;
-  --jy-text: #cfc7ae;
-  --jy-muted: #8f8668;
+  --jy-heading: #efe6cf;
+  --jy-text: #d6cbb2;
+  --jy-muted: #a2997b;
   --jy-accent: #d05555;
-  --jy-on-accent: #221f19;
-  --jy-link: #8fa8e8;
+  --jy-on-accent: #1e1913;
+  /* 暗侧链接为灯下蓝墨（对纸 8.45），非 Web 蓝 */
+  --jy-link: #9fb4e8;
   --jy-lead-bg: rgba(208, 85, 85, 0.12);
+  /* 灯下读报的 hover 纸面微亮（#32）：暖白中性微层，非 accent 红；muted 对比度由守卫实算 */
+  --jy-feed-hover: rgba(255, 248, 230, 0.045);
   --jy-focus: #e8b4b4;
   --jy-radius: 0px;
-  --jy-font-heading: 'Noto Serif SC', SimSun, 'Songti SC', serif;
-  --jy-font-body: 'Noto Serif SC', SimSun, 'Songti SC', serif;
+  --jy-font-heading: SimHei, 'Noto Sans SC', sans-serif;
+  --jy-font-body: SimSun, 'Noto Serif SC', 'Songti SC', serif;
+  --jy-font-masthead: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
 }
 
-/* 报头（刊头+日期线+双细线）、栏目栏、正文两栏（宽窗口） */
+/* 刊头（三栏报头）+ 栏目栏 + 正文两栏（宽窗口）。
+   版心 800（内容宽 752 = 800 − 2×24 内衬，双栏每栏约 362）。 */
+.jynews .juya-issue {
+  max-width: 800px;
+}
+
+/* 三栏刊头（#26）：左日期 / 中期号标题 / 右星期。两侧等宽轨道（minmax(0,1fr)）把
+   auto 列的期号顶到版心中线，且元信息过宽时可收缩而不撑破版心。
+   上沿 1px 细线、下沿 4px double；刊头楷体，期号 38px / 6px 字距。 */
 .jynews .juya-masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  column-gap: 12px;
   text-align: center;
-  border-bottom: 3px double var(--jy-border);
-  padding-bottom: 14px;
-  margin-bottom: 18px;
+  font-family: var(--jy-font-masthead);
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 4px double var(--jy-border);
+  padding: 10px 0 12px;
+  margin-bottom: 20px;
 }
 
 .jynews .juya-masthead h1 {
-  font-size: 34px;
+  font-family: var(--jy-font-masthead);
+  font-size: 38px;
+  letter-spacing: 6px;
+  line-height: 1.15;
+}
+
+/* 日期与星期：宋体 11px / 1px 字距，次要文字色；宽窗分居左右两端。 */
+.jynews .juya-date-line {
+  justify-self: start;
+  text-align: left;
+  font-family: var(--jy-font-body);
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1.4;
+  color: var(--jy-muted);
+}
+
+.jynews .juya-masthead-weekday {
+  justify-self: end;
+  text-align: right;
+  font-family: var(--jy-font-body);
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1.4;
+  color: var(--jy-muted);
+}
+
+/* ≤899：刊头回落单列居中堆叠（日期 → 期号 → 星期），期号 30px / 4px 字距。
+   与双栏 min-width: 900 互斥（#32）：900 恰好宽时保持三栏刊头，不再与两栏同时命中。 */
+@media (max-width: 899px) {
+  .jynews .juya-masthead {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
+  .jynews .juya-date-line,
+  .jynews .juya-masthead-weekday {
+    justify-self: center;
+    text-align: center;
+  }
+  .jynews .juya-masthead h1 {
+    font-size: 30px;
+    letter-spacing: 4px;
+  }
+}
+
+/* 框线导读（#29）：概览包进上下 1px 框线块，带真实 DOM「导读」小标（模板产出，非伪元素）。
+   单列沿用基类 .juya-overview 的 flex column；框线与字色全部走变体 token，不新增色值。
+   #32 起概览链接补常驻下划线 + hover 报刊红（见下方链接规则），焦点环仍由基类提供。 */
+.jynews-overview {
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  padding: 10px 0 12px;
+  margin: 0 0 24px;
+}
+
+/* 小标与栏目条同一套黑底反白印刷语言（与 .juya-section > h2 同字体栈、同字号）。 */
+.jynews-overview-label {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 1px 10px;
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+  font-family: var(--jy-font-heading);
+  font-size: 12px;
   letter-spacing: 4px;
 }
 
-.jynews .juya-date-line {
-  font-size: 12px;
-  color: var(--jy-muted);
-  letter-spacing: 2px;
-  margin-top: 6px;
+/* 框内列表去掉基类的底部外边距（否则下框线前会多出 28px 空白）；仍是单列。 */
+.jynews-overview .juya-overview {
+  margin-bottom: 0;
+}
+
+/* 窄窗（≤560）长标题可在任意处折行，避免撑破版心（标题与序号同在一行 flex 里）。 */
+.jynews-overview .juya-overview li > :not(.juya-index) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 概览链接与相关链接一致：常驻下划线（#32）。条目标题链接是刻意的例外，见下方链接 hover 组。 */
+.jynews .juya-overview a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .jynews .juya-section > h2 {
   background: var(--jy-heading);
   color: var(--jy-bg);
   display: inline-block;
-  padding: 2px 12px;
+  padding: 3px 14px;
+  font-family: var(--jy-font-heading);
   font-size: 16px;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
 }
 
 .jynews .juya-entry {
@@ -1300,6 +1416,16 @@
 
 .jynews .juya-entry > h3 {
   font-size: 18px;
+  letter-spacing: 0.5px;
+}
+
+/* 序号徽章（#28）：方角标签，标题色底 + 纸色字（与栏目条同一套印刷语言，不再用 accent 胶囊）。
+   概览序号与条目标题徽章共用 .juya-index，故只写一条覆盖两类上下文。 */
+.jynews .juya-index {
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+  border-radius: 0;
+  padding: 1px 7px;
 }
 
 .jynews .juya-lead {
@@ -1307,11 +1433,40 @@
   border-top: 1px solid var(--jy-border);
   border-bottom: 1px solid var(--jy-border);
   background: var(--jy-lead-bg);
+  color: var(--jy-muted);
   font-style: normal;
 }
 
-.jynews .juya-entry p {
+/* 正文（#28）：2em 首行缩进 + 收紧段距（不靠空行分段的印刷惯例）；两端对齐保留。 */
+.jynews .juya-entry p:not(.juya-links-label) {
+  margin: 0 0 6px;
+  text-indent: 2em;
   text-align: justify;
+}
+
+/* 相关链接资料条（#28）：上沿 1px 细线隔开正文，小标由共享 LinksBlock 提供；
+   链接为墨色常驻下划线（条目标题链接仍只在 hover 时下划线）。 */
+.jynews .juya-links-label {
+  margin: 14px 0 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--jy-border);
+  font-family: var(--jy-font-heading);
+  letter-spacing: 1px;
+}
+
+.jynews .juya-links a {
+  color: var(--jy-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* 链接 hover 一律转报刊红（#32）：概览 / 相关链接 / 条目标题共用同一反馈。
+   条目标题链接刻意不加常驻下划线——「标题静默、hover 才下划线」是 90 年代报刊的
+   印刷惯例（标题不抢正文的墨线），属故意例外，勿统一成常驻下划线。 */
+.jynews .juya-entry h3 a:hover,
+.jynews .juya-overview a:hover,
+.jynews .juya-links a:hover {
+  color: var(--jy-accent);
 }
 
 @media (min-width: 900px) {
@@ -1320,6 +1475,233 @@
     column-gap: 28px;
     column-rule: 1px solid var(--jy-border);
   }
+}
+
+/* ---- 订阅页头版（#30）：card/grid 两态 ----
+   去卡片化：期号条目不再有卡片底色/边框/阴影，改用 1px 细线分隔，标题成为第一视觉。
+   只接 .juya-feed-grid（通用 card/grid；magazine 的其余条目复用该网格，故一并回到 card 形态）。
+   compact / magazine 首条 / 空态归 #31，本段不碰。 */
+.jynews .juya-feed-grid .juya-feed-item {
+  /* 卡片语言退役：无底色、无卡片边框、无阴影，只留条目底部的 1px 细线 */
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  /* 图版与标题/摘要并排；条目无水平内衬，故无封面时正文列（flex: 1）自然独占整行 */
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 14px 0;
+}
+
+/* hover 只留下划线与纸面微亮（#32 中性微层，不再借用 accent 色相的导语底）：
+   覆盖基础层 .juya-feed-item:hover 的 translateY(-2px)。
+   刻意不声明 transition —— 基础层 transition 只描述 transform/box-shadow，
+   这两者 hover 不再变化即无新增过渡，减少动态效果设置无需额外处理。 */
+.jynews .juya-feed-grid .juya-feed-item:hover {
+  transform: none;
+  background: var(--jy-feed-hover);
+}
+
+.jynews .juya-feed-grid .juya-feed-item:hover .juya-feed-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 图版：160px 宽、4:3（高 120px），直角细框；flex: none 保证图片不被正文挤压。 */
+.jynews .juya-feed-grid .juya-feed-cover {
+  width: 160px;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  flex: none;
+  border: 1px solid var(--jy-border);
+  border-radius: 0;
+}
+
+.jynews .juya-feed-grid .juya-feed-body {
+  padding: 0;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 标题 18px 黑体优先（token，与栏目条同一套字体语言），压过摘要与元信息成为第一视觉。 */
+.jynews .juya-feed-grid .juya-feed-title {
+  font-family: var(--jy-font-heading);
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: 0.5px;
+}
+
+.jynews .juya-feed-grid .juya-feed-summary {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 来源：无框小字，与日期同处 .juya-feed-meta 一行（不另起行、不做胶囊）。 */
+.jynews .juya-feed-grid .juya-feed-source {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+}
+
+/* 未读点：4px 方形（90 年代直角语言，不用圆点）。 */
+.jynews .juya-feed-grid .juya-feed-read-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+}
+
+/* ≤560：固定 160px 图版与正文并排会把两列网格的单元格挤爆，回落纵向堆叠（图版仍 160 × 4:3）。 */
+@media (max-width: 560px) {
+  .jynews .juya-feed-grid .juya-feed-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* ---- 订阅页 compact 态（#31）：保留小缩略图但改直角，行式结构不变 ----
+   沿用 #30 的纸面语言：条目去卡片化（无底色 / 上边框 / 阴影，细线分隔）、hover 不上浮。
+   来源与未读点必须在 compact 态重声明 —— #30 的元信息规则只接 .juya-feed-grid。 */
+.jynews .juya-feed-compact .juya-feed-item {
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  /* 行式结构不变（图版 + 正文横排）；去掉水平内衬，标题与 #30 网格条目同一条左边线 */
+  padding: 10px 0;
+}
+
+/* 小缩略图 72 × 40 直角细框（基础层靠 --jy-radius 得直角，这里显式钉死，防 token 变更静默回退） */
+.jynews .juya-feed-compact .juya-feed-cover {
+  width: 72px;
+  height: 40px;
+  aspect-ratio: auto;
+  border: 1px solid var(--jy-border);
+  border-radius: 0;
+}
+
+/* 行式标题 14px（字号沿用基础 compact 值，字体栈走 --jy-font-heading 的 SimHei 优先） */
+.jynews .juya-feed-compact .juya-feed-title {
+  font-size: 14px;
+}
+
+/* hover 同 #30：纸面中性微亮（--jy-feed-hover）+ 标题下划线，无上浮位移 */
+.jynews .juya-feed-compact .juya-feed-item:hover {
+  transform: none;
+  background: var(--jy-feed-hover);
+}
+
+.jynews .juya-feed-compact .juya-feed-item:hover .juya-feed-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 来源无框小字、未读点 4px 方形（与 #30 一致） */
+.jynews .juya-feed-compact .juya-feed-source {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+}
+
+.jynews .juya-feed-compact .juya-feed-read-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+}
+
+/* ---- 订阅页 magazine 首条（#31）：3:2 大图 + 26px 标题 ----
+   首条（.juya-feed-featured）是 .juya-feed 的直接子元素、不经 .juya-feed-grid，
+   故 #30 的网格规则接不到它；其余条目仍复用网格，继续走 #30。 */
+.jynews .juya-feed-featured {
+  /* 与网格条目同一套纸面语言：去卡片化 + 底沿细线 */
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 14px 0;
+}
+
+/* 首条保留一张主照片：3:2 直角细框（基础层为 21:9）。 */
+.jynews .juya-feed-featured .juya-feed-cover {
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--jy-border);
+  border-radius: 0;
+}
+
+/* 去掉基础层 18px 20px 的内衬，首条与下方网格条目共用同一条左边线。 */
+.jynews .juya-feed-featured .juya-feed-body {
+  padding: 0;
+  gap: 6px;
+}
+
+/* 头版主标题 26px 黑体优先（token，基础层 20px）。 */
+.jynews .juya-feed-featured .juya-feed-title {
+  font-family: var(--jy-font-heading);
+  font-size: 26px;
+  line-height: 1.3;
+  letter-spacing: 0.5px;
+}
+
+/* 首条元信息与 #30 一致：来源无框小字、未读点 4px 方形（首条不经 .juya-feed-grid，需单独覆盖）。 */
+.jynews .juya-feed-featured .juya-feed-source {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+}
+
+.jynews .juya-feed-featured .juya-feed-read-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+}
+
+/* hover 同 #30：纸面中性微亮（--jy-feed-hover）+ 标题下划线，无上浮位移。 */
+.jynews .juya-feed-featured:hover {
+  transform: none;
+  background: var(--jy-feed-hover);
+}
+
+.jynews .juya-feed-featured:hover .juya-feed-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- 空态（#32）：上下 1px 细线的公告框，文案由本风格模板自渲染 ----
+   「暂无内容」黑体 15px + 「点击右上角刷新获取」12px muted，构成两级报纸公告；
+   共享骨架的空态是一整行字符串，故由 newsprint90s.tsx 的 FeedList 在空态自渲染
+   （非空仍委托工厂 FeedList），共享层未改。
+   grid 预设下公告框是网格子项，grid-column 令其横跨全部列；compact/magazine 容器非网格，
+   该声明惰性无效，不影响那两种预设。 */
+.jynews .juya-feed-empty {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  text-align: center;
+}
+
+.jynews .juya-feed-empty strong {
+  display: block;
+  font-family: var(--jy-font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--jy-heading);
+}
+
+.jynews .juya-feed-empty span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--jy-muted);
 }
 
 /* ---- 蒸汽梦核式 ---- */
@@ -3253,13 +3635,13 @@
 }
 
 .view-scroll:has([data-juya-variant='newsprint90s-light'])::-webkit-scrollbar-thumb {
-  /* newsprint90s-light 报刊红 accent #8b1a1a，对米报底 #f2ecd9 对比 7.86；直角随 --jy-radius 0 */
+  /* newsprint90s-light 报刊红 accent #8b1a1a，对旧纸底 #ece2c6 对比 7.19（纸纹最不利行 6.62）；直角随 --jy-radius 0 */
   background: #8b1a1a;
   border-radius: 0;
 }
 
 .view-scroll:has([data-juya-variant='newsprint90s-dark'])::-webkit-scrollbar-thumb {
-  /* newsprint90s-dark 报刊红 accent #d05555，对暗报底 #221f19 对比 4.00；直角随 --jy-radius 0 */
+  /* newsprint90s-dark 报刊红 accent #d05555，对暖暗纸底 #1e1913 对比 4.25（纸纹最不利行 3.92，非文本件 ≥3）；直角随 --jy-radius 0 */
   background: #d05555;
   border-radius: 0;
 }

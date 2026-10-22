@@ -78,6 +78,356 @@ test('90 年代报刊式：报头日期线与分栏容器', async ({ page }) => 
   await expect(root.locator('.juya-entry-columns').first()).toBeVisible()
 })
 
+/** 刊头三栏几何（#26）：返回日期/期号标题/星期的包围盒与刊头自身盒子。 */
+async function mastheadBoxes(masthead: import('@playwright/test').Locator) {
+  return masthead.evaluate((el) => {
+    const box = (n: Element) => {
+      const r = n.getBoundingClientRect()
+      return {
+        left: r.left,
+        right: r.right,
+        top: r.top,
+        bottom: r.bottom,
+        cx: (r.left + r.right) / 2,
+        cy: (r.top + r.bottom) / 2
+      }
+    }
+    const self = box(el)
+    const date = el.querySelector('.juya-date-line')
+    const title = el.querySelector('h1')
+    const weekday = el.querySelector('.juya-masthead-weekday')
+    if (!date || !title || !weekday) return null
+    return { self, date: box(date), title: box(title), weekday: box(weekday) }
+  })
+}
+
+test('90 年代报刊式刊头（#26）：1280 三栏——日期最左、期号居中、星期最右，互不重叠', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.juya-masthead')
+  const date = masthead.locator('.juya-date-line')
+  const title = masthead.locator('h1')
+  const weekday = masthead.locator('.juya-masthead-weekday')
+
+  await expect(date).toBeVisible()
+  await expect(weekday).toBeVisible()
+
+  // 日期与星期来自同一真实发布日期（夹具 pubDate 2026-08-28T01:31:42Z），不编造期号/版次
+  await expect(date).toHaveText('2026年8月28日')
+  await expect(weekday).toHaveText('星期五')
+  await expect(title).toHaveText('AI 早报 2026-08-28')
+
+  // 版心 800（内容宽 752 = 800 − 2×24 内衬）
+  await expect(root.locator('.juya-issue')).toHaveCSS('max-width', '800px')
+
+  // 刊头楷体 + 38px / 6px
+  await expect(masthead).toHaveCSS('font-family', /KaiTi/)
+  await expect(title).toHaveCSS('font-size', '38px')
+  await expect(title).toHaveCSS('letter-spacing', '6px')
+
+  // 上沿 1px 细线、下沿 4px double
+  await expect(masthead).toHaveCSS('border-top-width', '1px')
+  await expect(masthead).toHaveCSS('border-top-style', 'solid')
+  await expect(masthead).toHaveCSS('border-bottom-width', '4px')
+  await expect(masthead).toHaveCSS('border-bottom-style', 'double')
+
+  const assertWide = (boxes: Awaited<ReturnType<typeof mastheadBoxes>>) => {
+    expect(boxes, '刊头三栏元素必须齐备').not.toBeNull()
+    const g = boxes!
+    // 横向顺序：日期区 < 期号标题 < 星期区，且相邻两栏不重叠
+    expect(g.date.cx, '日期应在期号左侧').toBeLessThan(g.title.left)
+    expect(g.title.cx, '期号应居中于日期与星期之间').toBeLessThan(g.weekday.cx)
+    expect(g.date.right, '日期与期号不得重叠').toBeLessThanOrEqual(g.title.left)
+    expect(g.title.right, '期号与星期不得重叠').toBeLessThanOrEqual(g.weekday.left)
+    // 同一行：三者纵向范围与刊头正文区相交（不是被挤到上下两行）
+    expect(Math.max(g.date.cy, g.weekday.cy) - Math.min(g.date.cy, g.weekday.cy)).toBeLessThan(
+      g.self.bottom - g.self.top
+    )
+    // 期号大致居于版心中线（三栏中的 auto 列）
+    expect(Math.abs(g.title.cx - g.self.cx), '期号标题应居中').toBeLessThan(12)
+  }
+
+  assertWide(await mastheadBoxes(masthead))
+
+  // 暗侧：变体只替换调色板 token（结构、几何与亮侧一致），故按变体属性翻转后复测同一组几何，
+  // 并验证刊头线取暗侧纸纹色 #c9bfa4（亮侧为 #2f2a20）。
+  await expect(masthead).toHaveCSS('border-bottom-color', 'rgb(47, 42, 32)')
+  await root.evaluate((el) => el.setAttribute('data-juya-variant', 'newsprint90s-dark'))
+  await expect(masthead).toHaveCSS('border-bottom-color', 'rgb(201, 191, 164)')
+  await expect(title).toHaveCSS('font-size', '38px')
+  assertWide(await mastheadBoxes(masthead))
+})
+
+test('90 年代报刊式刊头（#32）：900 宽度三栏刊头与双栏正文互斥命中、不溢出 752 版心', async ({
+  page
+}) => {
+  // 断点收敛：刊头堆叠 max-width 899 与正文双栏 min-width 900 互斥，900 恰好宽时两者同时成立
+  // 是刻意的（三栏刊头在 752 内容宽内放得下），此用例把该边界钉住。
+  await page.setViewportSize({ width: 900, height: 900 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.juya-masthead')
+  const title = masthead.locator('h1')
+
+  // 900 命中宽窗态：期号仍是 38px（堆叠态为 30px），正文两栏
+  await expect(title).toHaveCSS('font-size', '38px')
+  await expect(title).toHaveCSS('letter-spacing', '6px')
+  const columnCount = await root
+    .locator('.juya-entry-columns')
+    .first()
+    .evaluate((el) => getComputedStyle(el).columnCount)
+  expect(columnCount, '900 宽度正文应保持双栏').toBe('2')
+
+  // 三栏几何：日期 < 期号 < 星期，互不重叠；刊头内容不溢出自身盒子
+  const g = await mastheadBoxes(masthead)
+  expect(g, '刊头三栏元素必须齐备').not.toBeNull()
+  expect(g!.date.right, '日期与期号不得重叠').toBeLessThanOrEqual(g!.title.left)
+  expect(g!.title.right, '期号与星期不得重叠').toBeLessThanOrEqual(g!.weekday.left)
+  expect(g!.self.right - g!.self.left, '刊头宽度即 752 版心').toBeLessThanOrEqual(752 + 1)
+  // 期号单行（换行会让三栏刊头读成两行标题）
+  expect(g!.title.bottom - g!.title.top, '900 宽度期号应保持单行').toBeLessThan(60)
+  const overflow = await masthead.evaluate((el) => ({
+    sw: el.scrollWidth,
+    cw: el.clientWidth
+  }))
+  expect(overflow.sw, '刊头内容不得溢出').toBeLessThanOrEqual(overflow.cw + 1)
+})
+
+test('90 年代报刊式刊头（#26）：560 宽度回落居中堆叠、页面无横向溢出', async ({ page }) => {
+  await page.setViewportSize({ width: 560, height: 800 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.juya-masthead')
+  const title = masthead.locator('h1')
+
+  await expect(title).toHaveCSS('font-size', '30px')
+  await expect(title).toHaveCSS('letter-spacing', '4px')
+
+  const g = await mastheadBoxes(masthead)
+  expect(g, '刊头三栏元素必须齐备').not.toBeNull()
+  // 竖向堆叠：日期 → 期号 → 星期，逐段不重叠
+  expect(g!.date.bottom, '日期应在期号之上').toBeLessThanOrEqual(g!.title.top + 1)
+  expect(g!.title.bottom, '期号应在星期之上').toBeLessThanOrEqual(g!.weekday.top + 1)
+  // 居中：三者水平中心与刊头中线一致（容 2px 取整）
+  for (const [name, b] of [
+    ['日期', g!.date],
+    ['期号', g!.title],
+    ['星期', g!.weekday]
+  ] as const) {
+    expect(Math.abs(b.cx - g!.self.cx), `${name}应居中`).toBeLessThanOrEqual(2)
+  }
+
+  // 无横向溢出：滚动容器与刊头都不产生横向滚动（scrollWidth ≤ clientWidth）
+  const overflow = await root.evaluate((el) => {
+    const scroller = el.closest('.view-scroll') as HTMLElement | null
+    const boxes = [el as HTMLElement, scroller].filter((n): n is HTMLElement => !!n)
+    return boxes.map((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
+  })
+  for (const { sw, cw } of overflow) {
+    expect(sw, '横向溢出（scrollWidth 超出 clientWidth）').toBeLessThanOrEqual(cw + 1)
+  }
+})
+
+test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋体正文 / 黑体标题、相关链接资料条', async ({
+  page
+}) => {
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+
+  // 序号徽章：方角、标题色底（#211d14）、纸色字（#ece2c6）——概览与条目标题同一套
+  for (const badge of [
+    root.locator('.juya-overview .juya-index').first(),
+    root.locator('.juya-entry .juya-index').first()
+  ]) {
+    await expect(badge).toBeVisible()
+    await expect(badge).toHaveCSS('border-radius', '0px')
+    await expect(badge).toHaveCSS('background-color', 'rgb(33, 29, 20)')
+    await expect(badge).toHaveCSS('color', 'rgb(236, 226, 198)')
+  }
+
+  // 正文：2em 首行缩进（按字号比例断言，不锁死像素）、段距 6px、宋体优先
+  const para = root.locator('.juya-entry p:not(.juya-links-label)').first()
+  const paraMetrics = await para.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { indent: cs.textIndent, fontSize: cs.fontSize }
+  })
+  expect(
+    Number.parseFloat(paraMetrics.indent) / Number.parseFloat(paraMetrics.fontSize),
+    '首行缩进应为 2em（与基准字号比例）'
+  ).toBeCloseTo(2, 1)
+  await expect(para).toHaveCSS('margin-bottom', '6px')
+  await expect(para).toHaveCSS('font-family', /SimSun/)
+
+  // 条目标题与栏目条：黑体优先；栏目条仍黑底反白
+  await expect(root.locator('.juya-entry h3').first()).toHaveCSS('font-family', /SimHei/)
+  const h2 = root.locator('.juya-section > h2').first()
+  await expect(h2).toHaveCSS('font-family', /SimHei/)
+  await expect(h2).toHaveCSS('background-color', 'rgb(33, 29, 20)')
+  await expect(h2).toHaveCSS('letter-spacing', '4px')
+
+  // 导语：上下 1px 细线 + 次要文字色
+  const lead = root.locator('.juya-lead').first()
+  await expect(lead).toHaveCSS('border-top-width', '1px')
+  await expect(lead).toHaveCSS('border-bottom-width', '1px')
+  await expect(lead).toHaveCSS('color', 'rgb(95, 87, 71)')
+
+  // 相关链接资料条：上沿 1px 细线 + 墨色常驻下划线（无需 hover）
+  const label = root.locator('.juya-links-label').first()
+  await expect(label).toHaveCSS('border-top-width', '1px')
+  await expect(label).toHaveCSS('border-top-style', 'solid')
+  const link = root.locator('.juya-links a').first()
+  await expect(link).toHaveCSS('color', 'rgb(43, 38, 32)')
+  await expect(link).toHaveCSS('text-decoration-line', 'underline')
+
+  // #32：概览链接与相关链接同一条常驻下划线（2px offset），标题链接保持静默的报刊例外
+  const overviewLink = root.locator('.juya-overview a').first()
+  await expect(overviewLink).toBeVisible()
+  await expect(overviewLink).toHaveCSS('text-decoration-line', 'underline')
+  await expect(overviewLink).toHaveCSS('text-underline-offset', '2px')
+  const titleLink = root.locator('.juya-entry h3 a').first()
+  await expect(titleLink).toHaveCSS('text-decoration-line', 'none')
+
+  // hover 一律转报刊红（亮侧 accent #8b1a1a）：概览 / 相关链接 / 条目标题
+  for (const [name, l] of [
+    ['概览', overviewLink],
+    ['相关链接', link],
+    ['条目标题', titleLink]
+  ] as const) {
+    await l.hover()
+    await expect(l, `${name}链接 hover 应转 accent 红`).toHaveCSS('color', 'rgb(139, 26, 26)')
+  }
+})
+
+test('90 年代报刊式框线导读（#29）：真实「导读」小标、上下框线、单列、链接可点、焦点环可见', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const box = root.locator('.jynews-overview')
+  await expect(box).toBeVisible()
+
+  // 「导读」必须是真实 DOM 元素 + 真实文本节点（伪元素 content 不产生可定位元素，也不可复制/选中）
+  const label = box.locator('.jynews-overview-label')
+  await expect(label).toBeVisible()
+  await expect(label).toHaveText('导读')
+  const labelFacts = await label.evaluate((el) => ({
+    hasTextNode: [...el.childNodes].some(
+      (n) => n.nodeType === Node.TEXT_NODE && !!n.textContent?.trim()
+    ),
+    before: getComputedStyle(el, '::before').content,
+    after: getComputedStyle(el, '::after').content
+  }))
+  expect(labelFacts.hasTextNode, '「导读」必须是真实文本节点').toBe(true)
+  expect(labelFacts.before, '导读不得由 ::before 伪元素生成').not.toContain('导读')
+  expect(labelFacts.after, '导读不得由 ::after 伪元素生成').not.toContain('导读')
+  // 与栏目条同字体（SimHei 优先）
+  await expect(label).toHaveCSS('font-family', /SimHei/)
+
+  // 概览上下有框线：1px solid，颜色走现有纸面 token（亮侧 --jy-border #2f2a20）
+  await expect(box).toHaveCSS('border-top-width', '1px')
+  await expect(box).toHaveCSS('border-top-style', 'solid')
+  await expect(box).toHaveCSS('border-bottom-width', '1px')
+  await expect(box).toHaveCSS('border-bottom-style', 'solid')
+  await expect(box).toHaveCSS('border-top-color', 'rgb(47, 42, 32)')
+  await expect(box).toHaveCSS('border-bottom-color', 'rgb(47, 42, 32)')
+
+  // 几何：上框线在「导读」之上、下框线在概览列表之下（不是只有列表自带的某一边）
+  const geo = await box.evaluate((el) => {
+    const b = el.getBoundingClientRect()
+    const l = el.querySelector('.jynews-overview-label')!.getBoundingClientRect()
+    const ul = el.querySelector('.juya-overview')!.getBoundingClientRect()
+    return {
+      boxTop: b.top,
+      boxBottom: b.bottom,
+      labelTop: l.top,
+      labelBottom: l.bottom,
+      ulTop: ul.top,
+      ulBottom: ul.bottom
+    }
+  })
+  expect(geo.labelTop, '上框线应在「导读」之上').toBeGreaterThan(geo.boxTop)
+  expect(geo.labelBottom, '「导读」应在概览列表之上').toBeLessThanOrEqual(geo.ulTop + 1)
+  expect(geo.ulBottom, '下框线应在概览列表之下').toBeLessThan(geo.boxBottom)
+
+  // 单列：第二项在第一项下方且左缘对齐
+  const rows = await box.evaluate((el) =>
+    [...el.querySelectorAll('.juya-overview li')].slice(0, 2).map((n) => {
+      const r = n.getBoundingClientRect()
+      return { left: r.left, top: r.top, bottom: r.bottom }
+    })
+  )
+  expect(rows.length, '概览至少两项').toBeGreaterThanOrEqual(2)
+  expect(Math.abs(rows[1].left - rows[0].left), '概览为单列，左缘对齐').toBeLessThanOrEqual(1)
+  expect(rows[1].top, '第二项应在第一项下方').toBeGreaterThanOrEqual(rows[0].bottom - 1)
+
+  // 焦点环：键盘 Tab 到概览链接，2px solid 主题焦点色（行为不变）
+  const link = box.locator('.juya-overview a').first()
+  await expect(link).toBeVisible()
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  let reached = false
+  for (let i = 0; i < 60 && !reached; i++) {
+    await page.keyboard.press('Tab')
+    reached = await link.evaluate((el) => el === document.activeElement).catch(() => false)
+  }
+  expect(reached, '键盘 Tab 应能到达概览链接').toBe(true)
+  const focus = await link.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      focusVisible: (el as HTMLElement).matches(':focus-visible'),
+      outlineStyle: cs.outlineStyle,
+      outlineWidth: cs.outlineWidth
+    }
+  })
+  expect(focus.focusVisible, '键盘 Tab ⇒ :focus-visible 命中').toBe(true)
+  expect(focus.outlineStyle, '焦点环必须显式 solid').toBe('solid')
+  expect(focus.outlineWidth, '焦点环宽度 2px').toBe('2px')
+  // index.css 的 outline-color 有 0.2s 过渡，轮询到过渡结束值（亮侧 --jy-focus #8b1a1a）
+  await expect(link).toHaveCSS('outline-color', 'rgb(139, 26, 26)')
+
+  // 点击行为不变：默认外链设置 system ⇒ 记录 openExternal，且不原地导航
+  const urlBefore = page.url()
+  await link.click()
+  const calls = await page.evaluate(() =>
+    window.__stubCalls.filter(([kind]) => kind === 'openExternal')
+  )
+  expect(calls).toEqual([['openExternal', 'https://example.com/news/1']])
+  expect(page.url(), '概览链接不得导致原地导航').toBe(urlBefore)
+})
+
+test('90 年代报刊式框线导读（#29）：560 宽度无横向溢出', async ({ page }) => {
+  await page.setViewportSize({ width: 560, height: 800 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root.locator('.jynews-overview')).toBeVisible()
+  await expect(root.locator('.jynews-overview-label')).toBeVisible()
+
+  // 滚动容器与橘鸦根都不产生横向滚动（scrollWidth ≤ clientWidth）
+  const overflow = await root.evaluate((el) => {
+    const scroller = el.closest('.view-scroll') as HTMLElement | null
+    const boxes = [el as HTMLElement, scroller].filter((n): n is HTMLElement => !!n)
+    return boxes.map((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
+  })
+  for (const { sw, cw } of overflow) {
+    expect(sw, '横向溢出（scrollWidth 超出 clientWidth）').toBeLessThanOrEqual(cw + 1)
+  }
+})
+
 test('千禧网页式：结构类 jyy2k 挂载', async ({ page }) => {
   await loadApp(page, 'y2k')
   await openFirstArticle(page)

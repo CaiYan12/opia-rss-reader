@@ -384,6 +384,23 @@ test('newsprint magazine：首条封面 3:2、标题 26px；其余条目仍走 #
   expect(title.size, '首条标题 26px').toBe('26px')
   expect(title.family.split(',')[0].trim().replace(/["']/g, '')).toBe('SimHei')
 
+  // 首条元信息与 #30 同一口径（首条不经网格，需单独覆盖）：来源无框小字、未读点方形
+  const source = await featured.locator('.juya-feed-source').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { border: cs.borderTopWidth, radius: cs.borderTopLeftRadius, bg: cs.backgroundColor, padding: cs.paddingLeft }
+  })
+  expect(source.border, '首条来源无边框').toBe('0px')
+  expect(source.radius, '首条来源无胶囊').toBe('0px')
+  expect(source.bg, '首条来源无底色').toBe('rgba(0, 0, 0, 0)')
+  expect(source.padding, '首条来源无内衬').toBe('0px')
+  const dot = await featured.locator('.juya-feed-read-dot').evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    return { w: r.width, h: r.height, radius: getComputedStyle(el).borderTopLeftRadius }
+  })
+  expect(dot.w).toBeCloseTo(4, 0)
+  expect(dot.h).toBeCloseTo(4, 0)
+  expect(dot.radius, '首条未读点方角').toBe('0px')
+
   // 其余条目继续沿用 #30 的卡片网格形态（160 × 4:3 图版、18px 标题、无卡片底色）
   const grid = tab.locator('.juya-feed-grid')
   await expect(grid.locator('> .juya-feed-item')).toHaveCount(4)

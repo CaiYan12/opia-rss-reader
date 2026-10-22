@@ -4412,6 +4412,20 @@ describe('newsprint90s 订阅页 magazine 态守卫（#31：首条 3:2 / 26px）
     expect(decl(title, 'font-size'), '首条标题 26px').toBe('26px')
     expect(decl(title, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
   })
+
+  it('首条来源无框（非胶囊）、未读点方形，与 #30 一致', () => {
+    const source = newsRule('\.juya-feed-featured \.juya-feed-source')
+    expect(source, '首条来源覆盖规则应存在').toBeTruthy()
+    expect(decl(source, 'border')).toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background')).toBe('none')
+    expect(decl(source, 'padding')).toBe('0')
+    const dot = newsRule('\.juya-feed-featured \.juya-feed-read-dot')
+    expect(dot, '首条未读点覆盖规则应存在').toBeTruthy()
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+  })
 })
 
 describe('newsprint90s 空态守卫（#31：上下 1px 细线的通栏公告框）', () => {

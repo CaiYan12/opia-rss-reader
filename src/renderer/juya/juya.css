@@ -3587,14 +3587,27 @@
 
 /* 第二轮定制排版：deck 副题、封面故事节奏、colophon 刊尾、裁切角标 */
 .jyedit .juya-deck {
-  max-width: 46ch;
-  margin: -8px auto 24px;
-  text-align: center;
+  max-width: 68ch;
+  margin: -8px 0 24px;
+  text-align: left;
   font-family: var(--jy-font-heading);
-  font-style: italic;
+  font-style: normal;
   font-size: 16px;
   line-height: 1.6;
   color: var(--jy-muted);
+}
+
+.jyedit .juya-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  row-gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .jyedit .juya-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .jyedit .juya-entry + .juya-entry {

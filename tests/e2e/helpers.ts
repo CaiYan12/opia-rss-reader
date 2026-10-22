@@ -97,6 +97,17 @@ const EDITORIAL_T1_ISSUE_HTML = `<div>
 <blockquote>Another English opening lead.</blockquote>
 </div>`
 
+const EDITORIAL_T2_OVERVIEW = Array.from({ length: 32 }, (_, i) => {
+  const index = i + 1
+  return `<li><a href="https://example.com/editorial/${index}">第${index}条概览项目含完整中文标题</a> <code>#${index}</code></li>`
+}).join('')
+const EDITORIAL_T2_ISSUE_HTML = `<div>
+<h1>杂志编辑式 T2 长标题 Magazine Editorial Issue</h1>
+<h2>概览</h2><ul>${EDITORIAL_T2_OVERVIEW}</ul>
+<h2>正文栏目</h2><h3>正文条目 <code>#1</code></h3><p>用于核对刊头与概览后正文仍完整保留。</p>
+</div>`
+const EDITORIAL_T2_FALLBACK_HTML = '<div><h2>栏目</h2><h3>标题回退样本</h3><p>正文内容保留。</p></div>'
+
 export function juyaArticle(overrides: Partial<Article> = {}): Article {
   return {
     guid: 'https://daily.juya.uk/issues/2026-08-28/',
@@ -139,6 +150,8 @@ export type Scenario =
   | 'nocturneLightbox'
   | 'editorial'
   | 'editorialT1'
+  | 'editorialT2'
+  | 'editorialT2Fallback'
   | 'wabi'
   | 'system'
   | 'grid4'
@@ -223,6 +236,19 @@ export function makeStubScript(scenario: Scenario): string {
     settings.juyaLightStyleId = 'editorial'
     settings.juyaDarkStyleId = 'editorial'
     articles = [juyaArticle({ contentHtml: EDITORIAL_T1_ISSUE_HTML })]
+  } else if (
+    scenario === 'editorialT2' ||
+    scenario === 'editorialT2Fallback'
+  ) {
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    articles = [juyaArticle({
+      pubDate: scenario === 'editorialT2' ? '2026-10-21T17:00:00.000Z' : '2026-10-22T01:00:00.000Z',
+      title: '文章标题回退来源：长标题 fallback',
+      summary: scenario === 'editorialT2Fallback' ? '' : '摘要完整，无改写无截断。'.repeat(12),
+      contentHtml: scenario === 'editorialT2Fallback' ? EDITORIAL_T2_FALLBACK_HTML : EDITORIAL_T2_ISSUE_HTML
+    })]
   } else if (scenario === 'wabi') {
     settings.juyaLightStyleId = 'wabi'
   } else if (scenario === 'system') {

@@ -8,13 +8,20 @@ const VARIANT_CLASS = 'jyedit'
 /** 杂志编辑式（第二轮定制排版）：deck 副题 + 每栏目首条封面故事（图文并排图右 46%），
  *  条目间发丝线留白节奏，末尾 colophon 刊尾；颗粒与裁切角标为纸质细节。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
+  const publicationDate = new Date(article.pubDate)
+  const publicationDay = [
+    String(publicationDate.getFullYear()).padStart(4, '0'),
+    String(publicationDate.getMonth() + 1).padStart(2, '0'),
+    String(publicationDate.getDate()).padStart(2, '0')
+  ].join('-')
+
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
       <div className="juya-issue">
         <header className="juya-masthead">
           <h1>{issue.heading || article.title}</h1>
           <div className="juya-date-line">
-            {new Date(article.pubDate).toLocaleDateString('zh-CN', {
+            {publicationDate.toLocaleDateString('zh-CN', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
@@ -42,7 +49,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
             )}
           </section>
         ))}
-        <footer className="juya-colophon">本期编辑 · 橘鸦日报 · {article.pubDate.slice(0, 10)}</footer>
+        <footer className="juya-colophon">本期编辑 · 橘鸦日报 · {publicationDay}</footer>
       </div>
     </div>
   )

@@ -136,6 +136,116 @@ test('editorial T1：亮暗排字层级、对比度与栏目首条导语', async
   }
 })
 
+test('editorial T2：摘要左对齐并使用正体', async ({ page }) => {
+  await loadApp(page, 'editorial')
+  await openFirstArticle(page)
+
+  const deck = activeTab(page).locator('.juya-deck')
+  await expect(deck).toBeVisible()
+  await expect(deck).toHaveCSS('text-align', 'left')
+  await expect(deck).toHaveCSS('font-style', 'normal')
+  await expect(deck).toHaveText('示例摘要占位文本')
+})
+
+test('editorial T2：刊头与刊尾按同一本地日期显示跨日发布时间', async ({ browser }) => {
+  const context = await browser.newContext({
+    baseURL: 'http://localhost:4173',
+    viewport: { width: 1280, height: 800 },
+    timezoneId: 'Asia/Shanghai'
+  })
+  try {
+    const page = await context.newPage()
+    await loadApp(page, 'editorialT2')
+    await openFirstArticle(page)
+
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root.locator('.juya-masthead h1')).toHaveText('杂志编辑式 T2 长标题 Magazine Editorial Issue')
+    await expect(root.locator('.juya-date-line')).toContainText('2026年10月22日')
+    await expect(root.locator('.juya-colophon')).toContainText('2026-10-22')
+    await expect(root.locator('.juya-deck')).toHaveText('摘要完整，无改写无截断。'.repeat(12))
+  } finally {
+    await context.close()
+  }
+})
+
+test('editorial T2：上午日期、文章标题回退及缺省摘要概览', async ({ page }) => {
+  await loadApp(page, 'editorialT2Fallback')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root.locator('.juya-masthead h1')).toHaveText('文章标题回退来源：长标题 fallback')
+  await expect(root.locator('.juya-date-line')).toContainText('2026年10月22日')
+  await expect(root.locator('.juya-colophon')).toContainText('2026-10-22')
+  await expect(root.locator('.juya-deck')).toHaveCount(0)
+  await expect(root.locator('.juya-overview')).toHaveCount(0)
+})
+
+test('editorial T2：32项概览宽屏双列、窄屏单列且顺序与键盘外链一致', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'editorialT2')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const overview = root.locator('.juya-overview')
+  const anchors = overview.locator('a')
+  await expect(anchors).toHaveCount(32)
+  await expect(overview.locator('.juya-index')).toHaveText(
+    Array.from({ length: 32 }, (_, i) => String(i + 1))
+  )
+  const wide = await overview.evaluate((el) => ({
+    display: getComputedStyle(el).display,
+    columns: getComputedStyle(el).gridTemplateColumns,
+    height: el.getBoundingClientRect().height
+  }))
+  expect(wide.display).toBe('grid')
+  expect(wide.columns.trim().split(/\s+/)).toHaveLength(2)
+  await root.evaluate((el) => el.setAttribute('data-juya-variant', 'editorial-dark'))
+  const darkColumns = await overview.evaluate((el) => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/))
+  expect(darkColumns).toHaveLength(2)
+  await expect(root.locator('.juya-deck')).toHaveCSS('text-align', 'left')
+  await expect(root.locator('.juya-deck')).toHaveCSS('font-style', 'normal')
+  await root.evaluate((el) => el.setAttribute('data-juya-variant', 'editorial-light'))
+
+  const order = await anchors.evaluateAll((els) => els.map((el) => ({
+    text: el.textContent?.trim(),
+    href: el.getAttribute('href'),
+    top: el.getBoundingClientRect().top,
+    left: el.getBoundingClientRect().left
+  })))
+  expect(order.map((item) => item.text)).toEqual(
+    Array.from({ length: 32 }, (_, i) => `第${i + 1}条概览项目含完整中文标题`)
+  )
+  expect(order.map(({ text: _text, href }) => href)).toEqual(
+    Array.from({ length: 32 }, (_, i) => `https://example.com/editorial/${i + 1}`)
+  )
+  const visualOrder = [...order]
+    .sort((a, b) => Math.round(a.top) - Math.round(b.top) || a.left - b.left)
+    .map((item) => item.text)
+  expect(visualOrder).toEqual(order.map((item) => item.text))
+
+  const oneColumnHeight = await overview.evaluate((el) => {
+    el.setAttribute('style', 'display:flex;flex-direction:column;gap:6px')
+    const height = el.getBoundingClientRect().height
+    el.removeAttribute('style')
+    return height
+  })
+  expect(wide.height).toBeLessThan(oneColumnHeight)
+
+  await page.setViewportSize({ width: 560, height: 900 })
+  const narrowColumns = await overview.evaluate((el) => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/))
+  expect(narrowColumns).toHaveLength(1)
+
+  await anchors.first().focus()
+  await page.keyboard.press('Tab')
+  await expect(anchors.nth(1)).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Enter')
+  const externalCalls = await page.evaluate(() =>
+    (window as unknown as { __stubCalls: Array<[string, string]> }).__stubCalls.filter(([kind]) => kind === 'openExternal')
+  )
+  expect(externalCalls).toEqual([['openExternal', 'https://example.com/editorial/1']])
+})
+
 test('蒸汽梦核式暗侧卡面（#39）：刊头/条目 18px 毛玻璃、概览底板、配图描边与降饱和', async ({
   page
 }) => {

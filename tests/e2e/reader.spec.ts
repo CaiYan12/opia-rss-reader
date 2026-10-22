@@ -676,3 +676,24 @@ test('nocturne 概览键盘焦点（#20）：Tab 到目录链接时焦点环 + �
     contentType: 'image/png'
   })
 })
+
+test('蒸汽梦核式：透视网格在四档窗高下都落在视口内', async ({ page }) => {
+  // #36 回归：旧实现投影高 70.9px，低于窗口 chrome 130px，整块永远在视口下方，
+  // 而 toBeVisible() 只查 CSS 可见性、不查视口相交，所以一直绿灯。
+  for (const height of [620, 800, 1000, 1440]) {
+    await page.setViewportSize({ width: 1280, height })
+    await loadApp(page, 'dark')
+    await openFirstArticle(page)
+    const m = await activeTab(page)
+      .locator('.juya-scene-grid-persp')
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        return { bottom: r.bottom, height: r.height }
+      })
+    const content = height - 130
+    expect(m.bottom, `${height}px 窗高：网格底边须在视口内`).toBeLessThanOrEqual(height + 1)
+    expect(m.bottom, `${height}px 窗高：网格底边须贴近视口下缘`).toBeGreaterThan(height - 40)
+    expect(m.height, `${height}px 窗高：投影高占内容区 35%–65%`).toBeGreaterThan(content * 0.35)
+    expect(m.height, `${height}px 窗高：投影高占内容区 35%–65%`).toBeLessThan(content * 0.65)
+  }
+})

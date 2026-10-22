@@ -4026,8 +4026,13 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
     "[data-juya-variant='nocturne-dark'].jynoct-lightbox img"
   ]
 
-  /** 非 nocturne 场景层（太阳/透视网格/星空只有 synthwave 与 y2k 暗挂载，本变体模板不渲染） */
-  const FOREIGN_SCENE = ['.juya-scene-sun', '.juya-scene-grid-persp', '.juya-scene-stars']
+  /** 非 nocturne 场景层（太阳/透视网格/星空只有 synthwave 与 y2k 暗挂载，本变体模板不渲染）。
+   *  透视网格自 #36 起用双类选择器（.juya-scene-grid.juya-scene-grid-persp）压过地平网格规则。 */
+  const FOREIGN_SCENE = [
+    '.juya-scene-sun',
+    '.juya-scene-grid.juya-scene-grid-persp',
+    '.juya-scene-stars'
+  ]
 
   /** 全 css 的叶规则（花括号内的声明块；媒体查询/@keyframes 外壳天然不匹配） */
   const rules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, s, b]) => ({
@@ -4043,15 +4048,20 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
   const pausedSels = pauseRules.flatMap((r) => r.sels)
 
   it('① 暂停规则逐一选中全部动画载体（含 ::before / ::after），且只声明 animation-play-state', () => {
-    expect(pauseRules.length, '应恰有一条不可见暂停规则块').toBe(1)
-    const declarations = pauseRules[0]!.body
+    // 2026-10-22（#36）：synthwave 也进入暂停清单，全文件不再只有一条暂停规则块；
+    // 本组只校验 nocturne 暗侧那一条，逐块声明与选择器集合仍完整覆盖其载体。
+    const noctPauseRules = pauseRules.filter((r) =>
+      r.sels.every((s) => s.includes("data-juya-variant='nocturne-dark'"))
+    )
+    expect(noctPauseRules.length, 'nocturne 暗侧应恰有一条不可见暂停规则块').toBe(1)
+    const declarations = noctPauseRules[0]!.body
       .split(';')
       .map((d) => d.trim())
       .filter(Boolean)
     expect(declarations, '暂停态只能改动画播放状态，不得夹带 opacity/filter/animation 等可见属性').toEqual([
       'animation-play-state: paused'
     ])
-    expect([...pausedSels].sort(), '暂停选择器集合须与载体清单逐一对应').toEqual(
+    expect([...noctPauseRules[0]!.sels].sort(), '暂停选择器集合须与载体清单逐一对应').toEqual(
       CARRIERS.map((c) => `${HIDDEN} ${c}`).sort()
     )
   })
@@ -4553,5 +4563,57 @@ describe('newsprint90s 空态守卫（#32：上下 1px 细线的通栏公告框 
   it('公告框在 grid 预设下通栏，不被挤进第一列', () => {
     const empty = newsRule('\.juya-feed-empty')
     expect(decl(empty, 'grid-column'), '公告框须横跨所有列').toBe('1 / -1')
+  })
+})
+
+describe('synthwave 场景守卫（2026-10-22，#36）', () => {
+  /** 变体 + 风格类的复合形态规则（约定：两者恒挂同一根元素）。
+   *  用字符类代替反斜杠转义，避免模板字面量把转义吃掉。 */
+  const synthRule = (rest: string): string =>
+    extractBlock(css, new RegExp(`[[]data-juya-variant='synthwave-dark'].jysynth ${rest} {`))
+
+  it('① 透视网格抬回视口：height 95vh / bottom 136px / rotateX 52deg / perspective 1600px', () => {
+    const grid = (extractBlocks(css, new RegExp('[.]juya-scene-grid-persp [{]')).find((b) => b.includes('perspective(')) ?? '')
+    expect(grid, '透视网格规则必须存在').not.toBe('')
+    expect(decl(grid, 'height')).toBe('95vh')
+    expect(decl(grid, 'bottom'), '底边需抬到窗口 chrome 之上').toBe('136px')
+    expect(decl(grid, 'transform')).toContain('perspective(1600px)')
+    expect(decl(grid, 'transform')).toContain('rotateX(52deg)')
+  })
+
+  it('② 网格平面自带地面底色，否则地平线以下是透空的', () => {
+    const grid = (extractBlocks(css, new RegExp('[.]juya-scene-grid-persp [{]')).find((b) => b.includes('perspective(')) ?? '')
+    expect(decl(grid, 'background-color')).toBe('#170a2a')
+  })
+
+  it('③ 落日：直径 min(52vh, 480px) 且 10 道条纹', () => {
+    const sun = (extractBlocks(css, new RegExp('[.]juya-scene-sun [{]')).find((b) => b.includes('mask-image')) ?? '')
+    expect(decl(sun, 'width')).toBe('min(52vh, 480px)')
+    const mask = decl(sun, '-webkit-mask-image')
+    const bands = (mask.match(/#000/g) ?? []).length
+    expect(bands, '条纹数量决定落日的识别度').toBe(10)
+  })
+
+  it('④ 夜空渐变与扫描线挂在场景层（随内容固定），不在内容根上', () => {
+    const scene = synthRule('.juya-scene')
+    expect(scene, 'synthwave 场景层规则必须存在').not.toBe('')
+    expect(decl(scene, 'background-image')).toContain('linear-gradient(180deg')
+    expect(decl(scene, 'background-image')).toContain('#24103f')
+    expect(decl(scene, 'background-image')).toContain('#ff8a4c')
+    expect(decl(scene, 'background-image'), '扫描线 1px 线 / 3px 间隔').toContain('0 1px, transparent 1px 4px')
+    expect(decl(scene, 'background-image'), '扫描线透明度 0.10').toContain('rgba(0, 0, 0, 0.1)')
+  })
+
+  it('⑤ 窗口不可见时暂停落日与网格（此前只有 nocturne 在暂停清单里）', () => {
+    expect(css, '落日需进入暂停清单').toContain(
+      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-sun {"
+    )
+    expect(css, '网格需进入暂停清单').toContain(
+      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp {"
+    )
+    const sunPause = extractBlock(css, new RegExp('[.]juya-scene-sun [{]'))
+    expect(decl(sunPause, 'animation-play-state')).toBe('paused')
+    const gridPause = extractBlock(css, new RegExp('[.]juya-scene-grid-persp [{]'))
+    expect(decl(gridPause, 'animation-play-state')).toBe('paused')
   })
 })

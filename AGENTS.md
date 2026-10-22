@@ -119,7 +119,7 @@ Windows 桌面 RSS 阅读器（Electron + React + TypeScript），默认订阅�
 ## 文档与记忆维护
 
 - 大型修改（新架构/新模块/行为变更）须同步更新本文件对应章节。
-- 调试得出的可复用教训（如上面的窗口行为事实）须沉淀到本文件对应章节，并写进**运行时记忆**（DSH Mnemon 的 MEMORY.md，经 `mnemon_runtime_memory` 工具写入）。历史路径 `~/.trae-cn/memory/projects/-d-Dev-opia-rss-reader--p2-8c5b710068a2fd63ae01/project_memory.md` 属 Trae CN 时代产物（自 2026-08-28 起未再更新），**不要再往里写**，以免同一教训存在两处且一处过期。
+- 调试得出的可复用教训（如上面的窗口行为事实）须沉淀到本文件对应章节，并按**当前运行时提供的记忆机制**记录（不同 IDE/Agent 的记忆目录不同，不要假设某个历史工具仍然存在）。本仓库的 durable 记录以 `AGENTS.md`、`docs/STYLE-WORKLOG.md`、`docs/RELEASES.md` 为准。
 - 犯错（错误 Root Cause 判断、虚构验证结果等）时必须更新记忆，避免重复犯错。
 
 ## Agent skills
@@ -131,6 +131,14 @@ Issues 与规格存于本仓库 GitHub Issues（`CaiYan12/opia-rss-reader`），
 ### Triage labels
 
 五个 triage 角色沿用同名 label（`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`）。见 `docs/agents/triage-labels.md`。
+
+### Workflow
+
+开始或继续任何一轮（风格体检 / grilling / 写规格 / 开票 / 实施 / 验收）前，读 `docs/agents/workflow.md`：它规定每个阶段允许的产物、禁止预写下一阶段，以及 issue / PR / push / 发行各自的门。
+
+### Implementer brief
+
+派实现子代理前，用 `docs/agents/implementer-brief.md` 拼上下文包（规格/票指针、文件白名单、定向测试命令、硬停止条件、worktree 与依赖处理），不要只给一句「实现这张票」。
 
 ### Domain docs
 

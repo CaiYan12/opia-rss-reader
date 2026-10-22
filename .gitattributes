@@ -1,0 +1,13 @@
+# 跨平台文本契约（2026-10-22）
+# 守卫测试会读取这些文件做文本断言；Windows checkout 若保留 CRLF 会让守卫假红。
+# 不覆盖 .bat / .ps1：它们是平台脚本，维持各自原有换行。
+*.css text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.html text eol=lf

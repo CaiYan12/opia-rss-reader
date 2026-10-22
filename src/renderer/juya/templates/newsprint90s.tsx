@@ -31,7 +31,14 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
           <h1 className="juya-masthead-title">{issue.heading || article.title}</h1>
           <div className="juya-masthead-weekday">{weekday}</div>
         </header>
-        {issue.overview && <OverviewItems overview={issue.overview} onOpenLink={onOpenLink} />}
+        {issue.overview && (
+          /* 框线导读（#29）：概览包进上下 1px 框线块，小标必须是真实 DOM —
+             伪元素 content 不进可访问性树，也无法被定位/复制。共享 OverviewItems 原样复用。 */
+          <aside className="jynews-overview">
+            <p className="jynews-overview-label">导读</p>
+            <OverviewItems overview={issue.overview} onOpenLink={onOpenLink} />
+          </aside>
+        )}
         {issue.sections.map((section) => (
           <section className="juya-section" key={section.heading}>
             <h2>{section.heading}</h2>

@@ -1352,6 +1352,39 @@
   }
 }
 
+/* 框线导读（#29）：概览包进上下 1px 框线块，带真实 DOM「导读」小标（模板产出，非伪元素）。
+   单列沿用基类 .juya-overview 的 flex column；框线与字色全部走变体 token，不新增色值。
+   链接颜色/hover/焦点环仍由基类与 .juya-root :focus-visible 提供，本段不覆盖交互。 */
+.jynews-overview {
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  padding: 10px 0 12px;
+  margin: 0 0 24px;
+}
+
+/* 小标与栏目条同一套黑底反白印刷语言（与 .juya-section > h2 同字体栈、同字号）。 */
+.jynews-overview-label {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 1px 10px;
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+  letter-spacing: 4px;
+}
+
+/* 框内列表去掉基类的底部外边距（否则下框线前会多出 28px 空白）；仍是单列。 */
+.jynews-overview .juya-overview {
+  margin-bottom: 0;
+}
+
+/* 窄窗（≤560）长标题可在任意处折行，避免撑破版心（标题与序号同在一行 flex 里）。 */
+.jynews-overview .juya-overview li > :not(.juya-index) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .jynews .juya-section > h2 {
   background: var(--jy-heading);
   color: var(--jy-bg);

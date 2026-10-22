@@ -162,6 +162,40 @@ test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio
   await expect(activeTab(page).locator('.juya-root .juya-scene')).toHaveCount(0)
 })
 
+test('订阅页亮侧（#41）：日间版场景同样挂载，网格底边在可视区内，条目同为 18px 毛玻璃', async ({
+  page
+}) => {
+  await loadApp(page, 'synthwaveLight')
+  const root = activeTab(page).locator('.juya-root.jysynth')
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-light')
+  const scene = root.locator('.juya-scene')
+  await expect(scene).toHaveCount(1)
+  await expect(scene).toBeVisible()
+
+  // 亮侧场景必须是日间天空（顶 #ffd6e8 → 底 #ffe6cc），不是共享层的透明底
+  const sky = await scene.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(sky, '日间天空顶部色').toContain('rgb(255, 214, 232)')
+  expect(sky, '日间天空底部色').toContain('rgb(255, 230, 204)')
+
+  // 网格底边同样要贴住订阅页可视区下缘（亮侧沿用 #40 的订阅页补偿）
+  const grid = scene.locator('.juya-scene-grid.juya-scene-grid-persp')
+  await expect(grid).toBeVisible()
+  const main = activeTab(page).locator('main.flex-1.overflow-y-auto')
+  const scrollBox = (await main.boundingBox())!
+  const gridBox = (await grid.boundingBox())!
+  const gridBottom = gridBox.y + gridBox.height
+  expect(gridBox.height, '透视投影后网格应有可辨高度').toBeGreaterThan(120)
+  expect(gridBottom, '网格底边不得落到滚动容器下缘之外').toBeLessThanOrEqual(
+    scrollBox.y + scrollBox.height + 1
+  )
+  expect(gridBottom, '网格底边应贴住可视区下缘').toBeGreaterThan(scrollBox.y + scrollBox.height - 40)
+
+  // 条目卡面与暗侧同强度毛玻璃
+  const item = activeTab(page).locator('.juya-feed-item').first()
+  await expect(item).toBeVisible()
+  expect(await item.evaluate((el) => getComputedStyle(el).backdropFilter)).toContain('blur(18px)')
+})
+
 test('订阅页图标（#38）：蒸汽梦核式日期与来源前各有 12px 图标，folio 无图标节点', async ({ page }) => {
   await loadApp(page, 'dark')
   const tabs = activeTab(page)

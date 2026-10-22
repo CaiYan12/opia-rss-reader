@@ -109,6 +109,57 @@ test('蒸汽梦核式暗侧卡面（#39）：刊头/条目 18px 毛玻璃、概�
   expect(media.border, '配图 1px 描边').toBe('1px')
 })
 
+test('蒸汽梦核亮侧（#41）：日间版天空挂载、网格底边在视口内、卡面同为 18px 毛玻璃', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'synthwaveLight')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-light')
+  await expect(root).toHaveClass(/jysynth/)
+
+  // 场景层必须真的画出日间天空（顶 #ffd6e8 → 底 #ffe6cc）与更淡的扫描线：
+  // 只有变体属性与场景节点时，亮侧仍是「淡紫底 + 通用卡片」，看不出合成波母题。
+  const scene = root.locator('.juya-scene')
+  await expect(scene).toBeVisible()
+  const sky = await scene.evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(sky, '日间天空顶部色').toContain('rgb(255, 214, 232)')
+  expect(sky, '日间天空底部色').toContain('rgb(255, 230, 204)')
+  expect(sky, '扫描线层').toContain('repeating-linear-gradient')
+  await expect(scene.locator('.juya-scene-sun')).toBeVisible()
+  await expect(scene.locator('.juya-scene-grid-persp')).toBeVisible()
+
+  // 几何：网格底边必须落在滚动口可视区内（#36 的教训 —— 只看 CSS 可见性会漏检「被推出视口」）
+  const geom = await root.evaluate((el) => {
+    const scroller = el.closest('.view-scroll') as HTMLElement
+    const grid = el.querySelector('.juya-scene-grid.juya-scene-grid-persp') as HTMLElement
+    const g = grid.getBoundingClientRect()
+    const s = scroller.getBoundingClientRect()
+    return { height: g.height, bottom: g.bottom, portBottom: s.bottom }
+  })
+  expect(geom.height, '透视投影后网格应有可辨高度').toBeGreaterThan(120)
+  expect(geom.bottom, '网格底边不得落到可视区下缘之外').toBeLessThanOrEqual(geom.portBottom + 1)
+  expect(geom.bottom, '网格底边应贴住可视区下缘').toBeGreaterThan(geom.portBottom - 40)
+
+  // 地面必须是浅色（#ffcadb）：共享的 #170a2a 是暗侧地面，亮侧沿用会让卡片压在网格区时变灰卡，
+  // 0.62 白卡合成底上次要文字只有 2.78（AA 不过）
+  await expect(scene.locator('.juya-scene-grid.juya-scene-grid-persp')).toHaveCSS(
+    'background-color',
+    'rgb(255, 202, 219)'
+  )
+
+  // 卡面与暗侧同强度毛玻璃（亮侧卡面 rgba(255,255,255,.62)，滤镜不变）
+  for (const [name, locator] of [
+    ['刊头', root.locator('.juya-masthead')],
+    ['条目', root.locator('.juya-entry').first()]
+  ] as const) {
+    const filter = await locator.evaluate((el) => getComputedStyle(el).backdropFilter)
+    expect(filter, `${name}毛玻璃半径`).toContain('blur(18px)')
+  }
+})
+
 test('波普式：结构类 jypop 挂载', async ({ page }) => {
   await loadApp(page, 'pop')
   await openFirstArticle(page)

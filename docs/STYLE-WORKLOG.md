@@ -98,28 +98,34 @@
 
 **范围与提交**
 
-- 只动 `juya.css` 的 `jynews` 段与 `templates/newsprint90s.tsx`；共享层零改动。`git diff --name-only main...HEAD` 共 8 个文件：2 文档 + 2 源码 + 4 测试。
-- #27 `fd48846`/`2ce71b8`（旧纸面 + AA + 守卫）→ merge `2ce71b8`；#26 `35c0ec8`/`e7302d0`（三栏刊头 / 自定义 IssueView）→ merge `14d1392`；#28 `2338520`（条目记号）→ merge `eda4c34`；#30 `4dcc588`（订阅页头版）→ merge `f65f41f`；#31 `964ef37`（三态 / 空态）→ merge `898a6df`；#29 `372f0c7`（框线导读）→ merge `a736fb8`。
+- 只动 `juya.css` 的 `jynews` 段与 `templates/newsprint90s.tsx`；共享层零改动。`git diff --name-only main...HEAD` 共 10 个文件：4 文档（GLOSSARY / SPEC / AGENTS / 本文件）+ 2 源码 + 4 测试。
+- #27 `fd48846`/`2ce71b8`（旧纸面 + AA + 守卫）→ merge `2ce71b8`；#26 `35c0ec8`/`e7302d0`（三栏刊头 / 自定义 IssueView）→ merge `14d1392`；#28 `2338520`（条目记号）→ merge `eda4c34`；#30 `4dcc588`（订阅页头版）→ merge `f65f41f`；#31 `964ef37`（三态 / 空态）→ merge `898a6df`；#29 `372f0c7`（框线导读）→ merge `a736fb8`；#32 收口 `9da83b4`（docs）+ 7 个 code-review 修复提交 → merge `7ca66c4`。
 
 **关键决策（实测）**
 
 - 纸色：亮 `#ece2c6` / 暗 `#1e1913`；muted 亮 `#5f5747` / 暗 `#a2997b`，一个 token 同时覆盖日期线、来源、导语。纹理为 3px 横纹 + 两道错位纤维 + 轻暗角，全部背景层，零 DOM / 动画 / filter。
 - AA 口径：以「全部纹理层叠后的最不利行」实算。亮 muted/纸 5.09、/卡片 5.79、/导语 4.55；暗 5.65 / 5.66 / 4.98；滚动条 thumb 6.62 / 3.92（≥3）。
 - 字体：刊头 KaiTi；标题 / 栏目条 SimHei；正文 SimSun 优先（Noto Serif SC 回退）。
-- 刊头：左日期 / 中期号 / 右星期，真实 `pubDate`；版心 800（内容 752）；38px / 6px，≤900 堆叠 30px / 4px；上 1px、下 4px double。
+- 刊头：左日期 / 中期号 / 右星期，真实 `pubDate`；版心 800（内容 752）；38px / 6px，≤899 堆叠 30px / 4px（与双栏 `min-width:900` 互斥，#32 收口）；上 1px、下 4px double。
 - 条目：2em 缩进 + 6px 段距；黑底栏目条；方角黑底徽章；导语上下细线；相关链接上沿细线 + 小标 + 墨色下划线；直角图版。
-- 订阅页：card/grid 去卡片化 + 160×4:3 图版 + 18px SimHei 标题；compact 72×40 直角缩略图 + 14px；magazine 首条 3:2 + 26px；空态上下 1px 公告框；来源无框小字、未读点 4px 方形；hover 不上浮。
+- 订阅页：card/grid 去卡片化 + 160×4:3 图版 + 18px SimHei 标题；compact 72×40 直角缩略图 + 14px；magazine 首条 3:2 + 26px；空态上下 1px 公告框（`strong` 15px + `span` 12px muted）；来源无框小字、未读点 4px 方形；hover 用中性 `--jy-feed-hover` 纸面微层（亮 0.045 墨 / 暗 0.045 暖白），不上浮。
+- 链接：概览与相关链接常驻下划线；概览 / 相关链接 / 条目标题 hover 转 accent。条目标题链接刻意不加常驻下划线（标题静默、hover 才下划线，报刊惯例），见代码注释。
+- 字体：新增 `--jy-font-masthead` 与既有 `--jy-font-heading` / `--jy-font-body` 全部走 token，不再在规则里写死字面栈。
 - 导读：真实 DOM「导读」小标 + 上下框线，单列；共享 OverviewItems 原样复用。
 
 **验证（2026-10-22）**
 
-- `npm run verify` exit 0：tsc 0 / vitest 21 文件 479 / Playwright 118 / nocturne 审计与 5 张归档逐字节一致。
-- 守卫新增 newsprint 组（字体栈、方角、缩进、AA、纹理只在背景层、纸色集合、订阅页尺寸）；reader/feed E2E 新增结构、计算样式、三视口与三态。
-- 改前/改后截图在 `screenshots/newsprint-audit/before|after`（gitignored；非归档基线）。
+- `npm run verify` exit 0：tsc 0 / vitest 21 文件 481 / Playwright 119 / nocturne 审计与 5 张归档逐字节一致。
+- 守卫新增 newsprint 组（token 字体栈、方角、缩进、AA、纹理只在背景层、纸色集合、订阅页尺寸）；reader/feed E2E 新增结构、计算样式、三视口与三态。
+- 双轴 code review 发现 4 条硬项 + 3 条规格缺口；收口修复：字体栈全部改 token、刊头断点收成 ≤899、概览/相关链接常驻下划线 + 三处 hover accent、空态拆成 `strong`+`span`、hover 改中性纸面层、缩进断言改比例、删除读 tsx 的正则守卫。修复后 verify 仍 exit 0。
+- 改前/改后完整矩阵：`screenshots/newsprint-audit/before-full|after-full`（亮/暗 × 阅读/订阅 × 1280/900/560，gitignored；非归档基线）。
 
 **已知取舍 / 未验证**
 
 - 宽窗双栏 + 短文本 + 多图仍有栏底参差（1280 最坏 190.6px，24.7%）；整组避断、图文 grid、有图单栏三种替代实测更差，保留并记录。
-- 刊头堆叠 `max-width:900` 与双栏 `min-width:900` 在正好 900px 处有 1px 重叠带（堆叠 + 双栏），未收紧。
+- 条目标题链接不加常驻下划线（概览/相关链接有），是「标题静默、hover 才下划线」的报刊惯例，属故意例外。
+- 自定义 IssueView 复刻了工厂的 section/entry 映射；订阅页 grid/compact/featured 的去卡片、来源、未读点、hover 声明有重复；静态守卫仍读取 CSS 文本——均为本轮「共享层零改动」下的有意取舍，不在此轮重构。
+- `base.tsx` 的 `mastheadExtra` 已无调用（共享层遗留），不在本轮范围。
+- `GLOSSARY.md` 全量术语表是用户单独指令，不属于 #25–#32 票据范围。
 - 本地夹具图片为坏链，双栏下会留下 26px 空图的两条边框；线上橘鸦图源正常时不可达。
 - 未做真机窗口目视验收；未建新归档基线（SPEC Q8=A）。

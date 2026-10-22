@@ -4617,3 +4617,72 @@ describe('synthwave 场景守卫（2026-10-22，#36）', () => {
     expect(decl(gridPause, 'animation-play-state')).toBe('paused')
   })
 })
+
+describe('synthwave 字体守卫（2026-10-22，#37）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：字体规则与两条回退必须落在此区间，
+   *  否则「回退限定在 synthwave 作用域」只是选择器上的字面承诺。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 变体块内某 token 的完整右值 */
+  const tok = (block: string, name: string): string =>
+    block.match(new RegExp(`${name}:\\s*([^;}]+)`))?.[1]?.trim() ?? ''
+
+  /** 段内 `.jysynth .juya-masthead h1` 规则块 */
+  const masthead = (src: string): string =>
+    extractBlock(src, /(?:^|\n)\.jysynth \.juya-masthead h1 \{/)
+
+  it('① 暗侧变体补两条字体 token：标题落黑体栈，刊头落等宽栈', () => {
+    const block = variantBlock('synthwave-dark')
+    expect(tok(block, '--jy-font-heading'), '标题字族').toBe(
+      "'Noto Sans SC', 'Microsoft YaHei', sans-serif"
+    )
+    expect(tok(block, '--jy-font-masthead'), '刊头字族').toBe(
+      "'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif"
+    )
+  })
+
+  it('② 刊头标题 28px、字距 0.02em、消费刊头字体 token', () => {
+    const rule = masthead(synthSection())
+    expect(rule, 'synthwave 刊头标题规则必须存在').not.toBe('')
+    expect(decl(rule, 'font-size')).toBe('28px')
+    expect(decl(rule, 'letter-spacing')).toBe('0.02em')
+    expect(decl(rule, 'font-family'), '刊头走独立字族，不退到标题 token').toContain(
+      'var(--jy-font-masthead'
+    )
+  })
+
+  it('③ 保留 heading→accent 横向渐变，并加 1px 描边勾轮廓', () => {
+    const rule = masthead(synthSection())
+    const fill = decl(rule, 'background-image') || decl(rule, 'background')
+    expect(fill, '渐变填充').toContain('linear-gradient(90deg')
+    expect(fill, '渐变起点为标题色').toContain('var(--jy-heading)')
+    expect(fill, '渐变终点为强调色').toContain('var(--jy-accent)')
+    expect(decl(rule, 'background-clip'), '文字裁切').toBe('text')
+    expect(decl(rule, '-webkit-text-stroke'), '1px 描边').toMatch(/^1px\s+\S/)
+  })
+
+  it('④ 不做任何倾斜或斜体（中文 skew 会让笔画失真）', () => {
+    const rule = masthead(synthSection())
+    expect(decl(rule, 'transform')).not.toContain('skew')
+    expect(decl(rule, 'font-style')).not.toBe('italic')
+    expect(synthSection(), '段内不得出现斜体声明').not.toMatch(/font-style:\s*italic/)
+  })
+
+  it('⑤ 不支持 background-clip:text 的引擎退回实色标题，且只在 synthwave 作用域', () => {
+    const blocks = extractBlocks(synthSection(), /@supports not \(background-clip: text\) \{/)
+    expect(blocks.length, '段内恰有一条 @supports 回退').toBe(1)
+    const block = blocks[0]
+    expect(block, '回退须限定在 .jysynth 作用域').toContain('.jysynth .juya-masthead h1')
+    expect(decl(block, 'background'), '去掉渐变').toBe('none')
+    expect(decl(block, 'color'), '退回实色标题').toBe('var(--jy-heading)')
+  })
+
+  it('⑥ 高对比模式退回系统色，不留透明字', () => {
+    const blocks = extractBlocks(synthSection(), /@media \(forced-colors: active\) \{/)
+    expect(blocks.length, '段内恰有一条 forced-colors 回退').toBe(1)
+    const block = blocks[0]
+    expect(block, '回退须限定在 .jysynth 作用域').toContain('.jysynth .juya-masthead h1')
+    expect(decl(block, 'background'), '去掉渐变').toBe('none')
+    expect(decl(block, 'color'), '退回系统前景色').toBe('CanvasText')
+  })
+})

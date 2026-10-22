@@ -33,6 +33,16 @@ describe('性能探针参数', () => {
     expect(() => parseOptions(['--mode'])).toThrow(/Missing value/)
   })
 
+  it('对照组开关是布尔参数，不吞掉后面的值', () => {
+    expect(parseOptions([]).pauseGrid).toBe(false)
+    expect(parseOptions(['--pause-grid'])).toMatchObject({ pauseGrid: true, mode: 'both' })
+    expect(parseOptions(['--pause-grid', '--mode', 'light'])).toMatchObject({
+      pauseGrid: true,
+      mode: 'light'
+    })
+    expect(parseOptions(['--mode', 'light', '--pause-grid']).pauseGrid).toBe(true)
+  })
+
   it('非法模式与越界超时明确失败', () => {
     expect(() => parseOptions(['--mode', 'fps'])).toThrow(/Invalid --mode/)
     expect(() => parseOptions(['--timeout', '29999'])).toThrow(/Invalid --timeout/)
@@ -44,6 +54,7 @@ describe('性能探针参数', () => {
     expect(result.status, result.stderr).toBe(0)
     expect(result.stdout).toContain('perf:probe')
     expect(result.stdout).toContain('--mode')
+    expect(result.stdout).toContain('--pause-grid')
   })
 
   it('参数错误返回信息不足的退出码', () => {

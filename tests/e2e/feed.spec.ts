@@ -1,5 +1,6 @@
 import { test, expect, type Locator } from '@playwright/test'
 import { loadApp, openFirstArticle, activeTab } from './setup'
+import { readGridPlane, SYNTHWAVE_GRID, type GridPlaneFacts } from './helpers'
 
 /** 订阅页（HomeView 橘鸦源）风格化 + 响应式基线（Playwright 可覆盖部分）。
  *  keep-alive 下断言限定活动标签容器。 */
@@ -194,6 +195,83 @@ test('订阅页亮侧（#41）：日间版场景同样挂载，网格底边在�
   const item = activeTab(page).locator('.juya-feed-item').first()
   await expect(item).toBeVisible()
   expect(await item.evaluate((el) => getComputedStyle(el).backdropFilter)).toContain('blur(18px)')
+})
+
+/* ---- #45 边界回归：订阅页的网格同样落在合成层，四组合之订阅页两条 ---- */
+
+/** 纹理层必须盖满父层高度、左右与父层重合（详见 helpers.readGridPlane 的不变量说明）。 */
+function assertFeedTextureCovers(facts: GridPlaneFacts, label: string): void {
+  expect(facts.texture.animationName, `${label}：动画挂在纹理层`).toContain('jy-grid-scroll')
+  expect(facts.texture.willChange, `${label}：位移在合成层`).toBe('transform')
+  expect(facts.topGap, `${label}：上缘缺口（>0 即露底）`).toBeLessThanOrEqual(0.5)
+  expect(facts.bottomGap, `${label}：下缘缺口（>0 即露底）`).toBeLessThanOrEqual(0.5)
+  expect(facts.texture.left, `${label}：左缘贴父层`).toBe(0)
+  expect(facts.texture.right, `${label}：右缘贴父层`).toBe(0)
+  expect(
+    Math.abs(facts.plane.centerX - facts.port.centerX),
+    `${label}：透视平面应居中于滚动口`
+  ).toBeLessThanOrEqual(1)
+}
+
+for (const [scenario, variant] of [
+  ['dark', 'synthwave-dark'],
+  ['synthwaveLight', 'synthwave-light']
+] as const) {
+  test(`订阅页 ${variant}（#45）：网格可见、底边在可视区内、纹理层在跑且不露底`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await loadApp(page, scenario)
+
+    const root = activeTab(page).locator('.juya-root.jysynth')
+    await expect(root).toHaveAttribute('data-juya-variant', variant)
+    const grid = activeTab(page).locator(SYNTHWAVE_GRID)
+    await expect(grid).toBeVisible()
+
+    const before = await readGridPlane(grid)
+    await page.waitForTimeout(450)
+    const after = await readGridPlane(grid)
+    expect(after.texture.translateY, `${variant}：两次采样 translateY 必须变化`).not.toBe(
+      before.texture.translateY
+    )
+    expect(
+      Math.abs(after.texture.translateY - before.texture.translateY),
+      `${variant}：3.2s / 56px ⇒ 450ms 约 7.9px`
+    ).toBeGreaterThan(1)
+    assertFeedTextureCovers(before, variant)
+    assertFeedTextureCovers(after, `${variant}（第二相位）`)
+
+    expect(before.plane.height, `${variant}：投影后应可辨高度`).toBeGreaterThan(120)
+    expect(before.plane.bottom, `${variant}：网格底边不得落到可视区下缘之外`).toBeLessThanOrEqual(
+      before.port.bottom + 1
+    )
+    expect(before.plane.bottom, `${variant}：网格底边应贴住可视区下缘`).toBeGreaterThan(
+      before.port.bottom - 40
+    )
+  })
+}
+
+test('订阅页 ≤520px 窄窗（#45）：亮/暗两侧纹理层仍盖满父层、无横向溢出', async ({ page }) => {
+  for (const width of [520, 480]) {
+    for (const [scenario, variant] of [
+      ['dark', 'synthwave-dark'],
+      ['synthwaveLight', 'synthwave-light']
+    ] as const) {
+      await page.setViewportSize({ width, height: 800 })
+      await loadApp(page, scenario)
+
+      const grid = activeTab(page).locator(SYNTHWAVE_GRID)
+      await expect(grid).toBeVisible()
+      const facts = await readGridPlane(grid)
+      assertFeedTextureCovers(facts, `${variant}@${width}`)
+      expect(facts.plane.bottom, `${variant}@${width}：网格底边须在可视区内`).toBeLessThanOrEqual(
+        facts.port.bottom + 1
+      )
+      const overflow = await page.evaluate(() => {
+        const scroller = document.querySelector('.view-scroll')
+        return scroller ? scroller.scrollWidth - scroller.clientWidth : -1
+      })
+      expect(overflow, `${variant}@${width}：横向溢出`).toBeLessThanOrEqual(0)
+    }
+  }
 })
 
 test('订阅页悬停（#34 review）：只提亮边框并加深品红发光，仍不上浮，亮暗各一套值', async ({

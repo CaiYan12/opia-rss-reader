@@ -42,7 +42,12 @@ const SAMPLE = {
 const MODES = ['light', 'trace', 'both']
 const TRACE_CATEGORIES = 'disabled-by-default-devtools.timeline.frame,cc,input,benchmark'
 
-const HELP = `npm run perf:probe -- [--mode light|trace|both] [--output <directory>] [--timeout <ms>]
+// #45 对照组：仅注入到探针的临时页面，产品 CSS 与构建产物一字节不改。
+// 它停的正是 #44 移到合成层的那个纹理层动画，用来在同批次内量「网格动画开 / 关」的差值。
+const GRID_TARGET = '.juya-scene-grid.juya-scene-grid-persp'
+const GRID_PAUSE_CSS = `${GRID_TARGET}::after { animation: none !important; }`
+
+const HELP = `npm run perf:probe -- [--mode light|trace|both] [--output <directory>] [--timeout <ms>] [--pause-grid]
 Fixed-protocol local performance probe for the real Electron app.
 Prerequisite: npm run build:dir; then npm run diagnose:gpu and compare only on PASS.
 Exit codes: 0 comparable sample, 1 completed but not comparable, 2 failed or invalid arguments.
@@ -51,6 +56,9 @@ Reports default to out/perf-probe/run-<unique>/; light sampling and full trace a
 --mode       light (rAF sampling only), trace (compositor trace only), or both (default).
 --output     Parent directory for a new report subdirectory (existing files are preserved).
 --timeout    Per-mode launch/measurement budget in milliseconds (30000..300000, default 120000).
+--pause-grid Control-group only: inject a temporary style stopping the grid texture animation
+             in the probe's own profile page. Product CSS is not modified; the run is marked
+             as a control sample and must not be compared across batches.
 `
 
 /** Parse a finite number, returning null instead of NaN/Infinity. */
@@ -261,10 +269,15 @@ export function parseOptions(args) {
   const options = {
     mode: 'both',
     output: join(ROOT, 'out', 'perf-probe'),
-    timeout: 120000
+    timeout: 120000,
+    pauseGrid: false
   }
   for (let i = 0; i < args.length; i++) {
     const name = args[i]
+    if (name === '--pause-grid') {
+      options.pauseGrid = true
+      continue
+    }
     if (!['--mode', '--output', '--timeout'].includes(name)) throw new Error(`Unknown argument: ${name}`)
     const value = args[++i]
     if (!value || value.startsWith('--')) throw new Error(`Missing value: ${name}`)
@@ -507,7 +520,7 @@ async function closeApp(app) {
   }
 }
 
-async function launchMode({ mode, directory, timeout, sample }) {
+async function launchMode({ mode, directory, timeout, sample, pauseGrid }) {
   const profile = join(directory, 'profile')
   const infoPath = join(directory, 'main-info.json')
   mkdirSync(profile, { recursive: true })
@@ -579,6 +592,8 @@ async function launchMode({ mode, directory, timeout, sample }) {
     }
 
     const pageInfo = await readPageInfo(page)
+    // 对照组样式在预热之前注入：预热与测量处于同一动画状态，避免相位差混进差值
+    const gridControl = await applyGridControl(page, pauseGrid === true)
     const warmUp = await warmUpArticle(page)
     const cdp = await app.context().newCDPSession(page)
     const measurement = mode === 'light'
@@ -629,6 +644,7 @@ async function launchMode({ mode, directory, timeout, sample }) {
       },
       page: pageInfo,
       sample: sample.meta,
+      grid: gridControl,
       warmUp,
       conditions,
       ...measurement
@@ -688,6 +704,28 @@ async function readPageInfo(page) {
       clientHeight: scroller?.clientHeight ?? null
     }
   })
+}
+
+/**
+ * Control-group switch (#45): stop the grid texture animation inside this run's temporary
+ * profile page only. The product stylesheet, build output and any real profile stay untouched,
+ * and the injected tag disappears with the page when the run ends.
+ */
+async function applyGridControl(page, pauseGrid) {
+  if (pauseGrid) await page.addStyleTag({ content: GRID_PAUSE_CSS })
+  const texture = await page.evaluate((selector) => {
+    const plane = document.querySelector(selector)
+    if (!plane) return null
+    const cs = getComputedStyle(plane, '::after')
+    return { animationName: cs.animationName, animationPlayState: cs.animationPlayState }
+  }, GRID_TARGET)
+  return {
+    paused: pauseGrid,
+    injected: pauseGrid,
+    texture,
+    // 关断必须真的生效，否则对照组与默认组同源，差值没有意义
+    verified: pauseGrid ? texture?.animationName === 'none' : texture?.animationName !== 'none'
+  }
 }
 
 async function warmUpArticle(page) {
@@ -974,6 +1012,9 @@ function formatRunMarkdown(run) {
     `- 滚动：${run.scrollStart} → ${run.scrollEnd} CSS px，手势 ${run.gestureMs} ms，实测 ${formatNumber(run.actualSpeed, ' px/s')}`,
     `- 可见性：${run.visibilityStart} → ${run.visibilityEnd}；data-app-hidden ${run.appHiddenStart} → ${run.appHiddenEnd}；焦点 ${run.hasFocusStart} → ${run.hasFocusEnd}`,
     `- 预热：${run.warmUp?.entryCount} 条目 / ${run.warmUp?.imageCount} 图像（完成 ${run.warmUp?.imagesComplete}）/ scrollHeight ${run.warmUp?.scrollHeight}`,
+    `- 网格纹理层：请求 ${run.grid?.paused ? '关断（对照组）' : '默认'}；实测 animation-name ` +
+      `${run.grid?.texture?.animationName ?? '未取到'} / play-state ${run.grid?.texture?.animationPlayState ?? '未取到'}；` +
+      `注入样式 ${run.grid?.injected ? '是' : '否'}`,
     ''
   )
   if (run.mode === 'light') {
@@ -1026,6 +1067,8 @@ function renderMarkdown(report) {
     `- 显示器刷新率：${report.display?.frequencyHz ?? '未知'} Hz；缩放 ${report.display?.scaleFactor ?? '未知'}`,
     `- 固定条件：${FIXED.viewportWidth}×${FIXED.viewportHeight} CSS px，DPR ${FIXED.devicePixelRatio}，uiZoom ${FIXED.uiZoom}，滚动 ${FIXED.scrollDistance} px @ ${FIXED.scrollSpeed} px/s`,
     `- 样本：${report.sample.title}（${report.sample.entries} 条目 / ${report.sample.images} 图像，合成固定样本）`,
+    `- 网格动画：${report.grid.pauseRequested ? '对照组 — 探针注入样式关断纹理层动画' : '默认 — 产品 CSS'}` +
+      `（实测 ::after animation-name=${report.grid.texture?.animationName ?? '未取到'}）`,
     '- 先决条件：先运行 `npm run diagnose:gpu`；GPU 未 PASS 时本报告标注样本不可比。',
     ''
   ]
@@ -1066,6 +1109,7 @@ function renderMarkdown(report) {
     '- 轻量采样与完整 trace 分开跑、分开报告；两种模式的数字不可混档比较。',
     '- 每次运行是一个单段样本；机器负载或温度会带来明显波动，比较时应看同一批次的多次复跑，不要用单次数字下结论。',
     '- 样本是合成固定文章，不是 `docs/GPU-AUDIT-2026-10-22.md` 的缓存文章；绝对值不可跨样本比较。',
+    '- `--pause-grid` 只往本次临时 profile 的页面注入样式，不修改产品 CSS / 构建产物；对照组与默认组必须同批次跑，跨批次的开关差值不可比。',
     '- 本命令不接入 `verify` / CI，不修改权限、GPU 设置或用户真实 profile。',
     ''
   )
@@ -1125,6 +1169,7 @@ async function main(args = process.argv.slice(2)) {
     display: null,
     gpu: { activeDevices: [] },
     sample: sample.meta,
+    grid: { pauseRequested: options.pauseGrid === true, controlVerified: null, texture: null },
     conditions: FIXED,
     isolation: {
       profiles: [],
@@ -1150,7 +1195,8 @@ async function main(args = process.argv.slice(2)) {
         mode,
         directory,
         timeout: options.timeout,
-        sample
+        sample,
+        pauseGrid: options.pauseGrid === true
       })
     } catch (error) {
       run = { mode, directory, error: error.message, fatal: error.fatal === true }
@@ -1174,6 +1220,10 @@ async function main(args = process.argv.slice(2)) {
         report.prereq.findings = run.gpu.findings ?? []
       }
       report.isolation.profiles.push(run.isolation)
+    }
+    if (run.grid) {
+      report.grid.controlVerified = run.grid.verified === true
+      report.grid.texture = run.grid.texture ?? null
     }
     const markdown = formatRunMarkdown(run)
     writeFileSync(join(directory, 'report.json'), JSON.stringify(run, null, 2), 'utf8')
@@ -1208,6 +1258,11 @@ async function main(args = process.argv.slice(2)) {
     if (run.error) continue
     if (run.gpu?.status !== 'PASS') issues.push(`${run.mode}: GPU ${run.gpu?.status}，样本不可比`)
     if (run.conditions && !run.conditions.met) issues.push(...run.conditions.issues.map((issue) => `${run.mode}: ${issue}`))
+    if (run.grid && run.grid.verified !== true) {
+      issues.push(
+        `${run.mode}: 网格动画状态与请求不符（请求 paused=${run.grid.paused}，实测 ::after animation-name=${run.grid.texture?.animationName ?? '未取到'}），样本不可比`
+      )
+    }
     if (run.mode === 'light' && !run.metrics?.raf?.measured) issues.push('light: rAF 指标未测')
     if (run.mode === 'trace' && run.trace?.complete !== true) issues.push('trace: 未收到 tracingComplete，报告可能不完整')
     if (run.mode === 'trace' && !run.metrics?.presented?.measured) issues.push('trace: 呈现帧指标未测')
@@ -1226,6 +1281,7 @@ async function main(args = process.argv.slice(2)) {
     `- GPU（应用内状态）: ${report.prereq.status}${report.prereq.findings.length ? ' — ' + report.prereq.findings.join('; ') : ''}`,
     `- 活动显卡: ${report.gpu.activeDevices.map((device) => device.deviceString).filter(Boolean).join(', ') || '未知'}`,
     `- 刷新率: ${report.display?.frequencyHz ?? '未知'} Hz`,
+    `- 网格动画: ${report.grid.pauseRequested ? '对照组（关断）' : '默认'}，实测 ::after animation-name=${report.grid.texture?.animationName ?? '未取到'}`,
     `- 隔离: ${report.isolation.verified ? '已证明（真实 profile 快照无变化）' : '未证明'}`,
     ...(report.comparability.issues.length ? ['', ...report.comparability.issues.map((issue) => `- ${issue}`)] : []),
     '',

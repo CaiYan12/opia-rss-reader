@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { Locator } from '@playwright/test'
 import type { Article, FeedSource, SavedSession, Settings } from '../../src/shared/types'
 import { DEFAULT_SETTINGS, DEFAULT_SOURCE } from '../../src/shared/types'
 import { BUILTIN_THEMES } from '../../src/main/theme/builtinThemes'
@@ -108,6 +109,9 @@ export type Scenario =
   | 'other'
   | 'dark'
   | 'synthwaveLight'
+  | 'synthwaveZoom'
+  | 'synthwaveLightZoom'
+  | 'synthwaveTabs'
   | 'pop'
   | 'newsprint'
   | 'y2k'
@@ -160,6 +164,19 @@ export function makeStubScript(scenario: Scenario): string {
     // #41 亮侧：同一母题的日间版（洋红橙），主题亮 + 亮侧风格 synthwave
     settings.themeMode = 'light'
     settings.juyaLightStyleId = 'synthwave'
+  } else if (scenario === 'synthwaveZoom') {
+    // #45 边界回归：用户实际常用的 uiZoom 1.2（整份内容按 1.2 倍缩放），暗侧
+    settings.themeMode = 'dark'
+    settings.juyaDarkStyleId = 'synthwave'
+    settings.uiZoom = 1.2
+  } else if (scenario === 'synthwaveLightZoom') {
+    // #45 边界回归：亮侧 + uiZoom 1.2
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'synthwave'
+    settings.uiZoom = 1.2
+  } else if (scenario === 'synthwaveTabs') {
+    settings.themeMode = 'dark'
+    settings.juyaDarkStyleId = 'synthwave'
   } else if (scenario === 'pop') {
     settings.juyaLightStyleId = 'pop'
   } else if (scenario === 'newsprint') {
@@ -295,6 +312,15 @@ export function makeStubScript(scenario: Scenario): string {
       tabs: [{ kind: 'home', homePage: 'feed' }, ...readerGuids(24)],
       activeTabIndex: 5
     }
+  } else if (scenario === 'synthwaveTabs') {
+    // #45 keep-alive 回归：订阅页 + 阅读页各一，启动即停在阅读页，便于「切走再切回」。
+    // 风格在下面的 Scenario 分支里已切到蒸汽梦核暗侧。
+    settings.startupOpen = 'lastSession'
+    articles = manyJuya(2)
+    session = {
+      tabs: [{ kind: 'home', homePage: 'feed' }, { kind: 'reader', guid: issueUrl('2026-08-28') }],
+      activeTabIndex: 1
+    }
   }
 
   const data = { settings, sources, articles, themes: BUILTIN_THEMES, session }
@@ -374,4 +400,93 @@ export function makeStubScript(scenario: Scenario): string {
       onThemeSystemChanged: () => () => {}
     };
   `
+}
+
+/* ---- 蒸汽梦核式网格几何（#45 边界回归） ----
+   #44 把周期纹理移进 `.juya-scene-grid.juya-scene-grid-persp::after`，用 translateY 滚动。
+   三条不变量都在**真实布局**上量，不抄 CSS 声明：
+     ① 纹理层在任意相位都盖满父层高度（露底 = 父层地面底色透出来）；
+     ② 纹理层左右缘与父层重合（错位 = 纹理与地面不在同一个透视平面）；
+     ③ 平面左右居中于滚动口（透视平面的灭点在内容中线）。 */
+export const SYNTHWAVE_GRID = '.juya-scene-grid.juya-scene-grid-persp'
+
+export interface GridPlaneFacts {
+  /** 父层（透视平面）与滚动口的视口坐标 */
+  plane: { top: number; bottom: number; left: number; right: number; width: number; height: number; centerX: number }
+  port: { top: number; bottom: number; left: number; right: number; width: number; height: number; centerX: number }
+  texture: {
+    top: number
+    height: number
+    left: number
+    right: number
+    translateY: number
+    animationName: string
+    animationDuration: string
+    animationPlayState: string
+    willChange: string
+  }
+  /** 当前相位下纹理层的上下缺口（≤0 表示盖住父层；>0 即露底的高度） */
+  topGap: number
+  bottomGap: number
+  /** 父层布局高度（未乘 perspective/rotateX 的投影） */
+  layoutHeight: number
+}
+
+/** 读一次网格平面 + 纹理层的几何与计算样式（相位随调用时刻，动画在跑时两次调用值不同）。 */
+export async function readGridPlane(plane: Locator): Promise<GridPlaneFacts> {
+  return plane.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    const scroller = el.closest('.view-scroll')
+    const port = (scroller ?? el).getBoundingClientRect()
+    // 伪元素的 top / height 是布局长度（未乘父层 transform），故父层高度也必须取布局值，
+    // 不能用 getBoundingClientRect 的投影高 —— 两者在不同坐标系里，比出来的缺口没有意义。
+    const layoutHeight = Number.parseFloat(getComputedStyle(el).height)
+    const tex = getComputedStyle(el, '::after')
+    /** computed transform → translateY（matrix 第 6 位 / matrix3d 第 14 位） */
+    const translateY = (value: string): number => {
+      const m = value.match(/matrix(3d)?\(([^)]+)\)/)
+      if (!m) return value === 'none' ? 0 : Number.NaN
+      const nums = (m[2] ?? '').split(',').map(Number)
+      return m[1] ? (nums[13] as number) : (nums[5] as number)
+    }
+    const top = Number.parseFloat(tex.top)
+    const height = Number.parseFloat(tex.height)
+    const left = Number.parseFloat(tex.left)
+    const right = Number.parseFloat(tex.right)
+    const ty = translateY(tex.transform)
+    return {
+      plane: {
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        height: rect.height,
+        centerX: (rect.left + rect.right) / 2
+      },
+      port: {
+        top: port.top,
+        bottom: port.bottom,
+        left: port.left,
+        right: port.right,
+        width: port.width,
+        height: port.height,
+        centerX: (port.left + port.right) / 2
+      },
+      texture: {
+        top,
+        height,
+        left,
+        right,
+        translateY: ty,
+        animationName: tex.animationName,
+        animationDuration: tex.animationDuration,
+        animationPlayState: tex.animationPlayState,
+        willChange: tex.willChange
+      },
+      topGap: top + ty,
+      bottomGap: layoutHeight - (top + height + ty),
+      layoutHeight
+    }
+  })
 }

@@ -124,6 +124,44 @@ test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场
   await expect(noctScene.locator('.juya-scene-nebula')).toHaveCount(1)
 })
 
+test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio 订阅页无场景节点', async ({ page }) => {
+  await loadApp(page, 'dark')
+  const root = activeTab(page).locator('.juya-root.jysynth')
+  const scene = root.locator('.juya-scene')
+  await expect(scene).toHaveCount(1)
+  await expect(scene).toBeVisible()
+  await expect(scene.locator('.juya-scene-sun')).toBeVisible()
+  const grid = scene.locator('.juya-scene-grid.juya-scene-grid-persp')
+  await expect(grid).toBeVisible()
+
+  // 场景挂在 .juya-root 内、.juya-feed 之前（z-index 0 的固定层必须位于内容之下）
+  const order = await root.evaluate((el) => {
+    const kids = [...el.children].map((c) => c.className.split(' '))
+    return {
+      scene: kids.findIndex((c) => c.includes('juya-scene')),
+      feed: kids.findIndex((c) => c.includes('juya-feed'))
+    }
+  })
+  expect(order.scene, '.juya-scene 应是 .juya-root 的直接子节点').toBeGreaterThanOrEqual(0)
+  expect(order.feed).toBeGreaterThan(order.scene)
+
+  // 网格底边必须落在订阅页滚动容器的可视区内：只断言 CSS 可见性会让「网格被推到视口外」漏检（#36 教训）
+  const main = activeTab(page).locator('main.flex-1.overflow-y-auto')
+  const scrollBox = (await main.boundingBox())!
+  const gridBox = (await grid.boundingBox())!
+  const gridBottom = gridBox.y + gridBox.height
+  expect(gridBox.height, '透视投影后网格应有可辨高度').toBeGreaterThan(120)
+  expect(gridBottom, '网格底边不得落到滚动容器下缘之外').toBeLessThanOrEqual(
+    scrollBox.y + scrollBox.height + 1
+  )
+  expect(gridBottom, '网格底边应贴住可视区下缘').toBeGreaterThan(scrollBox.y + scrollBox.height - 40)
+
+  // 可选插槽不外溢：folio（默认）订阅页没有任何场景节点
+  await loadApp(page, 'default')
+  await expect(activeTab(page).locator('.juya-root.jyfolio .juya-feed')).toBeVisible()
+  await expect(activeTab(page).locator('.juya-root .juya-scene')).toHaveCount(0)
+})
+
 test('订阅页图标（#38）：蒸汽梦核式日期与来源前各有 12px 图标，folio 无图标节点', async ({ page }) => {
   await loadApp(page, 'dark')
   const tabs = activeTab(page)

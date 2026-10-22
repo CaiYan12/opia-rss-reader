@@ -4803,3 +4803,36 @@ describe('synthwave 暗侧卡面守卫（2026-10-22，#39）', () => {
     )
   })
 })
+
+describe('synthwave 订阅页场景守卫（2026-10-22，#40）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：订阅页场景补偿规则必须落在此区间。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 段内订阅页网格补偿规则 */
+  const feedGrid = (): string =>
+    extractBlock(synthSection(), /(?:^|\n)\.jysynth:has\(> \.juya-feed\) \.juya-scene-grid-persp \{/)
+
+  /** 全文件所有 `.juya-scene-grid-persp` 规则（选择器与块体成对），用于确认覆盖不外溢。 */
+  const gridRules = [...css.matchAll(/(?:^|\n)([^\n{}]*\.juya-scene-grid-persp[^\n{}]*)\{([^}]*)\}/g)].map(
+    (m) => ({ selector: m[1].trim(), block: m[2] })
+  )
+
+  it('① 订阅页把网格底边补到可视区下缘：只有 .jysynth + :has(> .juya-feed) 作用域内的一条规则', () => {
+    const rule = feedGrid()
+    expect(rule, '订阅页网格补偿规则必须存在，且落在蒸汽梦核式段内').not.toBe('')
+    expect(decl(rule, 'bottom'), '订阅页 chrome 80px + 8px 余量').toBe('88px')
+  })
+
+  it('② 网格底边覆盖只出现在 .jysynth 作用域内，共享网格规则仍为 136px', () => {
+    const withBottom = gridRules.filter((r) => decl(r.block, 'bottom') !== '')
+    expect(withBottom.map((r) => r.selector).sort()).toEqual(
+      ['.juya-scene-grid.juya-scene-grid-persp', '.jysynth:has(> .juya-feed) .juya-scene-grid-persp'].sort()
+    )
+    const shared = withBottom.find((r) => r.selector === '.juya-scene-grid.juya-scene-grid-persp')!
+    expect(decl(shared.block, 'bottom'), '共享规则的阅读页补偿值不得改动').toBe('136px')
+    for (const rule of withBottom) {
+      if (rule.selector === '.juya-scene-grid.juya-scene-grid-persp') continue
+      expect(rule.selector, '订阅页补偿必须限定在 .jysynth 作用域').toContain('.jysynth')
+    }
+  })
+})

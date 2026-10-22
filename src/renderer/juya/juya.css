@@ -1767,6 +1767,15 @@
   animation-play-state: paused;
 }
 
+/* 订阅页场景（#40）：订阅页滚动口顶端是 80px（标题栏 + 标签栏），阅读页内容根顶端是 130px；
+   共享网格的 bottom: 136px 是按阅读页调校的，订阅页直接沿用会让地面停在可视区下缘之上 56px，
+   露出夜空渐变 88% 处的橙色地平带（地面像悬空）。仅在订阅页骨架内（:has(> .juya-feed)）补回这 48px：
+   网格底边留 8px 余量，horizon 与阅读页同高（≈452px vs 阅读页 453px）。
+   作用域限定 .jysynth + 订阅页；共享 .juya-scene / .juya-scene-grid.juya-scene-grid-persp 一字节不动。 */
+.jysynth:has(> .juya-feed) .juya-scene-grid-persp {
+  bottom: 88px;
+}
+
 /* 发光边框 + 毛玻璃卡片；背景氛围漂移（每屏唯一动效，可关闭：reduced-motion 下静态）
    #39：模糊从 6px 提到 18px 并补 saturate(1.15) —— 6px 时落日与网格直接透底，卡片读不出边界。 */
 .jysynth .juya-entry,

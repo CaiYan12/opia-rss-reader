@@ -1604,6 +1604,19 @@
   text-underline-offset: 3px;
 }
 
+/* ---- 空态（#31）：上下 1px 细线的公告框 ----
+   文案由共享骨架 FeedShell 提供（不拆分、不改共享层），本风格只重塑为纸面公告。
+   grid 预设下公告框是网格子项，grid-column 令其横跨全部列；compact/magazine 容器非网格，
+   该声明惰性无效，不影响那两种预设。 */
+.jynews .juya-feed-empty {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  color: var(--jy-heading);
+  text-align: center;
+}
+
 /* ---- 蒸汽梦核式 ---- */
 [data-juya-variant='dreamcore-light'] {
   --jy-bg: #f3ecff;

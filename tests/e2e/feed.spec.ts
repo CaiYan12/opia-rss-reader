@@ -304,6 +304,9 @@ test('newsprint compact：小缩略图直角、标题 14px、行式结构与元�
   await expect(feed).toBeVisible()
   // 预设继续生效：单列行式 4 条
   await expect(feed.locator('.juya-feed-item')).toHaveCount(4)
+  // 等基础入场动画（jy-enter 的 translateY(8px)）结束：否则两次 boundingBox 落在
+  // 动画的不同相位上，垂直居中的比较会被位移差污染（与 #30 hover 用例同一处理）
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'))
 
   const first = feed.locator('.juya-feed-item').first()
   const coverEl = first.locator('.juya-feed-cover')
@@ -390,6 +393,49 @@ test('newsprint magazine：首条封面 3:2、标题 26px；其余条目仍走 #
   expect(smallCover.height).toBeCloseTo(120, 0)
   expect(await small.locator('.juya-feed-title').evaluate((el) => getComputedStyle(el).fontSize)).toBe('18px')
   expect(await small.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
+})
+
+test('newsprint 空态：上下 1px 细线的通栏公告框，居中黑体文案', async ({ page }) => {
+  await loadApp(page, 'newsprintEmpty')
+  const tab = activeTab(page)
+  const empty = tab.locator('.juya-feed-empty')
+  await expect(empty).toBeVisible()
+  // 文案由共享骨架提供，本轮不拆分、不改动
+  await expect(empty).toHaveText('暂无内容，点击右上角刷新获取')
+  await expect(empty).toHaveCSS('text-align', 'center')
+  await expect(empty).toHaveCSS('border-top-width', '1px')
+  await expect(empty).toHaveCSS('border-top-style', 'solid')
+  await expect(empty).toHaveCSS('border-bottom-width', '1px')
+  await expect(empty).toHaveCSS('border-bottom-style', 'solid')
+  const family = await empty.evaluate((el) => getComputedStyle(el).fontFamily)
+  expect(family.split(',')[0].trim().replace(/["']/g, ''), '公告文案黑体').toBe('SimHei')
+
+  // 通栏：默认 grid 预设为 2 列，公告框必须横跨整个订阅页内容宽而非被挤进第一列
+  const feed = tab.locator('.juya-feed')
+  const feedBox = (await feed.boundingBox())!
+  const emptyBox = (await empty.boundingBox())!
+  const padding = await feed.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return Number.parseFloat(cs.paddingLeft) + Number.parseFloat(cs.paddingRight)
+  })
+  expect(emptyBox.width).toBeCloseTo(feedBox.width - padding, 0)
+})
+
+test('窄窗口（480/560px）：newsprint compact / magazine 无横向溢出', async ({ page }) => {
+  for (const width of [480, 560]) {
+    for (const scenario of ['newsprintCompact', 'newsprintMagazine'] as const) {
+      await page.setViewportSize({ width, height: 800 })
+      await loadApp(page, scenario)
+      await expect(activeTab(page).locator('.juya-feed')).toBeVisible()
+      const overflow = await page.evaluate(() => {
+        const scrollers = [...document.querySelectorAll('.overflow-y-auto')]
+        const scroller = scrollers.find((el) => el.closest('div:not([class*="hidden"])')) ?? document.scrollingElement
+        if (!scroller) return -1
+        return scroller.scrollWidth - scroller.clientWidth
+      })
+      expect(overflow, `${scenario} @${width}px 横向溢出`).toBeLessThanOrEqual(0)
+    }
+  }
 })
 
 /* ---- 程序化视觉合理性断言（无视觉模型，纯几何校验） ---- */

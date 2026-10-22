@@ -1711,6 +1711,10 @@
   --jy-bg: #ffe6cc;
   --jy-card: rgba(255, 255, 255, 0.62);
   --jy-border: rgba(224, 0, 110, 0.30);
+  /* 悬停边框提亮（#34 review，同暗侧口径）：与常态边同色相，alpha .30 → .55。
+     合成色由 #f6a7cd 提到 #ee6cab（对白卡合成底 1.67 → 2.57），亮侧靠「加深」而非「加亮」
+     表达悬停 —— 白卡上加亮等于看不见。 */
+  --jy-border-hover: rgba(224, 0, 110, 0.55);
   --jy-heading: #4a0736;
   --jy-text: #3d0a2c;
   /* 次要文字（#41）：0.62 白卡叠日间天空顶 #ffd6e8 的合成底 #ffeff6 上实算 6.24:1；
@@ -1725,9 +1729,11 @@
   /* 字体（#37 / #41）：与暗侧同值，亮侧不再退到兜底栈 */
   --jy-font-heading: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   --jy-font-masthead: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
-  /* synthwave 场景 token（日间版）：日轮 #fff04d→#ff2d95，网格线与暗侧同一品红但更淡（.35 vs .55），
+  /* synthwave 场景 token（日间版）：日轮 #fff04d → #ff9a3c → #ff2d95（中段与暗侧同值，
+     日间版只把最高光调亮），网格线与暗侧同一品红但更淡（.35 vs .55），
      地平线沿用暖橙 —— 亮侧靠天空与卡面提亮，不靠换色相 */
   --jy-scene-sun-1: #fff04d;
+  --jy-scene-sun-mid: #ff9a3c;
   --jy-scene-sun-2: #ff2d95;
   --jy-scene-grid-line: rgba(255, 45, 149, 0.35);
   --jy-scene-horizon: rgba(255, 120, 60, 0.85);
@@ -1736,24 +1742,39 @@
 [data-juya-variant='synthwave-dark'] {
   --jy-bg: #0b0918;
   --jy-card: rgba(20, 8, 38, 0.62);
-  --jy-border: rgba(158, 132, 255, 0.32);
-  --jy-heading: #e6dcff;
-  --jy-text: #c0b6dc;
+  /* 边框（#34 review）：SPEC「卡片与文字」定「边框 1px 半透明品红」，取 --jy-accent 同色相。
+     原 rgba(158,132,255,.32) 是 #35 改名前留下的梦核紫，与品红母题异色。
+     实算：0.62 卡面压落日峰（合成底 #6d3f2e）时边框合成色 #9c394f、对该底 1.30:1 ——
+     边框是装饰性轮廓（边界感主要由 18px 毛玻璃与 18px 外发光承担），不承担信息承载，
+     故按视觉一致性取值，不套非文本件 3:1 门槛。 */
+  --jy-border: rgba(255, 45, 149, 0.32);
+  /* 悬停边框提亮（#34 review，SPEC「交互与系统」：悬停只加深外发光与边框亮度）：
+     同一品红，alpha .32 → .55。合成色由 #9c394f 提到 #bd3567（对卡底 1.30 → 1.61），
+     肉眼可辨是「边框亮了」，又不会盖过同时加深的外发光。 */
+  --jy-border-hover: rgba(255, 45, 149, 0.55);
+  --jy-heading: #ffe6ff;
+  --jy-text: #f0dcff;
   /* 次要文字（#39）：0.62 卡面把落日最亮处压成约 rgb(109, 63, 46)（#ff9a3c 之上），
-     原值 #9388b8 在该合成底上只有 2.69:1；提到 #c9b7e0 后实测 4.72:1，过 AA。 */
+     原值 #9388b8 在该合成底上只有 2.69:1；提到 #c9b7e0 后实测 4.72:1，过 AA。
+     #34 review 复核：本次调色板迁移未动该值，4.72 仍成立。 */
   --jy-muted: #c9b7e0;
-  --jy-accent: #8f63ff;
-  --jy-on-accent: #120d26;
-  --jy-link: #c3a9ff;
-  --jy-lead-bg: rgba(143, 99, 255, 0.12);
+  --jy-accent: #ff2d95;
+  --jy-on-accent: #1a0010;
+  --jy-link: #ff8ad0;
+  --jy-lead-bg: rgba(255, 45, 149, 0.12);
+  /* 焦点色（#34 review）：--jy-focus #b89aff 刻意**保持不动**。
+     SPEC 未规定焦点色，改它属于设计决策（焦点环是功能件，不是装饰色），
+     不随本轮「梦核紫 → 品红」迁移顺手改 —— 待单独裁决，不要顺手改。 */
   --jy-focus: #b89aff;
   --jy-radius: 16px;
   /* 字体（#37）：标题落黑体栈；刊头落等宽栈。中文没有等宽字体，等宽只作用于拉丁与数字，
      汉字仍由 Noto Sans SC 承接 —— 这是已知限制，不引入 webfont（SPEC「字体」Out of Scope）。 */
   --jy-font-heading: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   --jy-font-masthead: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
-  /* synthwave 场景 token：日轮 #ffe14d→#ff2d95，霓虹网格品红线，地平线辉光 */
+  /* synthwave 场景 token：日轮 #ffe14d → #ff9a3c → #ff2d95（SPEC「场景」三色色带，
+     中段 #34 review 补上 —— 此前只有首尾两站，橙带整段缺失），霓虹网格品红线，地平线辉光 */
   --jy-scene-sun-1: #ffe14d;
+  --jy-scene-sun-mid: #ff9a3c;
   --jy-scene-sun-2: #ff2d95;
   --jy-scene-grid-line: rgba(255, 45, 149, 0.55);
   --jy-scene-horizon: rgba(255, 120, 60, 0.85);
@@ -1812,14 +1833,17 @@
 }
 
 /* 发光边框 + 毛玻璃卡片；背景氛围漂移（每屏唯一动效，可关闭：reduced-motion 下静态）
-   #39：模糊从 6px 提到 18px 并补 saturate(1.15) —— 6px 时落日与网格直接透底，卡片读不出边界。 */
+   #39：模糊从 6px 提到 18px 并补 saturate(1.15) —— 6px 时落日与网格直接透底，卡片读不出边界。
+   #34 review：外发光字面色由梦核紫 rgba(124,92,255,.12) 改品红 —— 取色来源为暗侧 --jy-accent
+   #ff2d95；亮侧 accent #e0006e 与它同色相（品红），本条是两变体共享规则，字面值统一取品红。
+   发光是纯装饰（box-shadow 不承载信息、无对比度门槛），只求与边框/网格线同族。 */
 .jysynth .juya-entry,
 .jysynth .juya-masthead {
   background: var(--jy-card);
   border: 1px solid var(--jy-border);
   border-radius: var(--jy-radius);
   backdrop-filter: blur(18px) saturate(1.15);
-  box-shadow: 0 0 18px rgba(124, 92, 255, 0.12);
+  box-shadow: 0 0 18px rgba(255, 45, 149, 0.12);
 }
 
 .jysynth .juya-entry {
@@ -1832,11 +1856,9 @@
 
 /* 刊头标题（#37）：28px + 0.02em 字距 + heading→accent 横向渐变 + 1px 描边。
    不做倾斜或斜体：中文没有斜体字形，合成斜切会让笔画失真（SPEC「字体」段明令）。
-   描边色取 --jy-heading #e6dcff 的 45% alpha，而非 accent 或纯白：渐变末端 accent #8f63ff
-   在暗紫卡面上明度最低、边缘最糊，浅色低透描边只在字形外沿勾一圈轮廓，不夺渐变中段层次；
-   纯白 1px 会在 28px 粗体上糊成第二层字形，accent 描边则与渐变末端同色，等于没勾边。
    字族用带兜底的 var()：字体 token 亮/暗两侧变体块都已定义（#37 暗侧、#41 亮侧），
-   兜底栈只为防 token 被误删时刊头掉回通用字体 */
+   兜底栈只为防 token 被误删时刊头掉回通用字体。
+   描边（#34 review）改由下面两条按变体分色 —— 此处不再写死单色，见紧跟的说明。 */
 .jysynth .juya-masthead h1 {
   font-family: var(--jy-font-masthead, 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif);
   font-size: 28px;
@@ -1844,8 +1866,23 @@
   background: linear-gradient(90deg, var(--jy-heading), var(--jy-accent));
   -webkit-background-clip: text;
   background-clip: text;
-  -webkit-text-stroke: 1px rgba(230, 220, 255, 0.45);
   color: transparent;
+}
+
+/* 1px 描边分变体（#34 review）：此前全风格共用一条 rgba(230,220,255,.45) —— 近白紫是给暗侧
+   调的，亮侧「深紫标题压白卡」上几乎看不见，等于没有描边。
+   暗侧：与 --jy-heading #ffe6ff 同源（同 RGB、alpha 0.45）。浅色低透只在字形外沿勾轮廓，
+   不夺渐变中段层次；纯白 1px 会在 28px 粗体上糊成第二层字形，accent 描边则与渐变末端同色，等于没勾边。
+   亮侧：与 --jy-heading #4a0736 同源（同 RGB、alpha 0.28）。深色低透的理由与暗侧镜像 ——
+   白卡上提亮即消失，只能靠压暗勾边；alpha 取 0.28 而非暗侧的 0.45，因为亮侧渐变末端 accent
+   #e0006e 已偏暗，描边再重会明显吃掉「深紫 → 品红」的过渡。
+   描边是装饰性轮廓（字身由不透明渐变填充），不套对比度门槛。 */
+[data-juya-variant='synthwave-dark'].jysynth .juya-masthead h1 {
+  -webkit-text-stroke: 1px rgba(255, 230, 255, 0.45);
+}
+
+[data-juya-variant='synthwave-light'].jysynth .juya-masthead h1 {
+  -webkit-text-stroke: 1px rgba(74, 7, 54, 0.28);
 }
 
 /* 可访问性回退①（#37）：不支持 background-clip: text 的引擎上，transparent 字 + 无处裁剪
@@ -1871,10 +1908,13 @@
   border-radius: 8px;
 }
 
+/* 订阅页条目卡面。外发光字面色（#34 review）：取暗侧 --jy-accent #ff2d95 的品红，
+   与上面刊头/条目那条同族（亮侧 accent #e0006e 同色相，本条为共享规则故字面值统一）。
+   原 rgba(124,92,255,.12) 是梦核紫，和新的品红边框异色。发光是纯装饰，无对比度门槛。 */
 .jysynth .juya-feed-item {
   background: var(--jy-card);
   backdrop-filter: blur(18px) saturate(1.15);
-  box-shadow: 0 0 14px rgba(124, 92, 255, 0.12);
+  box-shadow: 0 0 14px rgba(255, 45, 149, 0.12);
 }
 
 /* 概览底板（#39，新增）：此前概览是裸列表，压在落日上完全读不出区块边界。
@@ -1889,7 +1929,8 @@
 
 /* 配图（#39）：1px 霓虹描边勾出图片边界，再降一点饱和，避免落日暖调把照片冲得过艳。
    描边走场景里的品红霓虹线 token（--jy-scene-grid-line，暗侧 rgba(255,45,149,.55)），
-   不新增色值：卡面边框用 --jy-border 偏紫，图片用同族品红才能和网格线呼应。 */
+   不新增色值：卡面边框同族但更淡（--jy-border 暗侧 alpha .32），图片借网格线的 .55
+   读出「霓虹管」的存在感，同时也和地面网格呼应。 */
 .jysynth .juya-media img {
   border: 1px solid var(--jy-scene-grid-line);
   filter: saturate(0.92);
@@ -1905,10 +1946,15 @@
 }
 
 /* 悬停（#39）：基础层会 translateY(-2px) 上浮，卡片一浮就和 18px 毛玻璃脱层；
-   这里取消位移，只加深外发光（SPEC「交互与系统」：悬停只加深外发光与边框亮度）。 */
+   这里取消位移（SPEC「交互与系统」：悬停只加深外发光与边框亮度）。
+   #34 review：此前只改了 box-shadow，漏掉「边框亮度」一半 —— 补 border-color 走
+   --jy-border-hover（亮/暗各自一条 token，alpha .30/.32 → .55，见变体块内实算）。
+   外发光字面色品红取暗侧 --jy-accent #ff2d95（亮侧 #e0006e 同色相，共享规则统一字面值），
+   0.12 → 0.28 是「加深」而不是换色；发光纯装饰，无对比度门槛。 */
 .jysynth .juya-feed-item:hover {
   transform: none;
-  box-shadow: 0 0 22px rgba(124, 92, 255, 0.28);
+  border-color: var(--jy-border-hover);
+  box-shadow: 0 0 22px rgba(255, 45, 149, 0.28);
 }
 
 /* ---- 图标：相关链接箭头与订阅页元信息（#38）----
@@ -2049,6 +2095,7 @@
   background: radial-gradient(
     circle at 50% 36%,
     var(--jy-scene-sun-1) 0%,
+    var(--jy-scene-sun-mid) 34%,
     var(--jy-scene-sun-2) 62%,
     transparent 74%
   );
@@ -3826,8 +3873,9 @@
 }
 
 .view-scroll:has([data-juya-variant='synthwave-dark'])::-webkit-scrollbar-thumb {
-  /* synthwave-dark 梦核紫 accent #8f63ff，对暗紫夜 #0b0918 对比 5.06 */
-  background: #8f63ff;
+  /* synthwave-dark 品红 accent #ff2d95（#34 review 起与 --jy-accent 同值，原 #8f63ff 梦核紫已废），
+     对暗紫夜 #0b0918 对比 5.68 —— 非文本件 ≥3 */
+  background: #ff2d95;
 }
 
 .view-scroll:has([data-juya-variant='nocturne-light'])::-webkit-scrollbar-thumb {

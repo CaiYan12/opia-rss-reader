@@ -1376,7 +1376,7 @@ describe('nocturne 刊头极光带守卫（2026-10-12，用户指令「头部过
   })
 
   it('⑨ 取消双色霓虹约束的作用域收窄：h1 辉光仍是单色靛蓝（#4 决策未被本次改动推翻）', () => {
-    // 需求 §4.2 原「排除双色霓虹」针对的是「两个独立光源」的硬色对（dreamcore 语义）。
+    // 需求 §4.2 原「排除双色霓虹」针对的是「两个独立光源」的硬色对（synthwave 语义）。
     // 本次用户明确要求 Vista 极光，故该排除**仅在极光带上**被取代；
     // 刊头字自身的辉光必须仍是单色靛蓝 —— 守卫①③ 的既有断言即为这条的闸门，
     // 此处额外确保极光带没有把色相渗进 h1 规则。
@@ -2511,7 +2511,7 @@ describe('Scene 预设守卫（2026-10-12，#1）', () => {
   it('⑦ 128px chrome 抬升：共享 .juya-scene 高度不改，根因与「段内抬升」约定显式记录，y2k 缓解保留', () => {
     expect(
       extractBlock(css, /(?:^|\n)\.juya-scene \{/),
-      '共享 .juya-scene 高度不得改动（会波及 dreamcore/y2k 的既有观感）'
+      '共享 .juya-scene 高度不得改动（会波及 synthwave/y2k 的既有观感）'
     ).toContain('height: 100vh')
     const section = sceneSection()
     expect(section, '须显式记录 128px chrome 未扣的根因').toContain('128px')
@@ -2607,7 +2607,7 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
   const over = (bg: number, layers: { r: number; g: number; b: number; a: number }[]): number =>
     layers.reduce((acc, l) => alphaOver((l.r << 16) | (l.g << 8) | l.b, l.a, acc), bg)
 
-  it('① 模板接线：IssueView 挂 <Scene dust nebula />，源码顺序在 .juya-issue 之前（与 y2k/dreamcore 同位）', () => {
+  it('① 模板接线：IssueView 挂 <Scene dust nebula />，源码顺序在 .juya-issue 之前（与 y2k/synthwave 同位）', () => {
     const partsImport = nocturneTsx.match(/^import \{([^}]*)\} from '\.\/parts'$/m)?.[1] ?? ''
     expect(partsImport, 'Scene 须从共享层 ./parts 引入').toMatch(/\bScene\b/)
     const tag = nocturneTsx.match(/<Scene\b[^>]*\/>/)?.[0] ?? ''
@@ -3890,7 +3890,7 @@ describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20
   it('① 暗侧 dust 只覆写 background-size：共享预设 44/132 与 96s alternate 一字节不改', () => {
     const shared = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
     expect(shared, '共享 dust 预设应存在').toBeTruthy()
-    // 共享层是 y2k / dreamcore 也在用的预置：本票**不得**改它（隔离验证由归档逐字节比对兜底）
+    // 共享层是 y2k / synthwave 也在用的预置：本票**不得**改它（隔离验证由归档逐字节比对兜底）
     expect(decl(shared, 'background-size'), '共享 dust 尺寸必须保持 3×44 + 3×132').toBe(
       '44px 44px, 44px 44px, 44px 44px, 132px 132px, 132px 132px, 132px 132px'
     )
@@ -4026,7 +4026,7 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
     "[data-juya-variant='nocturne-dark'].jynoct-lightbox img"
   ]
 
-  /** 非 nocturne 场景层（太阳/透视网格/星空只有 dreamcore 与 y2k 暗挂载，本变体模板不渲染） */
+  /** 非 nocturne 场景层（太阳/透视网格/星空只有 synthwave 与 y2k 暗挂载，本变体模板不渲染） */
   const FOREIGN_SCENE = ['.juya-scene-sun', '.juya-scene-grid-persp', '.juya-scene-stars']
 
   /** 全 css 的叶规则（花括号内的声明块；媒体查询/@keyframes 外壳天然不匹配） */

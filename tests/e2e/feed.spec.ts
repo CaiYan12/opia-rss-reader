@@ -89,7 +89,7 @@ test('八风格逐一断言阅读页根节点结构类', async ({ page }) => {
     { scenario: 'y2k', cls: 'jyy2k' },
     { scenario: 'pop', cls: 'jypop' },
     { scenario: 'newsprint', cls: 'jynews' },
-    { scenario: 'dark', cls: 'jydream' },
+    { scenario: 'dark', cls: 'jysynth' },
     { scenario: 'nocturne', cls: 'jynoct' },
     { scenario: 'editorial', cls: 'jyedit' },
     { scenario: 'wabi', cls: 'jywabi' }
@@ -101,14 +101,14 @@ test('八风格逐一断言阅读页根节点结构类', async ({ page }) => {
   }
 })
 
-test('场景层：梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、暗夜暗侧挂 dust + nebula 氛围层', async ({
+test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、暗夜暗侧挂 dust + nebula 氛围层', async ({
   page
 }) => {
   await loadApp(page, 'dark')
   await openFirstArticle(page)
-  const dreamRoot = activeTab(page).locator('.juya-root.jydream')
-  await expect(dreamRoot.locator('.juya-scene-sun')).toBeVisible()
-  await expect(dreamRoot.locator('.juya-scene-grid-persp')).toBeVisible()
+  const synthRoot = activeTab(page).locator('.juya-root.jysynth')
+  await expect(synthRoot.locator('.juya-scene-sun')).toBeVisible()
+  await expect(synthRoot.locator('.juya-scene-grid-persp')).toBeVisible()
 
   await loadApp(page, 'y2k')
   await openFirstArticle(page)

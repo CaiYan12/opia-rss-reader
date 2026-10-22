@@ -3,7 +3,7 @@ import { folioTemplate } from './templates/folio'
 import { y2kTemplate } from './templates/y2k'
 import { popTemplate } from './templates/pop'
 import { newsprint90sTemplate } from './templates/newsprint90s'
-import { dreamcoreTemplate } from './templates/dreamcore'
+import { synthwaveTemplate } from './templates/synthwave'
 import { nocturneTemplate } from './templates/nocturne'
 import { editorialTemplate } from './templates/editorial'
 import { wabiTemplate } from './templates/wabi'
@@ -16,7 +16,7 @@ export const JUYA_TEMPLATES: Record<JuyaStyleKey, JuyaTemplate> = {
   y2k: y2kTemplate,
   pop: popTemplate,
   newsprint90s: newsprint90sTemplate,
-  dreamcore: dreamcoreTemplate,
+  synthwave: synthwaveTemplate,
   nocturne: nocturneTemplate,
   editorial: editorialTemplate,
   wabi: wabiTemplate

@@ -190,7 +190,7 @@ export function NocturneEntrySplit({
 
 /** 暗夜精修式（第二轮定制排版）：图文并排但图恒在右侧（纪律感不交替），
  *  题注等宽字体；序号退化为灰色 # 前缀小字（发丝线体系的一部分）。
- *  场景层（#2）：dust + nebula 两个纯氛围预设，挂在 .juya-issue 之前（与 y2k / dreamcore 同位，
+ *  场景层（#2）：dust + nebula 两个纯氛围预设，挂在 .juya-issue 之前（与 y2k / synthwave 同位，
  *  场景在内容之下 z-index 0）；色值/避让/降级全部在 juya.css 的 nocturne 段内。
  *  图片放大（#21）：事件委托挂在内容容器 `.juya-issue` 上（图片张数不定，
  *  右列 plate 与回流通栏带都覆盖），只对裸图生效。 */

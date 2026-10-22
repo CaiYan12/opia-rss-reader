@@ -52,7 +52,7 @@ export type JuyaStyleId =
   | 'y2k'
   | 'pop'
   | 'newsprint90s'
-  | 'dreamcore'
+  | 'synthwave'
   | 'nocturne'
   | 'editorial'
   | 'wabi'
@@ -64,7 +64,7 @@ export const JUYA_STYLE_IDS: readonly JuyaStyleId[] = [
   'y2k',
   'pop',
   'newsprint90s',
-  'dreamcore',
+  'synthwave',
   'nocturne',
   'editorial',
   'wabi'

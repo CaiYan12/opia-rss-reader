@@ -3,9 +3,10 @@ import { DefaultFeedItem, FeedShell, Scene } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
-const VARIANT_CLASS = 'jydream'
+const VARIANT_CLASS = 'jysynth'
 
-/** 蒸汽梦核式（第二轮定制排版）：synthwave 场景（条纹太阳 + 透视霓虹网格，Scene 固定层），
+/** 蒸汽梦核式（styleId `synthwave`，2026-10-22 由 `dreamcore` 更名，界面名不变）：
+ *  synthwave 场景（条纹太阳 + 透视霓虹网格，Scene 固定层），
  *  条目首图通栏 21/9 + 其余两列子网格（hero 媒体），毛玻璃卡片即文字遮罩。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
@@ -50,4 +51,4 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
   )
 }
 
-export const dreamcoreTemplate: JuyaTemplate = { IssueView, FeedList }
+export const synthwaveTemplate: JuyaTemplate = { IssueView, FeedList }

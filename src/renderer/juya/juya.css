@@ -1705,7 +1705,7 @@
 }
 
 /* ---- 蒸汽梦核式 ---- */
-[data-juya-variant='dreamcore-light'] {
+[data-juya-variant='synthwave-light'] {
   --jy-bg: #f3ecff;
   --jy-card: rgba(255, 255, 255, 0.8);
   --jy-border: rgba(124, 77, 255, 0.35);
@@ -1725,7 +1725,7 @@
   --jy-scene-horizon: rgba(183, 140, 255, 0.5);
 }
 
-[data-juya-variant='dreamcore-dark'] {
+[data-juya-variant='synthwave-dark'] {
   --jy-bg: #0b0918;
   --jy-card: rgba(24, 19, 44, 0.85);
   --jy-border: rgba(158, 132, 255, 0.32);
@@ -1746,8 +1746,8 @@
 }
 
 /* 发光边框 + 毛玻璃卡片；背景氛围漂移（每屏唯一动效，可关闭：reduced-motion 下静态） */
-.jydream .juya-entry,
-.jydream .juya-masthead {
+.jysynth .juya-entry,
+.jysynth .juya-masthead {
   background: var(--jy-card);
   border: 1px solid var(--jy-border);
   border-radius: var(--jy-radius);
@@ -1755,53 +1755,53 @@
   box-shadow: 0 0 18px rgba(124, 92, 255, 0.12);
 }
 
-.jydream .juya-entry {
+.jysynth .juya-entry {
   padding: 18px 20px;
 }
 
-.jydream .juya-masthead {
+.jysynth .juya-masthead {
   padding: 24px;
 }
 
-.jydream .juya-masthead h1 {
+.jysynth .juya-masthead h1 {
   background: linear-gradient(90deg, var(--jy-heading), var(--jy-accent));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.jydream .juya-lead {
+.jysynth .juya-lead {
   border-left: 3px solid var(--jy-accent);
   border-radius: 8px;
 }
 
-.jydream .juya-feed-item {
+.jysynth .juya-feed-item {
   background: var(--jy-card);
   backdrop-filter: blur(6px);
   box-shadow: 0 0 14px rgba(124, 92, 255, 0.12);
 }
 
 /* 订阅封面 16/9（featured 21/9），hover 发光加深 */
-.jydream .juya-feed-cover {
+.jysynth .juya-feed-cover {
   aspect-ratio: 16 / 9;
 }
 
-.jydream .juya-feed-featured .juya-feed-cover {
+.jysynth .juya-feed-featured .juya-feed-cover {
   aspect-ratio: 21 / 9;
 }
 
-.jydream .juya-feed-item:hover {
+.jysynth .juya-feed-item:hover {
   box-shadow: 0 0 22px rgba(124, 92, 255, 0.28);
 }
 
 /* ==========================================================================
-   场景固定层（.juya-scene）：synthwave 太阳/透视网格（dreamcore）、星空/地平网格（y2k 暗）、
+   场景固定层（.juya-scene）：synthwave 太阳/透视网格（synthwave）、星空/地平网格（y2k 暗）、
    尘埃微粒 dust / 静态渐层雾 nebula（共享层预置，2026-10-12 #1；nocturne-dark 已于 #2 接线）。
    sticky 假固定：内容在 uiZoom 缩放容器内，position:fixed 会被 CSS zoom 破坏锚定；
    sticky 相对滚动容器吸附且不随缩放漂移，负 margin 抵消占位。
    动画一律挂 .juya-scene-* 子层（.juya-root 永无 animation，reduced-motion 断言结构保证）。
    【已知根因 · 共享层不改高度】height: 100vh 未扣应用 chrome 高度 128px（标题栏 + 标签栏）：
-   改共享高度会同时波及 dreamcore（太阳/透视网格）与 y2k（星空/地平网格）的既有观感，
+   改共享高度会同时波及 synthwave（太阳/透视网格）与 y2k（星空/地平网格）的既有观感，
    且 .juya-scene 是 sticky + 负 margin 的占位对（高度与 margin-bottom 必须成对改），故**不改**。
    处置约定（段内抬升）：每个挂场景的风格在自己的段内按需抬升装饰底边 —— y2k 暗已用
    [data-juya-variant='y2k-dark'].jyy2k .juya-scene-grid { bottom: 136px }（≈128px chrome + 8px 余量），
@@ -2119,7 +2119,7 @@
 }
 
 /* ---- 场景氛围层接线（2026-10-12，#2）：dust（尘埃微粒）+ nebula（静态渐层雾）----
-   模板侧 <Scene dust nebula />（templates/nocturne.tsx，位于 .juya-issue 之前、与 y2k / dreamcore 同位）。
+   模板侧 <Scene dust nebula />（templates/nocturne.tsx，位于 .juya-issue 之前、与 y2k / synthwave 同位）。
    共享层（#1）给的是中性白雾；本段按需求 §3.1 换成 nocturne 自己的三层色，且 alpha 取**减半值**。
    构成色取色来源：三层色相沿用需求 §3.1 表格左列 —— 紫蓝 rgba(110,123,255)=#6E7BFF（与本变体
    --jy-accent #6e7bff 同源）、青蓝 rgba(90,160,255)=#5AA0FF、品红 rgba(200,90,180)=#C85AB4。
@@ -2168,7 +2168,7 @@
    病根：共享 dust 预设的 6 层平铺尺寸是 3×44 + 3×132 —— 132 = 44×3，两组互为整数倍，六层相位
    共锁进一个 132px 的大格点，暗侧背景读出可辨认的规则点阵。
    修法：**只在暗侧作用域**覆写 background-size 为 6 个互不相同、任意两层之比都不贴近整数的尺寸；
-   共享 `.juya-scene-dust` 预设（y2k / dreamcore 也在用）一字节不改。
+   共享 `.juya-scene-dust` 预设（y2k / synthwave 也在用）一字节不改。
    取值来源（脚本搜索，非随手填）：搜索空间 = 小尺寸 [38,60] × 大尺寸 [100,200] 中取 3+3，
    共 295,137,150 组；判据「任意两层之比距最近整数 ≥0.1」+「1280×800 点数 ∈ [1000,2500]」
    ⇒ 2,546,089 组解；取「最小两两余量」最大者（0.2241，是门槛 0.1 的两倍以上），
@@ -2178,7 +2178,7 @@
    **接缝**：jy-dust-drift 是 `infinite alternate` 往复（不是单向循环），终点位移无需为 size 整数倍，
    故不改 keyframe、不改共享层的背景位置序列；RM 下共享层 `animation: none` 原样生效
    （本条只声明 background-size，不碰 animation / transition / 点色 token）。
-   隔离：作用域写复合形态（AGENTS「变体覆盖选择器约定」）；共享预设一字节不改 ⇒ y2k / dreamcore
+   隔离：作用域写复合形态（AGENTS「变体覆盖选择器约定」）；共享预设一字节不改 ⇒ y2k / synthwave
    的 dust 完全不受影响（其模板也不挂本变体的复合选择器）。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust {
   background-size: 38px 38px, 47px 47px, 58px 58px, 129px 129px, 161px 161px, 199px 199px;
@@ -2395,7 +2395,7 @@
    故本段新增**独立于文字**的极光带（两个伪元素 + 弧形径向渐变），h1 保持不变、仍浮在其上。
    **参考物**：Windows Vista「Aurora」壁纸的冷光幕帘 —— 一条横贯的**弧形亮边**，亮边之下垂落
    冷色幕帘，后层另有一道更远更淡的反相幕帘形成纵深；整体读作「冷光穿过大气」，不是霓虹灯管。
-   **与 dreamcore 霓虹的区分（本段不构成语义撞车）**：dreamcore 是**两个独立光源**（条纹太阳 +
+   **与 synthwave 霓虹的区分（本段不构成语义撞车）**：synthwave 是**两个独立光源**（条纹太阳 +
    透视网格）的硬色对；本段是**同一条曲线上的连续冷暖谱**（青 → 靛 → 品红），无第二光源、
    无硬边、无灯管造型。需求 §4.2 原「排除双色霓虹」针对的是前者；本次用户明确要求 Vista 极光，
    故该排除**仅在极光带上**被取代，h1 自身辉光仍是单色靛蓝（#4 决策未动，守卫①③原样通过）。
@@ -3553,7 +3553,7 @@
     column-count: 1;
   }
   .jyfolio .juya-masthead,
-  .jydream .juya-masthead,
+  .jysynth .juya-masthead,
   .jypop .juya-masthead {
     padding: 16px;
   }
@@ -3646,13 +3646,13 @@
   border-radius: 0;
 }
 
-.view-scroll:has([data-juya-variant='dreamcore-light'])::-webkit-scrollbar-thumb {
-  /* dreamcore-light 梦核紫 accent #6d4de0，对淡紫底 #f3ecff 对比 4.82 */
+.view-scroll:has([data-juya-variant='synthwave-light'])::-webkit-scrollbar-thumb {
+  /* synthwave-light 梦核紫 accent #6d4de0，对淡紫底 #f3ecff 对比 4.82 */
   background: #6d4de0;
 }
 
-.view-scroll:has([data-juya-variant='dreamcore-dark'])::-webkit-scrollbar-thumb {
-  /* dreamcore-dark 梦核紫 accent #8f63ff，对暗紫夜 #0b0918 对比 5.06 */
+.view-scroll:has([data-juya-variant='synthwave-dark'])::-webkit-scrollbar-thumb {
+  /* synthwave-dark 梦核紫 accent #8f63ff，对暗紫夜 #0b0918 对比 5.06 */
   background: #8f63ff;
 }
 

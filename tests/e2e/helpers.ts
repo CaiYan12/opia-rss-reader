@@ -154,7 +154,7 @@ export function makeStubScript(scenario: Scenario): string {
     articles = [juyaArticle(), juyaArticle({ guid: 'other-1', sourceId: 'src-other', title: '其他源文章' })]
   } else if (scenario === 'dark') {
     settings.themeMode = 'dark'
-    settings.juyaDarkStyleId = 'dreamcore'
+    settings.juyaDarkStyleId = 'synthwave'
   } else if (scenario === 'pop') {
     settings.juyaLightStyleId = 'pop'
   } else if (scenario === 'newsprint') {

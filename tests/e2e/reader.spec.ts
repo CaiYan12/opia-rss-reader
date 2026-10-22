@@ -50,13 +50,13 @@ test('非橘鸦源文章：永不进定制路径', async ({ page }) => {
   await expect(tab.locator('.article-content')).toBeVisible()
 })
 
-test('暗色模式 + 梦核式：变体切换为 dreamcore-dark', async ({ page }) => {
+test('暗色模式 + 蒸汽梦核式：变体切换为 synthwave-dark', async ({ page }) => {
   await loadApp(page, 'dark')
   await openFirstArticle(page)
 
   const root = activeTab(page).locator('.juya-root')
-  await expect(root).toHaveAttribute('data-juya-variant', 'dreamcore-dark')
-  await expect(root).toHaveClass(/jydream/)
+  await expect(root).toHaveAttribute('data-juya-variant', 'synthwave-dark')
+  await expect(root).toHaveClass(/jysynth/)
 })
 
 test('波普式：结构类 jypop 挂载', async ({ page }) => {

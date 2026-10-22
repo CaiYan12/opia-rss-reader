@@ -1738,6 +1738,10 @@
   --jy-lead-bg: rgba(143, 99, 255, 0.12);
   --jy-focus: #b89aff;
   --jy-radius: 16px;
+  /* 字体（#37）：标题落黑体栈；刊头落等宽栈。中文没有等宽字体，等宽只作用于拉丁与数字，
+     汉字仍由 Noto Sans SC 承接 —— 这是已知限制，不引入 webfont（SPEC「字体」Out of Scope）。 */
+  --jy-font-heading: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --jy-font-masthead: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
   /* synthwave 场景 token：日轮 #ffe14d→#ff2d95，霓虹网格品红线，地平线辉光 */
   --jy-scene-sun-1: #ffe14d;
   --jy-scene-sun-2: #ff2d95;
@@ -1779,11 +1783,39 @@
   padding: 24px;
 }
 
+/* 刊头标题（#37）：28px + 0.02em 字距 + heading→accent 横向渐变 + 1px 描边。
+   不做倾斜或斜体：中文没有斜体字形，合成斜切会让笔画失真（SPEC「字体」段明令）。
+   描边色取 --jy-heading #e6dcff 的 45% alpha，而非 accent 或纯白：渐变末端 accent #8f63ff
+   在暗紫卡面上明度最低、边缘最糊，浅色低透描边只在字形外沿勾一圈轮廓，不夺渐变中段层次；
+   纯白 1px 会在 28px 粗体上糊成第二层字形，accent 描边则与渐变末端同色，等于没勾边。
+   字族用带兜底的 var()：字体 token 目前只落在暗侧变体块（#37 票面范围），亮侧退到兜底栈 */
 .jysynth .juya-masthead h1 {
+  font-family: var(--jy-font-masthead, 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif);
+  font-size: 28px;
+  letter-spacing: 0.02em;
   background: linear-gradient(90deg, var(--jy-heading), var(--jy-accent));
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-text-stroke: 1px rgba(230, 220, 255, 0.45);
   color: transparent;
+}
+
+/* 可访问性回退①（#37）：不支持 background-clip: text 的引擎上，transparent 字 + 无处裁剪
+   = 整行标题消失，退回实色并撤掉渐变 */
+@supports not (background-clip: text) {
+  .jysynth .juya-masthead h1 {
+    background: none;
+    color: var(--jy-heading);
+  }
+}
+
+/* 可访问性回退②（#37）：高对比模式强制丢弃 background-image，clip: text 下同样只剩透明字，
+   退回系统前景色（CanvasText），保证标题在任何强制配色下可见 */
+@media (forced-colors: active) {
+  .jysynth .juya-masthead h1 {
+    background: none;
+    color: CanvasText;
+  }
 }
 
 .jysynth .juya-lead {

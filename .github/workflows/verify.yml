@@ -2,7 +2,9 @@ name: verify
 
 # 唯一的验证闸门（2026-10-21 由 /retro 建立）。
 # 之前仓库有完整的 tsc / vitest / playwright / 审计 / 归档校验命令，但一根线都没接 ——
-# 全靠人记得跑。本工作流直接调用 `npm run verify`（package.json），保证 CI 与本地同一条命令。
+# 全靠人记得跑。本工作流调用 `npm run verify:ci`（package.json），与本地同链路，
+# 但跳过归档逐字节比对：归档截图依赖本地字体/渲染环境，跨机器不可能逐字节一致
+# （2026-10-22 CI 首跑实证 5 张全不一致）。本地 `npm run verify` 仍锁死归档。
 
 on:
   push:
@@ -42,8 +44,8 @@ jobs:
         shell: pwsh
         run: Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 
-      - name: Verify (typecheck + unit + e2e + nocturne audit + archive byte-compare)
-        run: npm run verify
+      - name: Verify (typecheck + unit + e2e + nocturne contrast audit)
+        run: npm run verify:ci
 
       - name: Upload Playwright report on failure
         if: failure()

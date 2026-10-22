@@ -87,11 +87,13 @@ powershell -File build.ps1 -Run   # 构建并启动，tail 启动日志
 
 ### 测试
 
-**一条命令跑全部闸门**（CI 调的就是它，见 `.github/workflows/verify.yml`）：
+**一条命令跑全部闸门**（本地）：
 
 ```powershell
 npm run verify      # = typecheck + vitest + Playwright + 对比度审计 + 归档逐字节比对
 ```
+
+CI 跑 `npm run verify:ci`：同一条链路，但跳过归档逐字节比对 —— 归档截图依赖本地字体与渲染环境，跨机器不可能逐字节一致（2026-10-22 CI 首跑实证 5 张全不一致）。本地仍用 `npm run verify` 锁死归档。
 
 分项跑：
 

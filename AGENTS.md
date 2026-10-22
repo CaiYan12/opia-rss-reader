@@ -45,7 +45,7 @@ Windows 桌面 RSS 阅读器（Electron + React + TypeScript），默认订阅�
 
 - `npm run dev` 之前必须清 `ELECTRON_RUN_AS_NODE`（见上方环境陷阱）。
 - `npm run build` 会走 electron-builder 打 exe；只要产物目录用 `npm run build:dir`。
-- `npm run verify` = 类型 + 单元 + 端到端 + 对比度审计 + 归档逐字节比对，**一条命令跑全部闸门**；CI（`.github/workflows/verify.yml`）调的就是它。
+- `npm run verify` = 类型 + 单元 + 端到端 + 对比度审计 + 归档逐字节比对，**一条命令跑全部闸门**；CI 调 `npm run verify:ci`（同链路，跳过机器相关的归档逐字节比对，见 workflow 注释）。
 
 ## 验证标准
 

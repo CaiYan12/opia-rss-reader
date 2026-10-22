@@ -1,5 +1,6 @@
+import { type CSSProperties } from 'react'
 import { makeJuyaTemplate } from './base'
-import type { JuyaIssueProps, JuyaTemplate } from '../templateTypes'
+import type { JuyaFeedProps, JuyaIssueProps, JuyaTemplate } from '../templateTypes'
 import { EntryBlocks, OverviewItems } from './shared'
 
 /** 90 年代报刊式：锚定真实 90 年代中文报刊语言——刊头（三栏报头）、栏目栏、
@@ -72,4 +73,34 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
   )
 }
 
-export const newsprint90sTemplate: JuyaTemplate = { IssueView, FeedList: factory.FeedList }
+/** 空态（#32）：共享骨架 FeedShell 的空态是一整行字符串，无法拆成「黑体标题 + 小字提示」
+ *  两级报纸公告，故本风格自渲染空态；非空仍委托工厂 FeedList（骨架/预设/门控单一来源）。
+ *  容器类按预设复刻 FeedShell 的分发，让公告框继续吃 .juya-feed-grid 的列宽与
+ *  `grid-column: 1 / -1` 通栏规则（compact/magazine 容器非网格，该声明惰性无效）。 */
+function EmptyFeed({ variantId, layout }: Pick<JuyaFeedProps, 'variantId' | 'layout'>): JSX.Element {
+  const { preset, gridColumns } = layout
+  const containerClass =
+    preset === 'compact'
+      ? 'juya-feed juya-feed-compact'
+      : preset === 'magazine'
+        ? 'juya-feed'
+        : 'juya-feed juya-feed-grid'
+  const gridStyle = preset === 'grid' ? ({ '--jy-cols': gridColumns } as CSSProperties) : undefined
+  return (
+    <div className="juya-root jynews" data-juya-variant={variantId}>
+      <div className={containerClass} style={gridStyle}>
+        <div className="juya-feed-empty">
+          <strong>暂无内容</strong>
+          <span>点击右上角刷新获取</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
+  if (articles.length === 0) return <EmptyFeed variantId={variantId} layout={layout} />
+  return <factory.FeedList articles={articles} variantId={variantId} layout={layout} />
+}
+
+export const newsprint90sTemplate: JuyaTemplate = { IssueView, FeedList }

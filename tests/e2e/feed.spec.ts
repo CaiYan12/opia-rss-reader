@@ -412,20 +412,31 @@ test('newsprint magazine：首条封面 3:2、标题 26px；其余条目仍走 #
   expect(await small.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
 })
 
-test('newsprint 空态：上下 1px 细线的通栏公告框，居中黑体文案', async ({ page }) => {
+test('newsprint 空态：上下 1px 细线的通栏公告框，黑体标题 + 小字刷新提示', async ({ page }) => {
   await loadApp(page, 'newsprintEmpty')
   const tab = activeTab(page)
   const empty = tab.locator('.juya-feed-empty')
   await expect(empty).toBeVisible()
-  // 文案由共享骨架提供，本轮不拆分、不改动
-  await expect(empty).toHaveText('暂无内容，点击右上角刷新获取')
+  // #32 空态由本风格模板自渲染：两个真实元素（标题 + 提示），不再是共享骨架的一整行字符串
+  const heading = empty.locator('strong')
+  const hint = empty.locator('span')
+  await expect(heading).toHaveText('暂无内容')
+  await expect(hint).toHaveText('点击右上角刷新获取')
   await expect(empty).toHaveCSS('text-align', 'center')
   await expect(empty).toHaveCSS('border-top-width', '1px')
   await expect(empty).toHaveCSS('border-top-style', 'solid')
   await expect(empty).toHaveCSS('border-bottom-width', '1px')
   await expect(empty).toHaveCSS('border-bottom-style', 'solid')
-  const family = await empty.evaluate((el) => getComputedStyle(el).fontFamily)
-  expect(family.split(',')[0].trim().replace(/["']/g, ''), '公告文案黑体').toBe('SimHei')
+
+  // 两级排印：标题 15px 黑体（标题字体 token）、提示 12px 次要文字色，两者块级居中、间距 4px
+  await expect(heading).toHaveCSS('font-size', '15px')
+  const family = await heading.evaluate((el) => getComputedStyle(el).fontFamily)
+  expect(family.split(',')[0].trim().replace(/["']/g, ''), '公告标题黑体').toBe('SimHei')
+  await expect(hint).toHaveCSS('font-size', '12px')
+  await expect(hint).toHaveCSS('color', 'rgb(95, 87, 71)')
+  expect(await heading.evaluate((el) => getComputedStyle(el).display), '标题为块级').toBe('block')
+  expect(await hint.evaluate((el) => getComputedStyle(el).display), '提示为块级').toBe('block')
+  await expect(hint).toHaveCSS('margin-top', '4px')
 
   // 通栏：默认 grid 预设为 2 列，公告框必须横跨整个订阅页内容宽而非被挤进第一列
   const feed = tab.locator('.juya-feed')

@@ -4502,18 +4502,31 @@ describe('newsprint90s 订阅页 magazine 态守卫（#31：首条 3:2 / 26px）
   })
 })
 
-describe('newsprint90s 空态守卫（#31：上下 1px 细线的通栏公告框）', () => {
-  // 空态文案由共享骨架 FeedShell 提供（不拆分、不改共享层），本风格只负责框线与排印。
+describe('newsprint90s 空态守卫（#32：上下 1px 细线的通栏公告框 + 两级公告文案）', () => {
+  // 空态的 strong/span 由本风格模板自渲染（共享骨架未拆），本组只锁框线与两级排印的取值。
   const newsRule = (rest: string): string =>
     css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
 
-  it('公告框上下各 1px 细线、居中黑体', () => {
+  it('公告框上下各 1px 细线、居中', () => {
     const empty = newsRule('\.juya-feed-empty')
     expect(empty, '空态公告规则应存在').toBeTruthy()
     expect(decl(empty, 'border-top'), '上沿细线').toBe('1px solid var(--jy-border)')
     expect(decl(empty, 'border-bottom'), '下沿细线').toBe('1px solid var(--jy-border)')
     expect(decl(empty, 'text-align'), '居中公告').toBe('center')
-    expect(decl(empty, 'font-family'), '公告文案黑体').toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+  })
+
+  it('公告文案两级：标题 15px 标题字体 token、提示 12px 次要文字色', () => {
+    const strong = newsRule('\.juya-feed-empty strong')
+    expect(strong, '公告标题规则应存在').toBeTruthy()
+    expect(decl(strong, 'display'), '标题为块级').toBe('block')
+    expect(decl(strong, 'font-family'), '标题走标题字体 token').toBe('var(--jy-font-heading)')
+    expect(decl(strong, 'font-size')).toBe('15px')
+    const span = newsRule('\.juya-feed-empty span')
+    expect(span, '公告提示规则应存在').toBeTruthy()
+    expect(decl(span, 'display'), '提示为块级').toBe('block')
+    expect(decl(span, 'margin-top'), '两级公告间距 4px').toBe('4px')
+    expect(decl(span, 'font-size')).toBe('12px')
+    expect(decl(span, 'color'), '提示走次要文字色').toBe('var(--jy-muted)')
   })
 
   it('公告框在 grid 预设下通栏，不被挤进第一列', () => {

@@ -60,6 +60,82 @@ test('暗色模式 + 蒸汽梦核式：变体切换为 synthwave-dark', async ({
   await expect(root).toHaveClass(/jysynth/)
 })
 
+test('editorial T1：亮暗排字层级、对比度与栏目首条导语', async ({ page }) => {
+  await loadApp(page, 'editorialT1')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'editorial-light')
+  const leads = root.locator('.juya-lead')
+  await expect(leads).toHaveCount(4)
+  const floats = await leads.evaluateAll((els) =>
+    els.map((el) => getComputedStyle(el, '::first-letter').float)
+  )
+  expect(floats, '每个栏目首条导语下沉，后续条目正常排字').toEqual(['left', 'none', 'none', 'left'])
+  await expect(
+    root.locator('.juya-section').first().locator('.juya-entry').nth(1),
+    '开篇后的相邻条目分隔线应保持'
+  ).toHaveCSS('border-top-width', '1px')
+  await expect(leads.nth(0)).toHaveText('中文开篇导语，字形应完整显示。')
+  await expect(leads.nth(1)).toHaveText('English opening lead stays in normal typesetting.')
+  await expect(leads.nth(2)).toHaveText('“引号开头的导语”应完整显示。')
+
+  for (const variantId of ['editorial-light', 'editorial-dark'] as const) {
+    await root.evaluate((el, id) => el.setAttribute('data-juya-variant', id), variantId)
+    const facts = await root.evaluate((el) => {
+      const colorOf = (selector: string): string => {
+        const target = el.querySelector(selector)
+        if (!target) throw new Error(`缺少对比度取样角色：${selector}`)
+        return getComputedStyle(target).color
+      }
+      const sectionNumber = getComputedStyle(el.querySelector('.juya-section > h2')!, '::before')
+      const scroller = el.closest('.view-scroll')!
+      const thumb = getComputedStyle(scroller, '::-webkit-scrollbar-thumb').backgroundColor
+      const titleLink = el.querySelector('.juya-entry h3 a')
+      const accent = getComputedStyle(el).getPropertyValue('--jy-accent').trim()
+      const channels = accent.slice(1).match(/.{2}/g)?.map((hex) => Number.parseInt(hex, 16))
+      if (!channels || channels.length !== 3) throw new Error(`无效的 editorial accent：${accent}`)
+      return {
+        heading: getComputedStyle(el.querySelector('.juya-masthead h1')!).fontSize,
+        section: getComputedStyle(el.querySelector('.juya-section > h2')!).fontSize,
+        entry: getComputedStyle(el.querySelector('.juya-entry h3')!).fontSize,
+        body: getComputedStyle(el.querySelector('.juya-entry p:not(.juya-links-label)')!).fontSize,
+        sectionNumber: sectionNumber.color,
+        badgeText: colorOf('.juya-index'),
+        muted: [
+          colorOf('.juya-date-line'),
+          colorOf('.juya-deck'),
+          colorOf('.juya-lead'),
+          colorOf('.juya-plate figcaption'),
+          colorOf('.juya-links-label'),
+          colorOf('.juya-colophon')
+        ],
+        link: colorOf('.juya-overview a'),
+        accent,
+        accentRgb: `rgb(${channels.join(', ')})`,
+        focus: getComputedStyle(el).getPropertyValue('--jy-focus').trim(),
+        thumb,
+        titleLinkExists: Boolean(titleLink)
+      }
+    })
+    expect(facts.heading, `${variantId} 刊头层级`).toBe('42px')
+    expect(facts.section, `${variantId} 栏目层级`).toBe('24px')
+    expect(facts.entry, `${variantId} 条目层级`).toBe('20px')
+    expect(facts.body, `${variantId} 正文层级`).toBe('15px')
+    expect(facts.muted.every((color) => color === facts.muted[0]), `${variantId} 次要文字统一取 muted`).toBe(true)
+    expect(facts.titleLinkExists, `${variantId} 可键盘访问的标题链接存在`).toBe(true)
+    expect(facts.thumb, `${variantId} 滚动条与风格强调色一致`).toBe(facts.accentRgb)
+    await root.locator('.juya-entry h3 a').first().focus()
+    await page.keyboard.press('Tab')
+    const focusLink = root.locator('a:focus-visible').first()
+    await expect(focusLink, `${variantId} 键盘焦点留在内容链接上`).toBeVisible()
+    await expect(focusLink, `${variantId} 焦点环使用风格 token`).toHaveCSS(
+      'outline-color',
+      variantId === 'editorial-light' ? 'rgb(138, 47, 43)' : 'rgb(208, 138, 125)'
+    )
+  }
+})
+
 test('蒸汽梦核式暗侧卡面（#39）：刊头/条目 18px 毛玻璃、概览底板、配图描边与降饱和', async ({
   page
 }) => {

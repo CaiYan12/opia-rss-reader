@@ -147,15 +147,25 @@ test('editorial T2：摘要左对齐并使用正体', async ({ page }) => {
   await expect(deck).toHaveText('示例摘要占位文本')
 })
 
-test('editorial T2：刊头与刊尾按同一本地日期显示跨日发布时间', async ({ page }) => {
-  await loadApp(page, 'editorialT2')
-  await openFirstArticle(page)
+test('editorial T2：刊头与刊尾按同一本地日期显示跨日发布时间', async ({ browser }) => {
+  const context = await browser.newContext({
+    baseURL: 'http://localhost:4173',
+    viewport: { width: 1280, height: 800 },
+    timezoneId: 'Asia/Shanghai'
+  })
+  try {
+    const page = await context.newPage()
+    await loadApp(page, 'editorialT2')
+    await openFirstArticle(page)
 
-  const root = activeTab(page).locator('.juya-root')
-  await expect(root.locator('.juya-masthead h1')).toHaveText('杂志编辑式 T2 长标题 Magazine Editorial Issue')
-  await expect(root.locator('.juya-date-line')).toContainText('2026年10月22日')
-  await expect(root.locator('.juya-colophon')).toContainText('2026-10-22')
-  await expect(root.locator('.juya-deck')).toHaveText('摘要完整，无改写无截断。'.repeat(12))
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root.locator('.juya-masthead h1')).toHaveText('杂志编辑式 T2 长标题 Magazine Editorial Issue')
+    await expect(root.locator('.juya-date-line')).toContainText('2026年10月22日')
+    await expect(root.locator('.juya-colophon')).toContainText('2026-10-22')
+    await expect(root.locator('.juya-deck')).toHaveText('摘要完整，无改写无截断。'.repeat(12))
+  } finally {
+    await context.close()
+  }
 })
 
 test('editorial T2：上午日期、文章标题回退及缺省摘要概览', async ({ page }) => {

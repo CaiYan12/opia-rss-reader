@@ -13,6 +13,7 @@
     "test:e2e": "npm run build:dir && playwright test",
     "typecheck": "tsc --noEmit",
     "diagnose:gpu": "node scripts/gpu-diagnostics.mjs",
+    "perf:probe": "node scripts/perf-probe.mjs",
     "verify": "npm run typecheck && npm run test && npm run test:e2e && npm run verify:nocturne",
     "verify:ci": "npm run typecheck && npm run test && npm run test:e2e && node scripts/nocturne-contrast-audit.mjs",
     "verify:nocturne": "node scripts/nocturne-contrast-audit.mjs && node scripts/nocturne-visual-walkthrough.mjs --verify"

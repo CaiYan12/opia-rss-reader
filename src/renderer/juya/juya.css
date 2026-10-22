@@ -1784,6 +1784,16 @@
     linear-gradient(180deg, #ffd6e8 0%, #ffc4d8 45%, #ffb27a 82%, #ffe6cc 100%);
 }
 
+/* 日间地面（#41）：共享透视网格平面自带的 #170a2a 是给暗侧调的地面底色，亮侧沿用它会出现
+   亮粉天空 → 近黑地面的硬断层，而且卡片压在网格区时 0.62 白卡合成出 #a7a2ae 的中灰底，
+   次要文字 2.78:1、链接 2.81:1（AA 不过）。这里只把 background-color 换成浅粉：
+   合成底变 #ffebf1，正文 14.40 / 次要 6.07 / 链接 6.15；品红网格线（alpha .35）在浅底上仍成形。
+   几何（height / bottom / transform / perspective）继续归共享规则与下方 #40 的订阅页补偿，
+   本规则一件不改 —— 守卫⑤锁这一点，并锁共享规则的 #170a2a 不被顺手改动。 */
+[data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp {
+  background-color: #ffcadb;
+}
+
 /* 窗口不可见时暂停（#41）：暗侧已进清单，亮侧此前漏在清单外（白天后台仍重绘网格） */
 [data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-sun {
   animation-play-state: paused;

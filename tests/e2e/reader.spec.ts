@@ -143,6 +143,13 @@ test('蒸汽梦核亮侧（#41）：日间版天空挂载、网格底边在视�
   expect(geom.bottom, '网格底边不得落到可视区下缘之外').toBeLessThanOrEqual(geom.portBottom + 1)
   expect(geom.bottom, '网格底边应贴住可视区下缘').toBeGreaterThan(geom.portBottom - 40)
 
+  // 地面必须是浅色（#ffcadb）：共享的 #170a2a 是暗侧地面，亮侧沿用会让卡片压在网格区时变灰卡，
+  // 0.62 白卡合成底上次要文字只有 2.78（AA 不过）
+  await expect(scene.locator('.juya-scene-grid.juya-scene-grid-persp')).toHaveCSS(
+    'background-color',
+    'rgb(255, 202, 219)'
+  )
+
   // 卡面与暗侧同强度毛玻璃（亮侧卡面 rgba(255,255,255,.62)，滤镜不变）
   for (const [name, locator] of [
     ['刊头', root.locator('.juya-masthead')],

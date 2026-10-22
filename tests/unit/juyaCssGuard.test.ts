@@ -4859,6 +4859,9 @@ describe('synthwave 亮侧守卫（2026-10-22，#41）', () => {
   /** 亮侧场景最亮停靠 #ffd6e8（0%）与最深停靠 #ffb27a（82%）：0.62 白卡压在其上的两种合成底。 */
   const SKY_TOP = 0xffd6e8
   const SKY_DEEP = 0xffb27a
+  /** 亮侧地面（#41）：共享网格面的 #170a2a 是暗侧地面，亮侧在段内覆盖为浅粉，
+   *  否则卡片压在网格区时合成底变 #a7a2ae、次要文字掉到 2.78。 */
+  const GROUND = 0xffcadb
 
   it('① 亮侧 token：洋红橙日间版取代旧淡紫（底/卡/边/字/强调/导语/场景）', () => {
     expect(synthSection(), '亮侧变体块必须落在蒸汽梦核式段内').toContain(
@@ -4941,24 +4944,62 @@ describe('synthwave 亮侧守卫（2026-10-22，#41）', () => {
     }
   })
 
-  it('④ 实算：0.62 白卡叠日间天空的合成底上，正文/次要文字 ≥ 4.5，accent ≥ 3（非文本件）', () => {
+  it('④ 实算：0.62 白卡叠天空顶与亮侧地面两种合成底，正文/次要/链接 ≥ 4.5，accent ≥ 3（非文本件）', () => {
     const block = variantBlock('synthwave-light')
     const card = rgba(tok(block, '--jy-card'))
-    const top = alphaOver(card.rgb, card.alpha, SKY_TOP)
-    expect(top, '合成底应落在 #ffeff6').toBe(0xffeff6)
-    expect(contrast(tokenHex(block, '--jy-heading'), top), '标题 / 天空顶部').toBeGreaterThanOrEqual(4.5)
-    expect(contrast(tokenHex(block, '--jy-text'), top), '正文 / 天空顶部').toBeGreaterThanOrEqual(4.5)
-    expect(contrast(tokenHex(block, '--jy-muted'), top), '次要文字 / 天空顶部').toBeGreaterThanOrEqual(4.5)
-    expect(contrast(tokenHex(block, '--jy-link'), top), '链接 / 天空顶部').toBeGreaterThanOrEqual(4.5)
-    // accent #e0006e 在亮侧的用途全为非文本件（1px 边框、栏目条、徽章底、滚动条 thumb）与
-    // 28px 粗体刊头渐变的末端 —— 分别按非文本 3:1 / 大字 3:1 的门槛。
-    // 若将来把 accent 用作小字号正文，本断言须收紧到 4.5（届时需换更深的品红）。
-    expect(contrast(tokenHex(block, '--jy-accent'), top), 'accent / 天空顶部（非文本件）').toBeGreaterThanOrEqual(3)
+    // 亮侧卡片实际压过的两种底：天空顶 #ffd6e8，以及地面（已改浅色 #ffcadb）——
+    // 后者此前是共享的 #170a2a，合成底 #a7a2ae 上次要文字只有 2.78（#41 修掉的那条）。
+    const bases = [
+      { name: '天空顶 #ffd6e8', color: SKY_TOP, expect: 0xffeff6 },
+      { name: '地面 #ffcadb', color: GROUND, expect: 0xffebf1 }
+    ]
+    for (const b of bases) {
+      const base = alphaOver(card.rgb, card.alpha, b.color)
+      expect(base, `${b.name} 的合成底`).toBe(b.expect)
+      expect(contrast(tokenHex(block, '--jy-heading'), base), `标题 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(tokenHex(block, '--jy-text'), base), `正文 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(tokenHex(block, '--jy-muted'), base), `次要文字 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(tokenHex(block, '--jy-link'), base), `链接 / ${b.name}`).toBeGreaterThanOrEqual(4.5)
+      // accent #e0006e 在亮侧的用途全为非文本件（1px 边框、栏目条、徽章底、滚动条 thumb）与
+      // 28px 粗体刊头渐变的末端 —— 分别按非文本 3:1 / 大字 3:1 的门槛。
+      // 若将来把 accent 用作小字号正文，本断言须收紧到 4.5（届时需换更深的品红）。
+      expect(contrast(tokenHex(block, '--jy-accent'), base), `accent / ${b.name}（非文本件）`).toBeGreaterThanOrEqual(3)
+    }
 
     // 天空最深的一段（#ffb27a 82%）合成底更暗：正文与次要文字仍须过 AA
     const deep = alphaOver(card.rgb, card.alpha, SKY_DEEP)
     expect(deep, '合成底应落在 #ffe2cc').toBe(0xffe2cc)
     expect(contrast(tokenHex(block, '--jy-text'), deep), '正文 / 天空最深段').toBeGreaterThanOrEqual(4.5)
     expect(contrast(tokenHex(block, '--jy-muted'), deep), '次要文字 / 天空最深段').toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('⑤ 亮侧地面改浅色：只覆盖 background-color 且限定亮侧作用域，共享地面与暗侧仍为 #170a2a', () => {
+    const lightGround = extractBlock(
+      synthSection(),
+      /(?:^|\n)\[data-juya-variant='synthwave-light'\]\.jysynth \.juya-scene-grid-persp \{/
+    )
+    expect(lightGround, '亮侧地面覆盖规则必须存在，且落在蒸汽梦核式段内').not.toBe('')
+    expect(decl(lightGround, 'background-color'), '亮侧地面色').toBe('#ffcadb')
+    // 只改颜色：几何（bottom / height / transform）仍归共享规则与 #40 的订阅页补偿
+    for (const prop of ['bottom', 'height', 'transform', 'background-image']) {
+      expect(decl(lightGround, prop), `地面色覆盖不得顺手改 ${prop}`).toBe('')
+    }
+
+    // 共享规则（暗侧地面）仍是 #170a2a —— 亮侧覆盖不得上移到裸选择器
+    const shared = extractBlock(css, /(?:^|\n)\.juya-scene-grid\.juya-scene-grid-persp \{/)
+    expect(decl(shared, 'background-color'), '暗侧地面维持现状').toBe('#170a2a')
+
+    // 全文件只有两条规则给网格平面设地面色：共享一条，亮侧一条
+    const groundRules = [
+      ...css.matchAll(/(?:^|\n)([^\n{}]*\.juya-scene-grid-persp[^\n{}]*)\s*\{([^}]*)\}/g)
+    ]
+      .map((m) => ({ selector: m[1].trim(), block: m[2] }))
+      .filter((r) => decl(r.block, 'background-color') !== '')
+    expect(groundRules.map((r) => r.selector).sort()).toEqual(
+      [
+        '.juya-scene-grid.juya-scene-grid-persp',
+        "[data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp"
+      ].sort()
+    )
   })
 })

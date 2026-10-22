@@ -1506,6 +1506,132 @@
   }
 }
 
+/* ---- 订阅页 compact 态（#31）：保留小缩略图但改直角，行式结构不变 ----
+   沿用 #30 的纸面语言：条目去卡片化（无底色 / 上边框 / 阴影，细线分隔）、hover 不上浮。
+   来源与未读点必须在 compact 态重声明 —— #30 的元信息规则只接 .juya-feed-grid。 */
+.jynews .juya-feed-compact .juya-feed-item {
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  /* 行式结构不变（图版 + 正文横排）；去掉水平内衬，标题与 #30 网格条目同一条左边线 */
+  padding: 10px 0;
+}
+
+/* 小缩略图 72 × 40 直角细框（基础层靠 --jy-radius 得直角，这里显式钉死，防 token 变更静默回退） */
+.jynews .juya-feed-compact .juya-feed-cover {
+  width: 72px;
+  height: 40px;
+  aspect-ratio: auto;
+  border: 1px solid var(--jy-border);
+  border-radius: 0;
+}
+
+/* 行式标题 14px（字号沿用基础 compact 值，字体栈走 --jy-font-heading 的 SimHei 优先） */
+.jynews .juya-feed-compact .juya-feed-title {
+  font-size: 14px;
+}
+
+/* hover 同 #30：纸面微亮 + 标题下划线，无上浮位移 */
+.jynews .juya-feed-compact .juya-feed-item:hover {
+  transform: none;
+  background: var(--jy-lead-bg);
+}
+
+.jynews .juya-feed-compact .juya-feed-item:hover .juya-feed-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 来源无框小字、未读点 4px 方形（与 #30 一致） */
+.jynews .juya-feed-compact .juya-feed-source {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+}
+
+.jynews .juya-feed-compact .juya-feed-read-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+}
+
+/* ---- 订阅页 magazine 首条（#31）：3:2 大图 + 26px 标题 ----
+   首条（.juya-feed-featured）是 .juya-feed 的直接子元素、不经 .juya-feed-grid，
+   故 #30 的网格规则接不到它；其余条目仍复用网格，继续走 #30。 */
+.jynews .juya-feed-featured {
+  /* 与网格条目同一套纸面语言：去卡片化 + 底沿细线 */
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 14px 0;
+}
+
+/* 首条保留一张主照片：3:2 直角细框（基础层为 21:9）。 */
+.jynews .juya-feed-featured .juya-feed-cover {
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--jy-border);
+  border-radius: 0;
+}
+
+/* 去掉基础层 18px 20px 的内衬，首条与下方网格条目共用同一条左边线。 */
+.jynews .juya-feed-featured .juya-feed-body {
+  padding: 0;
+  gap: 6px;
+}
+
+/* 头版主标题 26px 黑体优先（基础层 20px）。 */
+.jynews .juya-feed-featured .juya-feed-title {
+  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-size: 26px;
+  line-height: 1.3;
+  letter-spacing: 0.5px;
+}
+
+/* 首条元信息与 #30 一致：来源无框小字、未读点 4px 方形（首条不经 .juya-feed-grid，需单独覆盖）。 */
+.jynews .juya-feed-featured .juya-feed-source {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+}
+
+.jynews .juya-feed-featured .juya-feed-read-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+}
+
+/* hover 同 #30：纸面微亮 + 标题下划线，无上浮位移。 */
+.jynews .juya-feed-featured:hover {
+  transform: none;
+  background: var(--jy-lead-bg);
+}
+
+.jynews .juya-feed-featured:hover .juya-feed-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- 空态（#31）：上下 1px 细线的公告框 ----
+   文案由共享骨架 FeedShell 提供（不拆分、不改共享层），本风格只重塑为纸面公告。
+   grid 预设下公告框是网格子项，grid-column 令其横跨全部列；compact/magazine 容器非网格，
+   该声明惰性无效，不影响那两种预设。 */
+.jynews .juya-feed-empty {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  color: var(--jy-heading);
+  text-align: center;
+}
+
 /* ---- 蒸汽梦核式 ---- */
 [data-juya-variant='dreamcore-light'] {
   --jy-bg: #f3ecff;

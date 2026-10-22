@@ -4355,3 +4355,95 @@ describe('newsprint90s 订阅页头版守卫（#30：160×4:3 图版 / 18px 黑�
     expect(block).toContain('flex-direction: column')
   })
 })
+
+describe('newsprint90s 订阅页 compact 态守卫（#31：72×40 直角缩略图 / 14px 标题 / 元信息同 #30）', () => {
+  // #30 的订阅页规则只接 .juya-feed-grid；compact 是另一条 DOM 路径
+  // （.juya-feed-compact 容器、无网格），故本态的形状与元信息必须自成一套声明。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('compact 缩略图保留 72 × 40 且必须直角', () => {
+    const cover = newsRule('\.juya-feed-compact \.juya-feed-cover')
+    expect(cover, 'compact 缩略图规则应存在').toBeTruthy()
+    expect(decl(cover, 'width'), '小缩略图尺寸不缩水').toBe('72px')
+    expect(decl(cover, 'height')).toBe('40px')
+    expect(decl(cover, 'border-radius'), '缩略图必须直角').toBe('0')
+  })
+
+  it('compact 标题 14px，条目与 #30 同样去卡片化', () => {
+    const title = newsRule('\.juya-feed-compact \.juya-feed-title')
+    expect(decl(title, 'font-size'), '行式标题 14px').toBe('14px')
+    const item = newsRule('\.juya-feed-compact \.juya-feed-item')
+    expect(decl(item, 'border'), '卡片边框退役').toBe('0')
+    expect(decl(item, 'border-bottom'), '细线分隔保留').toBe('1px solid var(--jy-border)')
+    expect(decl(item, 'background')).toBe('transparent')
+    expect(decl(item, 'box-shadow')).toBe('none')
+  })
+
+  it('compact 来源无框（非 999px 胶囊）、未读点方形', () => {
+    const source = newsRule('\.juya-feed-compact \.juya-feed-source')
+    expect(decl(source, 'border')).toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background')).toBe('none')
+    expect(decl(source, 'padding')).toBe('0')
+    const dot = newsRule('\.juya-feed-compact \.juya-feed-read-dot')
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+  })
+})
+
+describe('newsprint90s 订阅页 magazine 态守卫（#31：首条 3:2 / 26px）', () => {
+  // magazine 首条（.juya-feed-featured）是 .juya-feed 的直接子元素、不经 .juya-feed-grid，
+  // 故 #30 的网格规则接不到它；其余条目复用网格，继续由 #30 守卫。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('首条封面 3:2 直角（基础层 21:9 必须被覆盖）', () => {
+    const cover = newsRule('\.juya-feed-featured \.juya-feed-cover')
+    expect(cover, 'magazine 首条图版规则应存在').toBeTruthy()
+    expect(decl(cover, 'aspect-ratio'), '首条封面 3:2').toBe('3 / 2')
+    expect(decl(cover, 'border-radius'), '首条封面直角').toBe('0')
+  })
+
+  it('首条标题 26px 黑体优先', () => {
+    const title = newsRule('\.juya-feed-featured \.juya-feed-title')
+    expect(title, 'magazine 首条标题规则应存在').toBeTruthy()
+    expect(decl(title, 'font-size'), '首条标题 26px').toBe('26px')
+    expect(decl(title, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+  })
+
+  it('首条来源无框（非胶囊）、未读点方形，与 #30 一致', () => {
+    const source = newsRule('\.juya-feed-featured \.juya-feed-source')
+    expect(source, '首条来源覆盖规则应存在').toBeTruthy()
+    expect(decl(source, 'border')).toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background')).toBe('none')
+    expect(decl(source, 'padding')).toBe('0')
+    const dot = newsRule('\.juya-feed-featured \.juya-feed-read-dot')
+    expect(dot, '首条未读点覆盖规则应存在').toBeTruthy()
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+  })
+})
+
+describe('newsprint90s 空态守卫（#31：上下 1px 细线的通栏公告框）', () => {
+  // 空态文案由共享骨架 FeedShell 提供（不拆分、不改共享层），本风格只负责框线与排印。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('公告框上下各 1px 细线、居中黑体', () => {
+    const empty = newsRule('\.juya-feed-empty')
+    expect(empty, '空态公告规则应存在').toBeTruthy()
+    expect(decl(empty, 'border-top'), '上沿细线').toBe('1px solid var(--jy-border)')
+    expect(decl(empty, 'border-bottom'), '下沿细线').toBe('1px solid var(--jy-border)')
+    expect(decl(empty, 'text-align'), '居中公告').toBe('center')
+    expect(decl(empty, 'font-family'), '公告文案黑体').toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+  })
+
+  it('公告框在 grid 预设下通栏，不被挤进第一列', () => {
+    const empty = newsRule('\.juya-feed-empty')
+    expect(decl(empty, 'grid-column'), '公告框须横跨所有列').toBe('1 / -1')
+  })
+})

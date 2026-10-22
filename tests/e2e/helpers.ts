@@ -107,6 +107,7 @@ export type Scenario =
   | 'broken'
   | 'other'
   | 'dark'
+  | 'synthwaveLight'
   | 'pop'
   | 'newsprint'
   | 'y2k'
@@ -155,6 +156,10 @@ export function makeStubScript(scenario: Scenario): string {
   } else if (scenario === 'dark') {
     settings.themeMode = 'dark'
     settings.juyaDarkStyleId = 'synthwave'
+  } else if (scenario === 'synthwaveLight') {
+    // #41 亮侧：同一母题的日间版（洋红橙），主题亮 + 亮侧风格 synthwave
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'synthwave'
   } else if (scenario === 'pop') {
     settings.juyaLightStyleId = 'pop'
   } else if (scenario === 'newsprint') {

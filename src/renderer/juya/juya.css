@@ -1705,24 +1705,32 @@
 }
 
 /* ---- 蒸汽梦核式 ---- */
+/* 亮侧（#41）：同一母题的日间版 —— 洋红橙高饱和，卡片同为 0.62 毛玻璃，
+   不再是与应用其它页面无异的低饱和淡紫。场景层会覆盖 --jy-bg，该值只是无场景时的兜底。 */
 [data-juya-variant='synthwave-light'] {
-  --jy-bg: #f3ecff;
-  --jy-card: rgba(255, 255, 255, 0.8);
-  --jy-border: rgba(124, 77, 255, 0.35);
-  --jy-heading: #342a58;
-  --jy-text: #463e60;
-  --jy-muted: #75689c;
-  --jy-accent: #6d4de0;
+  --jy-bg: #ffe6cc;
+  --jy-card: rgba(255, 255, 255, 0.62);
+  --jy-border: rgba(224, 0, 110, 0.30);
+  --jy-heading: #4a0736;
+  --jy-text: #3d0a2c;
+  /* 次要文字（#41）：0.62 白卡叠日间天空顶 #ffd6e8 的合成底 #ffeff6 上实算 6.24:1；
+     叠天空最深段 #ffb27a 的合成底 #ffe2cc 上 5.60:1 —— 两侧都过 AA（守卫实算，改色即撞断言）。 */
+  --jy-muted: #8c3f6a;
+  --jy-accent: #e0006e;
   --jy-on-accent: #ffffff;
-  --jy-link: #5737c2;
-  --jy-lead-bg: rgba(124, 77, 255, 0.08);
+  --jy-link: #b0005a;
+  --jy-lead-bg: rgba(224, 0, 110, 0.12);
   --jy-focus: #7c4dff;
   --jy-radius: 16px;
-  /* synthwave pastel 场景 token（太阳/网格，.juya-scene 层消费） */
-  --jy-scene-sun-1: #ffd9ec;
-  --jy-scene-sun-2: #b78cff;
-  --jy-scene-grid-line: rgba(143, 99, 255, 0.22);
-  --jy-scene-horizon: rgba(183, 140, 255, 0.5);
+  /* 字体（#37 / #41）：与暗侧同值，亮侧不再退到兜底栈 */
+  --jy-font-heading: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --jy-font-masthead: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
+  /* synthwave 场景 token（日间版）：日轮 #fff04d→#ff2d95，网格线与暗侧同一品红但更淡（.35 vs .55），
+     地平线沿用暖橙 —— 亮侧靠天空与卡面提亮，不靠换色相 */
+  --jy-scene-sun-1: #fff04d;
+  --jy-scene-sun-2: #ff2d95;
+  --jy-scene-grid-line: rgba(255, 45, 149, 0.35);
+  --jy-scene-horizon: rgba(255, 120, 60, 0.85);
 }
 
 [data-juya-variant='synthwave-dark'] {
@@ -1767,6 +1775,23 @@
   animation-play-state: paused;
 }
 
+/* 日间天空 + 扫描线（#41）：与暗侧同一母题 —— 粉紫高空 → 洋红 → 暖橙 → 米色落地。
+   扫描线比暗侧更淡（.06 vs .10）：白天不需要那么强的 CRT 压暗，否则会把字压灰。
+   其余管线不变：首个背景层绘制在最上层（扫描线压在渐变之上），落日与网格是 DOM 子层，画在其上。 */
+[data-juya-variant='synthwave-light'].jysynth .juya-scene {
+  background-image:
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.06) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #ffd6e8 0%, #ffc4d8 45%, #ffb27a 82%, #ffe6cc 100%);
+}
+
+/* 窗口不可见时暂停（#41）：暗侧已进清单，亮侧此前漏在清单外（白天后台仍重绘网格） */
+[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-sun {
+  animation-play-state: paused;
+}
+[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp {
+  animation-play-state: paused;
+}
+
 /* 订阅页场景（#40）：订阅页滚动口顶端是 80px（标题栏 + 标签栏），阅读页内容根顶端是 130px；
    共享网格的 bottom: 136px 是按阅读页调校的，订阅页直接沿用会让地面停在可视区下缘之上 56px，
    露出夜空渐变 88% 处的橙色地平带（地面像悬空）。仅在订阅页骨架内（:has(> .juya-feed)）补回这 48px：
@@ -1800,7 +1825,8 @@
    描边色取 --jy-heading #e6dcff 的 45% alpha，而非 accent 或纯白：渐变末端 accent #8f63ff
    在暗紫卡面上明度最低、边缘最糊，浅色低透描边只在字形外沿勾一圈轮廓，不夺渐变中段层次；
    纯白 1px 会在 28px 粗体上糊成第二层字形，accent 描边则与渐变末端同色，等于没勾边。
-   字族用带兜底的 var()：字体 token 目前只落在暗侧变体块（#37 票面范围），亮侧退到兜底栈 */
+   字族用带兜底的 var()：字体 token 亮/暗两侧变体块都已定义（#37 暗侧、#41 亮侧），
+   兜底栈只为防 token 被误删时刊头掉回通用字体 */
 .jysynth .juya-masthead h1 {
   font-family: var(--jy-font-masthead, 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif);
   font-size: 28px;
@@ -3784,8 +3810,9 @@
 }
 
 .view-scroll:has([data-juya-variant='synthwave-light'])::-webkit-scrollbar-thumb {
-  /* synthwave-light 梦核紫 accent #6d4de0，对淡紫底 #f3ecff 对比 4.82 */
-  background: #6d4de0;
+  /* synthwave-light 洋红 accent #e0006e（#41 起与 --jy-accent 同值），
+     对最亮日间底 #ffe6cc 对比 3.97、对天空顶 #ffd6e8 对比 3.65 —— 非文本件 ≥3 */
+  background: #e0006e;
 }
 
 .view-scroll:has([data-juya-variant='synthwave-dark'])::-webkit-scrollbar-thumb {

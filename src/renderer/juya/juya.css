@@ -1248,9 +1248,10 @@
   --jy-lead-bg: rgba(139, 26, 26, 0.07);
   --jy-focus: #8b1a1a;
   --jy-radius: 0px;
-  /* #28 字面：正文宋体优先（印刷正文），标题与栏目条黑体优先（报眼题字） */
+  /* #28 字面：正文宋体优先（印刷正文），标题与栏目条黑体优先（报眼题字），刊头楷体优先（#32 收进 token） */
   --jy-font-heading: SimHei, 'Noto Sans SC', sans-serif;
   --jy-font-body: SimSun, 'Noto Serif SC', 'Songti SC', serif;
+  --jy-font-masthead: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
 }
 
 /* 灯下读报的暖暗纸（#27）：纹理层为极轻黑角 + 两道暖纸纤维 + 极淡白噪点。 */
@@ -1283,6 +1284,7 @@
   --jy-radius: 0px;
   --jy-font-heading: SimHei, 'Noto Sans SC', sans-serif;
   --jy-font-body: SimSun, 'Noto Serif SC', 'Songti SC', serif;
+  --jy-font-masthead: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
 }
 
 /* 刊头（三栏报头）+ 栏目栏 + 正文两栏（宽窗口）。
@@ -1300,7 +1302,7 @@
   align-items: end;
   column-gap: 12px;
   text-align: center;
-  font-family: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
+  font-family: var(--jy-font-masthead);
   border-top: 1px solid var(--jy-border);
   border-bottom: 4px double var(--jy-border);
   padding: 10px 0 12px;
@@ -1308,7 +1310,7 @@
 }
 
 .jynews .juya-masthead h1 {
-  font-family: 'KaiTi', 'STKaiti', 'Kaiti SC', 'Noto Serif SC', serif;
+  font-family: var(--jy-font-masthead);
   font-size: 38px;
   letter-spacing: 6px;
   line-height: 1.15;
@@ -1369,7 +1371,7 @@
   padding: 1px 10px;
   background: var(--jy-heading);
   color: var(--jy-bg);
-  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-family: var(--jy-font-heading);
   font-size: 12px;
   letter-spacing: 4px;
 }
@@ -1390,7 +1392,7 @@
   color: var(--jy-bg);
   display: inline-block;
   padding: 3px 14px;
-  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-family: var(--jy-font-heading);
   font-size: 16px;
   letter-spacing: 4px;
 }
@@ -1436,7 +1438,7 @@
   margin: 14px 0 6px;
   padding-top: 8px;
   border-top: 1px solid var(--jy-border);
-  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-family: var(--jy-font-heading);
   letter-spacing: 1px;
 }
 
@@ -1502,9 +1504,9 @@
   min-width: 0;
 }
 
-/* 标题 18px 黑体优先（SimHei，与栏目条同一套字体语言），压过摘要与元信息成为第一视觉。 */
+/* 标题 18px 黑体优先（token，与栏目条同一套字体语言），压过摘要与元信息成为第一视觉。 */
 .jynews .juya-feed-grid .juya-feed-title {
-  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-family: var(--jy-font-heading);
   font-size: 18px;
   line-height: 1.35;
   letter-spacing: 0.5px;
@@ -1618,9 +1620,9 @@
   gap: 6px;
 }
 
-/* 头版主标题 26px 黑体优先（基础层 20px）。 */
+/* 头版主标题 26px 黑体优先（token，基础层 20px）。 */
 .jynews .juya-feed-featured .juya-feed-title {
-  font-family: SimHei, 'Noto Sans SC', sans-serif;
+  font-family: var(--jy-font-heading);
   font-size: 26px;
   line-height: 1.3;
   letter-spacing: 0.5px;

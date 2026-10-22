@@ -4231,19 +4231,30 @@ describe('newsprint90s 条目版式守卫（#28：字体栈 / 方角徽章 / 2em
   const newsRule = (rest: string): string =>
     css.match(new RegExp(`(?:^|\\n)\\.jynews ${rest} \\{[^}]*\\}`))?.[0] ?? ''
 
-  it('字体栈：正文宋体优先（SimSun），条目标题与栏目条黑体优先（SimHei）', () => {
+  it('字体 token：正文宋体优先（SimSun），标题黑体优先（SimHei），刊头楷体优先（KaiTi）', () => {
     for (const variant of ['newsprint90s-light', 'newsprint90s-dark']) {
       const block = variantBlock(variant)
-      expect(decl(block, '--jy-font-body'), `${variant} 正文宋体优先`).toMatch(
-        /^SimSun,\s*'Noto Serif SC',\s*'Songti SC',\s*serif$/
-      )
-      expect(decl(block, '--jy-font-heading'), `${variant} 标题黑体优先`).toMatch(
-        /^SimHei,\s*'Noto Sans SC',\s*sans-serif$/
+      expect(decl(block, '--jy-font-body'), `${variant} 正文宋体优先`).toContain('SimSun')
+      expect(decl(block, '--jy-font-heading'), `${variant} 标题黑体优先`).toContain('SimHei')
+      expect(decl(block, '--jy-font-masthead'), `${variant} 刊头楷体优先`).toContain('KaiTi')
+    }
+    // 关键规则消费 token，而不是各自复制字面字体栈（#32 收敛）
+    expect(decl(newsRule('\\.juya-masthead'), 'font-family'), '刊头应使用刊头字体 token').toBe(
+      'var(--jy-font-masthead)'
+    )
+    expect(decl(newsRule('\\.juya-masthead h1'), 'font-family'), '期号标题应使用刊头字体 token').toBe(
+      'var(--jy-font-masthead)'
+    )
+    for (const [rest, label] of [
+      ['\\.juya-section > h2', '栏目条'],
+      ['\\.juya-links-label', '相关链接小标'],
+      ['\\.juya-feed-grid \\.juya-feed-title', '订阅页网格标题'],
+      ['\\.juya-feed-featured \\.juya-feed-title', '订阅页首条标题']
+    ] as const) {
+      expect(decl(newsRule(rest), 'font-family'), `${label}应使用标题字体 token`).toBe(
+        'var(--jy-font-heading)'
       )
     }
-    // 栏目条自身显式挂黑体栈（不只依赖 token，标题与栏目条同一条字体语言）
-    const sectionH2 = newsRule('\\.juya-section > h2')
-    expect(sectionH2, '栏目条应显式声明黑体栈').toMatch(/font-family:\s*SimHei,\s*'Noto Sans SC',\s*sans-serif/)
   })
 
   it('序号徽章方角：标题色底、纸色字，且 newsprint 段不再出现 999px 胶囊', () => {
@@ -4319,10 +4330,10 @@ describe('newsprint90s 框线导读守卫（#29：真实导读小标 / 概览上
     expect(decl(box, 'border-bottom'), '下框线').toBe('1px solid var(--jy-border)')
   })
 
-  it('「导读」小标与栏目条同字体（SimHei 优先），并为真实块级元素', () => {
+  it('「导读」小标与栏目条同字体（标题 token），并为真实块级元素', () => {
     const label = overviewRule('-label')
     expect(label, '导读小标规则应存在').toBeTruthy()
-    expect(decl(label, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+    expect(decl(label, 'font-family')).toBe('var(--jy-font-heading)')
     expect(decl(label, 'display'), '小标需自成一行且可被定位').toBe('inline-block')
   })
 
@@ -4368,11 +4379,11 @@ describe('newsprint90s 订阅页头版守卫（#30：160×4:3 图版 / 18px 黑�
     expect(decl(cover, 'flex'), '图版不得被正文挤压').toBe('none')
   })
 
-  it('期号标题 18px + 黑体优先（SimHei），摘要 13px', () => {
+  it('期号标题 18px + 标题字体 token，摘要 13px', () => {
     const title = newsRule('\.juya-feed-grid \.juya-feed-title')
     expect(title, '标题规则应存在').toBeTruthy()
     expect(decl(title, 'font-size'), '标题第一视觉 18px').toBe('18px')
-    expect(decl(title, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+    expect(decl(title, 'font-family')).toBe('var(--jy-font-heading)')
     const summary = newsRule('\.juya-feed-grid \.juya-feed-summary')
     expect(decl(summary, 'font-size')).toBe('13px')
   })
@@ -4469,11 +4480,11 @@ describe('newsprint90s 订阅页 magazine 态守卫（#31：首条 3:2 / 26px）
     expect(decl(cover, 'border-radius'), '首条封面直角').toBe('0')
   })
 
-  it('首条标题 26px 黑体优先', () => {
+  it('首条标题 26px + 标题字体 token', () => {
     const title = newsRule('\.juya-feed-featured \.juya-feed-title')
     expect(title, 'magazine 首条标题规则应存在').toBeTruthy()
     expect(decl(title, 'font-size'), '首条标题 26px').toBe('26px')
-    expect(decl(title, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+    expect(decl(title, 'font-family')).toBe('var(--jy-font-heading)')
   })
 
   it('首条来源无框（非胶囊）、未读点方形，与 #30 一致', () => {

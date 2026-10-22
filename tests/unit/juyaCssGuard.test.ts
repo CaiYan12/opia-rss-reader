@@ -4288,6 +4288,69 @@ describe('newsprint90s 条目版式守卫（#28：字体栈 / 方角徽章 / 2em
   })
 })
 
+describe('newsprint90s 框线导读守卫（#29：真实导读小标 / 概览上下框线 / 单列 / 不新增色值）', () => {
+  // 只锁 #29 票面：导读小标必须是模板里的真实 DOM（伪元素 content 不进可访问性树，
+  // 也无法被定位/复制）、概览块上下 1px 框线、单列（沿用基类 flex column），
+  // 且框线与字色全部走现有 token（本段不得出现字面颜色）。
+  const newsSection = (): string =>
+    css.slice(css.indexOf('90 年代报刊式'), css.indexOf('蒸汽梦核式'))
+  /** 行首锚定的 `.jynews-overview… { … }` 规则块 */
+  const overviewRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\\.jynews-overview${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  it('模板输出真实「导读」小标与包裹层，且继续复用共享 OverviewItems', () => {
+    const tsx = readFileSync(
+      join(process.cwd(), 'src/renderer/juya/templates/newsprint90s.tsx'),
+      'utf-8'
+    )
+    expect(tsx, '概览包裹层必须存在').toContain('jynews-overview')
+    expect(tsx, '「导读」必须是模板产出的真实元素').toMatch(
+      /<p className="jynews-overview-label">导读<\/p>/
+    )
+    expect(tsx, '共享 OverviewItems 未被替换').toMatch(
+      /<OverviewItems\s+overview=\{issue\.overview\}\s+onOpenLink=\{onOpenLink\}\s*\/>/
+    )
+  })
+
+  it('概览块上下各 1px 框线，颜色走 --jy-border token', () => {
+    const box = overviewRule('')
+    expect(box, '概览框线块规则应存在').toBeTruthy()
+    expect(decl(box, 'border-top'), '上框线').toBe('1px solid var(--jy-border)')
+    expect(decl(box, 'border-bottom'), '下框线').toBe('1px solid var(--jy-border)')
+  })
+
+  it('「导读」小标与栏目条同字体（SimHei 优先），并为真实块级元素', () => {
+    const label = overviewRule('-label')
+    expect(label, '导读小标规则应存在').toBeTruthy()
+    expect(decl(label, 'font-family')).toMatch(/^SimHei,\s*'Noto Sans SC',\s*sans-serif$/)
+    expect(decl(label, 'display'), '小标需自成一行且可被定位').toBe('inline-block')
+  })
+
+  it('概览保持单列：基类 flex column 不变，newsprint 段不改成多列/网格', () => {
+    const base = css.match(/(?:^|\n)\.juya-overview \{[^}]*\}/)?.[0] ?? ''
+    expect(decl(base, 'display')).toBe('flex')
+    expect(decl(base, 'flex-direction')).toBe('column')
+    const code = newsSection().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(code, 'newsprint 段不得把概览改成多列或网格').not.toMatch(
+      /\.jynews-overview[^{]*\{[^}]*(?:column-count|grid-template-columns)/
+    )
+  })
+
+  it('「导读」不得由伪元素生成，且概览框线/小标不新增字面颜色', () => {
+    const code = newsSection().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(code, '不得用 ::before/::after 生成导读小标').not.toMatch(
+      /\.jynews-overview(?:-label)?::(?:before|after)/
+    )
+    expect(code, '不得用 content 写死「导读」').not.toMatch(/content:\s*['"]导读['"]/)
+    for (const rest of ['', '-label']) {
+      const rule = overviewRule(rest)
+      expect(rule, `概览规则 ${rest || '(块)'} 不得出现字面颜色`).not.toMatch(
+        /#[0-9a-fA-F]{3,8}|rgba?\(/
+      )
+    }
+  })
+})
+
 describe('newsprint90s 订阅页头版守卫（#30：160×4:3 图版 / 18px 黑体 / 去卡片 / 无胶囊 / 无上浮）', () => {
   // 只锁 #30 票面的 card/grid 两态：图版尺寸、标题字号与字体栈、去卡片化与细线分隔、
   // hover 无上浮、来源无框、未读点方形、窄窗回落。compact / magazine / 空态归 #31，不在本组。

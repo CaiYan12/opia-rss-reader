@@ -247,6 +247,125 @@ test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋�
   await expect(link).toHaveCSS('text-decoration-line', 'underline')
 })
 
+test('90 年代报刊式框线导读（#29）：真实「导读」小标、上下框线、单列、链接可点、焦点环可见', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const box = root.locator('.jynews-overview')
+  await expect(box).toBeVisible()
+
+  // 「导读」必须是真实 DOM 元素 + 真实文本节点（伪元素 content 不产生可定位元素，也不可复制/选中）
+  const label = box.locator('.jynews-overview-label')
+  await expect(label).toBeVisible()
+  await expect(label).toHaveText('导读')
+  const labelFacts = await label.evaluate((el) => ({
+    hasTextNode: [...el.childNodes].some(
+      (n) => n.nodeType === Node.TEXT_NODE && !!n.textContent?.trim()
+    ),
+    before: getComputedStyle(el, '::before').content,
+    after: getComputedStyle(el, '::after').content
+  }))
+  expect(labelFacts.hasTextNode, '「导读」必须是真实文本节点').toBe(true)
+  expect(labelFacts.before, '导读不得由 ::before 伪元素生成').not.toContain('导读')
+  expect(labelFacts.after, '导读不得由 ::after 伪元素生成').not.toContain('导读')
+  // 与栏目条同字体（SimHei 优先）
+  await expect(label).toHaveCSS('font-family', /SimHei/)
+
+  // 概览上下有框线：1px solid，颜色走现有纸面 token（亮侧 --jy-border #2f2a20）
+  await expect(box).toHaveCSS('border-top-width', '1px')
+  await expect(box).toHaveCSS('border-top-style', 'solid')
+  await expect(box).toHaveCSS('border-bottom-width', '1px')
+  await expect(box).toHaveCSS('border-bottom-style', 'solid')
+  await expect(box).toHaveCSS('border-top-color', 'rgb(47, 42, 32)')
+  await expect(box).toHaveCSS('border-bottom-color', 'rgb(47, 42, 32)')
+
+  // 几何：上框线在「导读」之上、下框线在概览列表之下（不是只有列表自带的某一边）
+  const geo = await box.evaluate((el) => {
+    const b = el.getBoundingClientRect()
+    const l = el.querySelector('.jynews-overview-label')!.getBoundingClientRect()
+    const ul = el.querySelector('.juya-overview')!.getBoundingClientRect()
+    return {
+      boxTop: b.top,
+      boxBottom: b.bottom,
+      labelTop: l.top,
+      labelBottom: l.bottom,
+      ulTop: ul.top,
+      ulBottom: ul.bottom
+    }
+  })
+  expect(geo.labelTop, '上框线应在「导读」之上').toBeGreaterThan(geo.boxTop)
+  expect(geo.labelBottom, '「导读」应在概览列表之上').toBeLessThanOrEqual(geo.ulTop + 1)
+  expect(geo.ulBottom, '下框线应在概览列表之下').toBeLessThan(geo.boxBottom)
+
+  // 单列：第二项在第一项下方且左缘对齐
+  const rows = await box.evaluate((el) =>
+    [...el.querySelectorAll('.juya-overview li')].slice(0, 2).map((n) => {
+      const r = n.getBoundingClientRect()
+      return { left: r.left, top: r.top, bottom: r.bottom }
+    })
+  )
+  expect(rows.length, '概览至少两项').toBeGreaterThanOrEqual(2)
+  expect(Math.abs(rows[1].left - rows[0].left), '概览为单列，左缘对齐').toBeLessThanOrEqual(1)
+  expect(rows[1].top, '第二项应在第一项下方').toBeGreaterThanOrEqual(rows[0].bottom - 1)
+
+  // 焦点环：键盘 Tab 到概览链接，2px solid 主题焦点色（行为不变）
+  const link = box.locator('.juya-overview a').first()
+  await expect(link).toBeVisible()
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  let reached = false
+  for (let i = 0; i < 60 && !reached; i++) {
+    await page.keyboard.press('Tab')
+    reached = await link.evaluate((el) => el === document.activeElement).catch(() => false)
+  }
+  expect(reached, '键盘 Tab 应能到达概览链接').toBe(true)
+  const focus = await link.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      focusVisible: (el as HTMLElement).matches(':focus-visible'),
+      outlineStyle: cs.outlineStyle,
+      outlineWidth: cs.outlineWidth
+    }
+  })
+  expect(focus.focusVisible, '键盘 Tab ⇒ :focus-visible 命中').toBe(true)
+  expect(focus.outlineStyle, '焦点环必须显式 solid').toBe('solid')
+  expect(focus.outlineWidth, '焦点环宽度 2px').toBe('2px')
+  // index.css 的 outline-color 有 0.2s 过渡，轮询到过渡结束值（亮侧 --jy-focus #8b1a1a）
+  await expect(link).toHaveCSS('outline-color', 'rgb(139, 26, 26)')
+
+  // 点击行为不变：默认外链设置 system ⇒ 记录 openExternal，且不原地导航
+  const urlBefore = page.url()
+  await link.click()
+  const calls = await page.evaluate(() =>
+    window.__stubCalls.filter(([kind]) => kind === 'openExternal')
+  )
+  expect(calls).toEqual([['openExternal', 'https://example.com/news/1']])
+  expect(page.url(), '概览链接不得导致原地导航').toBe(urlBefore)
+})
+
+test('90 年代报刊式框线导读（#29）：560 宽度无横向溢出', async ({ page }) => {
+  await page.setViewportSize({ width: 560, height: 800 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root.locator('.jynews-overview')).toBeVisible()
+  await expect(root.locator('.jynews-overview-label')).toBeVisible()
+
+  // 滚动容器与橘鸦根都不产生横向滚动（scrollWidth ≤ clientWidth）
+  const overflow = await root.evaluate((el) => {
+    const scroller = el.closest('.view-scroll') as HTMLElement | null
+    const boxes = [el as HTMLElement, scroller].filter((n): n is HTMLElement => !!n)
+    return boxes.map((n) => ({ sw: n.scrollWidth, cw: n.clientWidth }))
+  })
+  for (const { sw, cw } of overflow) {
+    expect(sw, '横向溢出（scrollWidth 超出 clientWidth）').toBeLessThanOrEqual(cw + 1)
+  }
+})
+
 test('千禧网页式：结构类 jyy2k 挂载', async ({ page }) => {
   await loadApp(page, 'y2k')
   await openFirstArticle(page)

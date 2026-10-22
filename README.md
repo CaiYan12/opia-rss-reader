@@ -104,6 +104,21 @@ npm run test:e2e    # Playwright 渲染层端到端（先自动 build:dir，驱�
 npm run verify:nocturne  # 两个 nocturne 专用闸门（见下）
 ```
 
+### 本机 GPU 自检
+
+遇到窗口卡顿、重装 Electron 依赖后，或发行前核查本机运行时：
+
+```powershell
+npm run diagnose:gpu
+npm run diagnose:gpu -- --help
+```
+
+该命令启动独立、隐藏的 Electron 探针，检查实际活动显卡、硬件合成、栅格化和 GPU 初始化日志；Windows 额外只读查询 `electron.exe`、`libEGL.dll`、`libGLESv2.dll`、`d3dcompiler_47.dll` 的完整性标签。它自动为子进程清除 `ELECTRON_RUN_AS_NODE`，不加载阅读器配置，不自动修权限，不强制选择独显。
+
+报告保存在 `out/gpu-diagnostics/run-*/report.md` 和 `report.json`，同目录保留原始日志；每次创建新目录，既有报告不覆盖。退出码：`0` = PASS，`1` = 检出软件回退或 Low 标签，`2` = 信息不足、启动失败或超时。该本机检查独立于 `verify` / CI；不是显示 FPS、应用当前实例或发行包的验收。
+
+可用 `--electron <独立 Electron 运行时的 electron.exe>` 检查另一份运行时，`--output <目录>` 指定报告父目录，`--timeout <毫秒>` 设置 5000–60000ms 的探针预算（默认 15000ms，标签查询另有 15 秒上限）。`--electron` 不用于启动打包后的 Opia exe。Windows 只读标签查询使用进程级执行策略参数运行仓库内脚本，不改变系统执行策略；查询被更高层策略拦截时报告信息不足。排障背景见 [GPU 核查记录](docs/GPU-AUDIT-2026-10-22.md)。
+
 ### 橘鸦风格的额外闸门
 
 改动了 `src/renderer/juya/` 下的 CSS 就多两道闸（已含在 `npm run verify` 里）：

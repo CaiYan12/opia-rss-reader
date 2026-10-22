@@ -476,6 +476,29 @@ test('基层规则：相关链接标签为 12px 小标签，相关链接 hover �
   const link = root.locator('.juya-links a').first()
   await link.hover()
   await expect(link).toHaveCSS('text-decoration-line', 'underline')
+  // #38 未传图标开关的风格：文本箭头仍在（基础层 ::after），DOM 不变
+  expect(await link.evaluate((el) => getComputedStyle(el, '::after').content)).toContain('↗')
+  await expect(link.locator('svg')).toHaveCount(0)
+})
+
+test('蒸汽梦核式相关链接（#38）：外链箭头为 12px SVG 图标，基础层文本 ↗ 关闭', async ({ page }) => {
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root.jysynth')
+  const link = root.locator('.juya-links a').first()
+  await expect(link).toBeVisible()
+  const icon = link.locator('svg')
+  await expect(icon).toHaveCount(1)
+  await expect(icon).toHaveAttribute('aria-hidden', 'true')
+  const size = await icon.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    return { w: Math.round(rect.width), h: Math.round(rect.height) }
+  })
+  expect(size).toEqual({ w: 12, h: 12 })
+  // 文本箭头与 SVG 不得并存：::after 置空，链接文本里也没有 ↗ 字符
+  expect(await link.evaluate((el) => getComputedStyle(el, '::after').content)).toBe('none')
+  expect(await link.evaluate((el) => (el.textContent ?? '').includes('↗'))).toBe(false)
 })
 
 test('序号徽章统一宽度：与位数无关（一位数与两位数同宽，全风格 base 约定）', async ({ page }) => {

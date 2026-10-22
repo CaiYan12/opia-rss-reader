@@ -124,6 +124,52 @@ test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场
   await expect(noctScene.locator('.juya-scene-nebula')).toHaveCount(1)
 })
 
+test('订阅页图标（#38）：蒸汽梦核式日期与来源前各有 12px 图标，folio 无图标节点', async ({ page }) => {
+  await loadApp(page, 'dark')
+  const tabs = activeTab(page)
+  const item = tabs.locator('.juya-feed-item').first()
+  await expect(item).toBeVisible()
+  const meta = item.locator('.juya-feed-meta')
+  // 未读点（.juya-feed-read-dot）是 span，不计入；日期 Calendar + 来源 Rss 各一枚
+  await expect(meta.locator('svg')).toHaveCount(2)
+  const icons = await meta.locator('svg').evaluateAll((els) =>
+    els.map((el) => {
+      const rect = el.getBoundingClientRect()
+      return {
+        w: Math.round(rect.width),
+        h: Math.round(rect.height),
+        hidden: el.getAttribute('aria-hidden')
+      }
+    })
+  )
+  expect(icons).toEqual([
+    { w: 12, h: 12, hidden: 'true' },
+    { w: 12, h: 12, hidden: 'true' }
+  ])
+  // 图标必须落在对应文字之前（日期前 / 来源前），而不是独立成组
+  const order = await meta.evaluate((el) => {
+    const date = el.querySelector('.juya-feed-date')
+    const source = el.querySelector('.juya-feed-source')
+    const first = (host: Element | null): string =>
+      host?.firstElementChild?.tagName.toLowerCase() ?? ''
+    return { date: first(date), source: first(source) }
+  })
+  expect(order).toEqual({ date: 'svg', source: 'svg' })
+
+  // 外链箭头是 SVG 图标，基础层的文本 ↗ 在 synthwave 内关闭
+  await item.click()
+  const link = activeTab(page).locator('.juya-links a').first()
+  await expect(link).toBeVisible()
+  await expect(link.locator('svg')).toHaveCount(1)
+  expect(await link.evaluate((el) => getComputedStyle(el, '::after').content)).toBe('none')
+
+  // 其它风格不传开关：folio 订阅页 DOM 与观感保持原样（无图标节点）
+  await loadApp(page, 'default')
+  const folioItem = activeTab(page).locator('.juya-feed-item').first()
+  await expect(folioItem).toBeVisible()
+  await expect(folioItem.locator('.juya-feed-meta svg')).toHaveCount(0)
+})
+
 test('橘鸦订阅页遵循「布局」预设 grid 的列数（gridColumns=4）', async ({ page }) => {
   await loadApp(page, 'grid4')
   const grid = activeTab(page).locator('.juya-feed-grid')

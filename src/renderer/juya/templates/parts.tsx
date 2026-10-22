@@ -1,4 +1,5 @@
 import { cloneElement, type CSSProperties } from 'react'
+import { Calendar, Rss } from 'lucide-react'
 import type { Article, LayoutConfig } from '../../../shared/types'
 import type { JuyaStyleVariantId } from '../juyaStyles'
 import type { JuyaEntry } from '../parseJuyaIssue'
@@ -168,19 +169,23 @@ export function EntrySplit({
   )
 }
 
-/** 默认期号卡片：多数风格的订阅页 renderItem 直接复用；个性化的风格在此基础上自写。 */
+/** 默认期号卡片：多数风格的订阅页 renderItem 直接复用；个性化的风格在此基础上自写。
+ *  metaIcons：日期前 Calendar、来源前 Rss（12px、装饰性故 aria-hidden），仅 synthwave 传。
+ *  不传时保持原 DOM（日期 span 无 class、无图标），其它七个风格观感不变。 */
 export function DefaultFeedItem({
   a,
   mode,
   gates,
   delay,
-  onOpen
+  onOpen,
+  metaIcons = false
 }: {
   a: Article
   mode: FeedItemMode
   gates: FeedGates
   delay: number
   onOpen: () => void
+  metaIcons?: boolean
 }): JSX.Element {
   const { history, sources } = useAppStore()
   const read = history[a.guid]?.read ?? false
@@ -200,14 +205,20 @@ export function DefaultFeedItem({
         <span className="juya-feed-meta">
           {!read && <span className="juya-feed-read-dot" aria-hidden />}
           {gates.pubDate && (
-            <span>
+            <span className={metaIcons ? 'juya-feed-date' : undefined}>
+              {metaIcons && <Calendar size={12} aria-hidden />}
               {new Date(a.pubDate).toLocaleString('zh-CN', {
                 dateStyle: 'medium',
                 timeStyle: 'short'
               })}
             </span>
           )}
-          {gates.source && sourceName && <span className="juya-feed-source">{sourceName}</span>}
+          {gates.source && sourceName && (
+            <span className="juya-feed-source">
+              {metaIcons && <Rss size={12} aria-hidden />}
+              {sourceName}
+            </span>
+          )}
         </span>
       </span>
     </button>

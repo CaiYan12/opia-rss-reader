@@ -1842,6 +1842,41 @@
   box-shadow: 0 0 22px rgba(124, 92, 255, 0.28);
 }
 
+/* ---- 图标：相关链接箭头与订阅页元信息（#38）----
+   链接箭头改由 lucide ArrowUpRight 承担，故在 synthwave 作用域内关掉基础层文本 ↗；
+   元信息图标 12px、与文字同色（lucide 走 currentColor）、间距 4px。 */
+[data-juya-variant='synthwave-light'].jysynth .juya-links a::after {
+  content: none;
+}
+[data-juya-variant='synthwave-dark'].jysynth .juya-links a::after {
+  content: none;
+}
+
+[data-juya-variant='synthwave-light'].jysynth .juya-links a.juya-link-icon svg,
+[data-juya-variant='synthwave-dark'].jysynth .juya-links a.juya-link-icon svg {
+  /* preflight 把 svg 置为 block；改回行内，图标才与链接文字同排 */
+  display: inline;
+  margin-left: 4px;
+  vertical-align: -1px;
+  color: inherit;
+}
+
+/* 日期与来源改为行内弹性容器，图标与文字基线对齐且恒为 4px 间距 */
+[data-juya-variant='synthwave-light'].jysynth .juya-feed-date,
+[data-juya-variant='synthwave-light'].jysynth .juya-feed-meta .juya-feed-source,
+[data-juya-variant='synthwave-dark'].jysynth .juya-feed-date,
+[data-juya-variant='synthwave-dark'].jysynth .juya-feed-meta .juya-feed-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-juya-variant='synthwave-light'].jysynth .juya-feed-meta svg,
+[data-juya-variant='synthwave-dark'].jysynth .juya-feed-meta svg {
+  color: inherit;
+  flex: none;
+}
+
 /* ==========================================================================
    场景固定层（.juya-scene）：synthwave 太阳/透视网格（synthwave）、星空/地平网格（y2k 暗）、
    尘埃微粒 dust / 静态渐层雾 nebula（共享层预置，2026-10-12 #1；nocturne-dark 已于 #2 接线）。

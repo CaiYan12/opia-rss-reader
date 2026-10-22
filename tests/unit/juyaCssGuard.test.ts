@@ -4686,3 +4686,36 @@ describe('synthwave 字体守卫（2026-10-22，#37）', () => {
     expect(decl(block, 'color'), '退回系统前景色').toBe('CanvasText')
   })
 })
+
+describe('synthwave 链接箭头守卫（2026-10-22，#38）', () => {
+  /** 全文件所有 `.juya-links a::after` 规则（选择器与块体成对）；选择器限单行（本仓库书写约定）。 */
+  const arrowRules = [...css.matchAll(/(?:^|\n)([^\n{}]*\.juya-links a::after[^\n{}]*)\{([^}]*)\}/g)].map((m) => ({
+    selector: m[1].trim(),
+    block: m[2]
+  }))
+
+  it('① 基础层文本箭头保留（未传图标的七个风格观感不变）', () => {
+    const base = arrowRules.find((r) => r.selector === '.juya-links a::after')
+    expect(base, '基础 ::after 箭头规则必须存在').toBeTruthy()
+    expect(decl(base!.block, 'content')).toContain('↗')
+  })
+
+  it('② synthwave 亮/暗双侧在作用域内关闭基础文本箭头，避免与 SVG 并存', () => {
+    for (const variant of ['synthwave-light', 'synthwave-dark']) {
+      const selector = `[data-juya-variant='${variant}'].jysynth .juya-links a::after`
+      const rule = arrowRules.find((r) => r.selector === selector)
+      expect(rule, `${variant} 必须关闭基础文本箭头`).toBeTruthy()
+      expect(decl(rule!.block, 'content')).toBe('none')
+    }
+  })
+
+  it('③ 关闭文本箭头的规则不外溢到其它变体', () => {
+    const nulled = arrowRules.filter((r) => /^(none|normal)$/.test(decl(r.block, 'content')))
+    for (const rule of nulled) {
+      expect(rule.selector, '置空箭头必须限定在 synthwave 作用域').toContain(
+        "[data-juya-variant='synthwave-"
+      )
+    }
+    expect(nulled.length, '亮暗两侧各一条').toBe(2)
+  })
+})

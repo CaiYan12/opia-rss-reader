@@ -26,7 +26,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
                 {entry.lead && <Lead lead={entry.lead} />}
                 <Paragraphs paragraphs={entry.paragraphs} />
                 {entry.images.length > 0 && <ImageGrid images={entry.images} mode="hero" />}
-                <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
+                <LinksBlock links={entry.links} onOpenLink={onOpenLink} icon />
               </article>
             ))}
           </section>
@@ -45,7 +45,14 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
       variantClass={VARIANT_CLASS}
       layout={layout}
       renderItem={(a, _i, mode, gates, delay) => (
-        <DefaultFeedItem a={a} mode={mode} gates={gates} delay={delay} onOpen={() => void openArticle(a)} />
+        <DefaultFeedItem
+          a={a}
+          mode={mode}
+          gates={gates}
+          delay={delay}
+          metaIcons
+          onOpen={() => void openArticle(a)}
+        />
       )}
     />
   )

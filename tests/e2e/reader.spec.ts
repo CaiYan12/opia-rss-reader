@@ -232,6 +232,58 @@ test('蒸汽梦核亮侧（#41）：日间版天空挂载、网格底边在视�
   )
 })
 
+test('蒸汽梦核式（#44）：网格纹理层改用合成层位移，父层不再 animate 背景', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'dark')
+  await openFirstArticle(page)
+
+  const plane = activeTab(page).locator('.juya-scene-grid.juya-scene-grid-persp')
+  await expect(plane).toBeVisible()
+
+  // 静态守卫只读 CSS 文本；这里读的是真实 computed style —— 确认动画真的挂在纹理层伪元素上
+  const read = await plane.evaluate((el) => {
+    const parent = getComputedStyle(el)
+    const tex = getComputedStyle(el, '::after')
+    return {
+      parentAnimation: parent.animationName,
+      parentWillChange: parent.willChange,
+      textureAnimation: tex.animationName,
+      textureDuration: tex.animationDuration,
+      textureWillChange: tex.willChange,
+      textureTop: tex.top,
+      textureHeight: tex.height,
+      parentHeight: parent.height,
+      textureTransform: tex.transform
+    }
+  })
+  expect(read.parentAnimation, '父层不再有动画').toBe('none')
+  expect(read.parentWillChange, '父层不再 will-change background-position').not.toContain(
+    'background-position'
+  )
+  expect(read.textureAnimation, '动画落在纹理层').toContain('jy-grid-scroll')
+  expect(read.textureDuration).toBe('3.2s')
+  expect(read.textureWillChange).toBe('transform')
+  expect(read.textureTop, '纹理层上移一个周期').toBe('-56px')
+  expect(parseFloat(read.textureHeight), '纹理层高度多出一个周期').toBe(
+    parseFloat(read.parentHeight) + 56
+  )
+
+  /** computed transform → translateY（matrix 第 6 位 / matrix3d 第 14 位） */
+  const translateY = (value: string): number => {
+    const m = value.match(/matrix(3d)?\(([^)]+)\)/)
+    if (!m) return Number.NaN
+    const nums = (m[2] ?? '').split(',').map(Number)
+    return m[1] ? (nums[13] as number) : (nums[5] as number)
+  }
+
+  const y0 = translateY(read.textureTransform)
+  await page.waitForTimeout(500)
+  const y1 = translateY(await plane.evaluate((el) => getComputedStyle(el, '::after').transform))
+  expect(Number.isFinite(y0) && Number.isFinite(y1), '纹理层应带 translateY 位移').toBe(true)
+  expect(y1, '两次采样之间 transform 必须变化（动画真的在跑）').not.toBe(y0)
+  expect(Math.abs(y1 - y0), '3.2s / 56px ⇒ 500ms 约 8.75px').toBeGreaterThan(1)
+})
+
 test('波普式：结构类 jypop 挂载', async ({ page }) => {
   await loadApp(page, 'pop')
   await openFirstArticle(page)

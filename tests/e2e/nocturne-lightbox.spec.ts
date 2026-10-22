@@ -120,7 +120,13 @@ test('prefers-reduced-motion：放大视图无开合动画（对照：正常态�
   await expect(lightbox(page)).toBeVisible()
   const normal = await readMotion()
   expect(normal.panel).toContain('jy-noct-lightbox')
-  expect(normal.animations).toBeGreaterThan(0)
+  // 160ms 入场动画在 CI 上可能在读取前就结束，getAnimations() 计数会假阴性；
+  // 用计算样式证明动画确实挂载且时长为非零（RM 档再单独断言计数为 0）。
+  const normalDuration = await lightbox(page).evaluate((el) => {
+    const img = el.querySelector('img')
+    return img ? getComputedStyle(img).animationDuration : 'missing'
+  })
+  expect(normalDuration).not.toBe('0s')
   await page.keyboard.press('Escape')
   await expect(lightbox(page)).toHaveCount(0)
 

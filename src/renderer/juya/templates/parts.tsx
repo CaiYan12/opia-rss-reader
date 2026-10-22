@@ -1,4 +1,4 @@
-import { cloneElement, type CSSProperties } from 'react'
+import { cloneElement, type CSSProperties, type ReactNode } from 'react'
 import { Calendar, Rss } from 'lucide-react'
 import type { Article, LayoutConfig } from '../../../shared/types'
 import type { JuyaStyleVariantId } from '../juyaStyles'
@@ -62,19 +62,23 @@ export function feedFieldGates(fields: LayoutConfig['fields'], mode: FeedItemMod
 
 /** 订阅页布局骨架（单一来源）：预设分发（grid/compact/magazine）、--jy-cols 分列、
  *  入场 stagger、空态文案都在这里；各风格只注入 renderItem 决定卡片内部排布。
- *  显示字段门控由本骨架按模式计算后传给 renderItem。 */
+ *  显示字段门控由本骨架按模式计算后传给 renderItem。
+ *  scene：可选场景节点，渲染在 .juya-root 内、.juya-feed 之前（z-index 0 固定层在内容之下）。
+ *  不传时输出与接线前逐字一致——其余七个风格的调用点不传。 */
 export function FeedShell({
   articles,
   variantId,
   variantClass,
   layout,
-  renderItem
+  renderItem,
+  scene
 }: {
   articles: Article[]
   variantId: JuyaStyleVariantId
   variantClass: string
   layout: LayoutConfig
   renderItem: (a: Article, i: number, mode: FeedItemMode, gates: FeedGates, delay: number) => JSX.Element
+  scene?: ReactNode
 }): JSX.Element {
   const { preset, gridColumns } = layout
   const empty = articles.length === 0
@@ -84,6 +88,7 @@ export function FeedShell({
   if (preset === 'magazine') {
     return (
       <div className={`juya-root ${variantClass}`} data-juya-variant={variantId}>
+        {scene}
         <div className="juya-feed">
           {empty && <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>}
           {articles[0] &&
@@ -106,6 +111,7 @@ export function FeedShell({
   if (preset === 'compact') {
     return (
       <div className={`juya-root ${variantClass}`} data-juya-variant={variantId}>
+        {scene}
         <div className="juya-feed juya-feed-compact">
           {empty ? (
             <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>
@@ -122,6 +128,7 @@ export function FeedShell({
   }
   return (
     <div className={`juya-root ${variantClass}`} data-juya-variant={variantId}>
+      {scene}
       <div className="juya-feed juya-feed-grid" style={gridProps}>
         {empty ? (
           <div className="juya-feed-empty">暂无内容，点击右上角刷新获取</div>

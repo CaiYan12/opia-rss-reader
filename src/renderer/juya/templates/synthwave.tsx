@@ -44,6 +44,7 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
       variantId={variantId}
       variantClass={VARIANT_CLASS}
       layout={layout}
+      scene={<Scene sun grid="persp" />}
       renderItem={(a, _i, mode, gates, delay) => (
         <DefaultFeedItem
           a={a}

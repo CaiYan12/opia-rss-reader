@@ -17,7 +17,11 @@ import { APP_HIDDEN_ATTR } from '../../src/renderer/visibilityPause'
 // 3) y2k 视觉审计守卫组（2026-10-11，建议①-⑦）：中文字体栈、段首缩进、条目标题层级、
 //    亮侧铬字对比度（WCAG 实算）、星光瓷砖降噪、地平网格入视口、装饰伪元素 AT 静默 + @supports 回退。
 
-const css = readFileSync(join(process.cwd(), 'src/renderer/juya/juya.css'), 'utf-8')
+// Windows CI 的 checkout 可能是 CRLF；守卫用 `\n` 字面量匹配规则原文，故先归一化。
+const css = readFileSync(join(process.cwd(), 'src/renderer/juya/juya.css'), 'utf-8').replace(
+  /\r\n/g,
+  '\n'
+)
 
 /** 块内某声明的完整右值（`prop: value;` → `value`；找不到返空串）。
  *  提升为模块级供 #5 阅读窗守卫组复用（此前各守卫组内各写一份） */

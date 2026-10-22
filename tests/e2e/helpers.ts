@@ -7,10 +7,58 @@ import { BUILTIN_THEMES } from '../../src/main/theme/builtinThemes'
 /** Playwright 渲染层验证辅助：注入 window.opia 桩（数据在内存，不落盘）。
  *  场景由 URL 参数决定初始数据；settingsSet 等调用会修改内存状态并记录到 __stubCalls。 */
 
-// 夹具目录按项目约定不入库（见 .gitignore）；缺失时降级为空内容，
-// 使本模块仍可被单测导入以校验桩与契约同形。
+// 夹具目录按项目约定不入库（见 .gitignore）；缺失时使用内联合成内容，
+// 使 CI checkout（没有 tests/fixtures/）也能跑出与本地一致的渲染结构。
+const SYNTHETIC_ISSUE_HTML = `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,PingFang SC,Hiragino Sans GB,sans-serif;font-size:16px;line-height:1.75;color:#18181b;max-width:760px;"><p><img src="https://assets.example.com/imagehub/20260828/placeholder_cover_aa01.png" alt=""></p>
+<h1>AI 早报 2026-08-28</h1>
+<p><strong>视频版</strong>：<a href="https://example.com/video/a" rel="noopener noreferrer">站点甲</a> ｜ <a href="https://example.com/video/b" rel="noopener noreferrer">站点乙</a></p>
+<h2>概览</h2>
+<h3>要闻</h3>
+<ul><li>示例要闻标题一 <a href="https://example.com/news/1" rel="noopener noreferrer">↗</a> <code>#1</code></li><li>示例要闻标题二 <a href="https://example.com/news/2" rel="noopener noreferrer">↗</a> <code>#2</code></li></ul>
+<h3>模型发布</h3>
+<ul><li>示例模型发布标题一 <a href="https://example.com/model/1" rel="noopener noreferrer">↗</a> <code>#3</code></li></ul>
+<h3>产品应用</h3>
+<ul><li>示例产品应用标题一 <a href="https://example.com/product/1" rel="noopener noreferrer">↗</a> <code>#4</code></li><li>示例产品应用标题二（无链接占位） <code>#5</code></li></ul>
+<hr>
+<h2>要闻</h2>
+<h3><a href="https://example.com/news/1" rel="noopener noreferrer">示例要闻标题一</a> <code>#1</code></h3>
+<blockquote>示例导语一：一句话摘要占位文本。</blockquote>
+<p>示例正文段一占位文本，描述该要闻的详细内容。</p>
+<p>示例正文段二占位文本，补充说明。</p>
+<p><img src="https://assets.example.com/imagehub/aidaily/aaaa/m001_1111.gif" alt=""></p>
+<p><img src="https://assets.example.com/imagehub/aidaily/aaaa/m002_2222.gif" alt=""></p>
+<p><img src="https://assets.example.com/imagehub/aidaily/aaaa/m003_3333.png" alt=""></p>
+<p>相关链接：</p>
+<ul><li><a href="https://example.com/news/1" rel="noopener noreferrer">https://example.com/news/1</a></li><li><a href="https://example.com/news/1-extra" rel="noopener noreferrer">https://example.com/news/1-extra</a></li></ul>
+<hr>
+<h3><a href="https://example.com/news/2" rel="noopener noreferrer">示例要闻标题二</a> <code>#2</code></h3>
+<blockquote>示例导语二：一句话摘要占位文本。</blockquote>
+<p>示例正文占位文本，该条目无配图，用于验证无图渲染。</p>
+<p>相关链接：</p>
+<ul><li><a href="https://example.com/news/2" rel="noopener noreferrer">https://example.com/news/2</a></li></ul>
+<hr>
+<h2>模型发布</h2>
+<h3><a href="https://example.com/model/1" rel="noopener noreferrer">示例模型发布标题一</a> <code>#3</code></h3>
+<blockquote>示例导语三占位文本。</blockquote>
+<p>示例正文占位文本。</p>
+<p><img src="https://assets.example.com/imagehub/aidaily/bbbb/m001_4444.png" alt=""></p>
+<p><img src="https://assets.example.com/imagehub/aidaily/bbbb/m002_5555.png" alt=""></p>
+<p>相关链接：</p>
+<ul><li><a href="https://example.com/model/1" rel="noopener noreferrer">https://example.com/model/1</a></li></ul>
+<hr>
+<h2>产品应用</h2>
+<h3><a href="https://example.com/product/1" rel="noopener noreferrer">示例产品应用标题一</a> <code>#4</code></h3>
+<blockquote>示例导语四占位文本。</blockquote>
+<p>示例正文占位文本。</p>
+<p>相关链接：</p>
+<ul><li><a href="https://example.com/product/1" rel="noopener noreferrer">https://example.com/product/1</a></li></ul>
+<hr>
+<h3>示例产品应用标题二（无链接无导语占位） <code>#5</code></h3>
+<p>示例正文占位文本：该条目缺少外链与导语，用于验证部分失配降级。</p>
+</div>`
+
 const FIXTURE_PATH = join(process.cwd(), 'tests/fixtures/juya-content.html')
-const fixtureHtml = existsSync(FIXTURE_PATH) ? readFileSync(FIXTURE_PATH, 'utf-8') : ''
+const fixtureHtml = existsSync(FIXTURE_PATH) ? readFileSync(FIXTURE_PATH, 'utf-8') : SYNTHETIC_ISSUE_HTML
 
 const SVG_COVER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='180'%3E%3Crect width='100%25' height='100%25' fill='%23c1502e'/%3E%3C/svg%3E"

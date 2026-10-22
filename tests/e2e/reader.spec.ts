@@ -282,6 +282,24 @@ test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋�
   const link = root.locator('.juya-links a').first()
   await expect(link).toHaveCSS('color', 'rgb(43, 38, 32)')
   await expect(link).toHaveCSS('text-decoration-line', 'underline')
+
+  // #32：概览链接与相关链接同一条常驻下划线（2px offset），标题链接保持静默的报刊例外
+  const overviewLink = root.locator('.juya-overview a').first()
+  await expect(overviewLink).toBeVisible()
+  await expect(overviewLink).toHaveCSS('text-decoration-line', 'underline')
+  await expect(overviewLink).toHaveCSS('text-underline-offset', '2px')
+  const titleLink = root.locator('.juya-entry h3 a').first()
+  await expect(titleLink).toHaveCSS('text-decoration-line', 'none')
+
+  // hover 一律转报刊红（亮侧 accent #8b1a1a）：概览 / 相关链接 / 条目标题
+  for (const [name, l] of [
+    ['概览', overviewLink],
+    ['相关链接', link],
+    ['条目标题', titleLink]
+  ] as const) {
+    await l.hover()
+    await expect(l, `${name}链接 hover 应转 accent 红`).toHaveCSS('color', 'rgb(139, 26, 26)')
+  }
 })
 
 test('90 年代报刊式框线导读（#29）：真实「导读」小标、上下框线、单列、链接可点、焦点环可见', async ({

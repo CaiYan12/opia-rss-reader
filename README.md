@@ -119,6 +119,29 @@ npm run diagnose:gpu -- --help
 
 可用 `--electron <独立 Electron 运行时的 electron.exe>` 检查另一份运行时，`--output <目录>` 指定报告父目录，`--timeout <毫秒>` 设置 5000–60000ms 的探针预算（默认 15000ms，标签查询另有 15 秒上限）。`--electron` 不用于启动打包后的 Opia exe。Windows 只读标签查询使用进程级执行策略参数运行仓库内脚本，不改变系统执行策略；查询被更高层策略拦截时报告信息不足。排障背景见 [GPU 核查记录](docs/GPU-AUDIT-2026-10-22.md)。
 
+### 本机性能探针（perf-probe）
+
+需要在不改正式样式的前提下，按固定口径复核阅读页滚动性能时：
+
+```powershell
+npm run build:dir
+npm run diagnose:gpu
+npm run perf:probe
+npm run perf:probe -- --mode light
+npm run perf:probe -- --mode trace
+npm run perf:probe -- --help
+```
+
+该命令启动真实 Electron 主进程 / preload / IPC / 渲染层，使用独立的临时 profile 和确定性的缓存合成文章（32 条目 / 34 图像），要求窗口 1099×721 CSS px、DPR 1.75、`uiZoom=1`，以 600 px/s 向下滚动 3000 CSS px 后输出报告；不满足这些条件即判不可比。轻量采样（只装 rAF 采样器）与完整 trace（Chromium compositor 帧事件）分开启动、分开报告，数字不可混档比较。
+
+固定条件逐项写入报告头：样本标题 / 条目数、视口、DPR、uiZoom、滚动距离 / 速度、GPU 型号、显示器刷新率、`document.visibilityState`、`[data-app-hidden]`。任何一项不满足、GPU 未 PASS 或无法证明 profile 隔离时，报告标注「样本不可比」，退出码 `1`。报告中的 GPU 状态来自本次应用内 `getGPUFeatureStatus()` / `getGPUInfo()`，不等于完整性标签结论；标签级排障仍以 `npm run diagnose:gpu` 为准。轻量采样输出 rAF 回调频率、回调间隔（中位 / P95 / 最差）；完整 trace 输出 compositor 呈现帧数、呈现间隔与 `DroppedFrame` 掉帧数。取不到的指标显式写「未测」，不填 0。
+
+退出码：`0` = 样本可比；`1` = 已产出报告但样本不可比；`2` = 启动 / 测量失败或参数非法。报告保存在 `out/perf-probe/run-*/`，每次新建目录，不覆盖既有报告。
+
+隔离：探针在 require 主进程前把 `userData` / `sessionData` 指向临时目录，并在运行前后对真实 profile（`%APPDATA%/opia-rss-reader` 等）做只读 stat 快照；报告记录临时 / 真实路径与前后变化。无法隔离时立即停止，不改用真实 profile。运行前请关闭正在使用的 Opia 实例；若真实 profile 在采样期间被别的进程写入，报告会判为无法证明隔离。实现上使用 Playwright `_electron` 启动真实应用，再从页面会话开 CDP `Tracing` / `Input.synthesizeScrollGesture`；调试端口由 Playwright 以临时端口分配，不占用 `4173` / `9222`，也不需要手写 websocket CDP 客户端。采样前会把被测窗口聚焦并移到 z 序最前（不设 always-on-top），避免遮挡节流污染样本。
+
+边界：**这不是显示 FPS 验收**。rAF 回调频率不是显示 FPS；trace 的呈现 / 掉帧是 Chromium compositor 口径，不等于显示器扫描输出。每次运行是一个单段样本，机器负载或温度会带来明显波动；比较时应看同一批次的多次复跑，不要用单次数字下结论。样本是合成固定文章，不是 `docs/GPU-AUDIT-2026-10-22.md` 的缓存文章，绝对值不可跨样本比较。`SPEC-2026-10-22-grid-compositing.md` 提到的同口径 ≥100Hz 只是本机人工复测参考目标，不写入测试门槛、不进 `verify` / CI；探针本身也不判定 100Hz。
+
 ### 橘鸦风格的额外闸门
 
 改动了 `src/renderer/juya/` 下的 CSS 就多两道闸（已含在 `npm run verify` 里）：

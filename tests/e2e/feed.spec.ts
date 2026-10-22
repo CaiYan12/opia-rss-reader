@@ -295,6 +295,73 @@ test('窄窗口（480/560px）：newsprint 头版无横向溢出', async ({ page
   }
 })
 
+/* ---- #31 订阅页其余三态（newsprint90s compact / magazine / 空态） ---- */
+
+test('newsprint compact：小缩略图直角、标题 14px、行式结构与元信息同 #30 一致', async ({ page }) => {
+  await loadApp(page, 'newsprintCompact')
+  const tab = activeTab(page)
+  const feed = tab.locator('.juya-feed-compact')
+  await expect(feed).toBeVisible()
+  // 预设继续生效：单列行式 4 条
+  await expect(feed.locator('.juya-feed-item')).toHaveCount(4)
+
+  const first = feed.locator('.juya-feed-item').first()
+  const coverEl = first.locator('.juya-feed-cover')
+  const cover = (await coverEl.boundingBox())!
+  expect(cover.width, '保留 72px 小缩略图').toBeCloseTo(72, 0)
+  expect(cover.height).toBeCloseTo(40, 0)
+  expect(
+    await coverEl.evaluate((el) => getComputedStyle(el).borderTopLeftRadius),
+    '缩略图直角'
+  ).toBe('0px')
+
+  const title = await first.locator('.juya-feed-title').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { size: cs.fontSize, family: cs.fontFamily }
+  })
+  expect(title.size, '行式标题 14px').toBe('14px')
+  expect(title.family.split(',')[0].trim().replace(/["']/g, '')).toBe('SimHei')
+
+  // 行式结构不变：图版在正文左侧，两者垂直居中
+  const body = (await first.locator('.juya-feed-body').boundingBox())!
+  expect(cover.x + cover.width).toBeLessThanOrEqual(body.x + 1)
+  expect(Math.abs(cover.y + cover.height / 2 - (body.y + body.height / 2))).toBeLessThanOrEqual(2)
+
+  // 去卡片化：与 #30 同一套纸面语言（无底色/上边框/阴影，细线分隔）
+  const box = await first.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      bg: cs.backgroundColor,
+      topBorder: cs.borderTopWidth,
+      bottomBorder: cs.borderBottomWidth,
+      bottomStyle: cs.borderBottomStyle,
+      shadow: cs.boxShadow
+    }
+  })
+  expect(box.bg).toBe('rgba(0, 0, 0, 0)')
+  expect(box.topBorder).toBe('0px')
+  expect(box.bottomBorder).toBe('1px')
+  expect(box.bottomStyle).toBe('solid')
+  expect(box.shadow).toBe('none')
+
+  // 元信息与 #30 一致：来源无框小字、未读点 4px 方形
+  const source = await first.locator('.juya-feed-source').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { border: cs.borderTopWidth, radius: cs.borderTopLeftRadius, bg: cs.backgroundColor, padding: cs.paddingLeft }
+  })
+  expect(source.border, '来源无边框').toBe('0px')
+  expect(source.radius, '来源无胶囊').toBe('0px')
+  expect(source.bg, '来源无底色').toBe('rgba(0, 0, 0, 0)')
+  expect(source.padding, '来源无内衬').toBe('0px')
+  const dot = await first.locator('.juya-feed-read-dot').evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    return { w: r.width, h: r.height, radius: getComputedStyle(el).borderTopLeftRadius }
+  })
+  expect(dot.w).toBeCloseTo(4, 0)
+  expect(dot.h).toBeCloseTo(4, 0)
+  expect(dot.radius, '未读点方角').toBe('0px')
+})
+
 /* ---- 程序化视觉合理性断言（无视觉模型，纯几何校验） ---- */
 
 type Box = { left: number; top: number; right: number; bottom: number; width: number; height: number }

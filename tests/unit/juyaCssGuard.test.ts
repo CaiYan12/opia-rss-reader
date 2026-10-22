@@ -4355,3 +4355,40 @@ describe('newsprint90s 订阅页头版守卫（#30：160×4:3 图版 / 18px 黑�
     expect(block).toContain('flex-direction: column')
   })
 })
+
+describe('newsprint90s 订阅页 compact 态守卫（#31：72×40 直角缩略图 / 14px 标题 / 元信息同 #30）', () => {
+  // #30 的订阅页规则只接 .juya-feed-grid；compact 是另一条 DOM 路径
+  // （.juya-feed-compact 容器、无网格），故本态的形状与元信息必须自成一套声明。
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\n)\.jynews ${rest} \{[^}]*\}`))?.[0] ?? ''
+
+  it('compact 缩略图保留 72 × 40 且必须直角', () => {
+    const cover = newsRule('\.juya-feed-compact \.juya-feed-cover')
+    expect(cover, 'compact 缩略图规则应存在').toBeTruthy()
+    expect(decl(cover, 'width'), '小缩略图尺寸不缩水').toBe('72px')
+    expect(decl(cover, 'height')).toBe('40px')
+    expect(decl(cover, 'border-radius'), '缩略图必须直角').toBe('0')
+  })
+
+  it('compact 标题 14px，条目与 #30 同样去卡片化', () => {
+    const title = newsRule('\.juya-feed-compact \.juya-feed-title')
+    expect(decl(title, 'font-size'), '行式标题 14px').toBe('14px')
+    const item = newsRule('\.juya-feed-compact \.juya-feed-item')
+    expect(decl(item, 'border'), '卡片边框退役').toBe('0')
+    expect(decl(item, 'border-bottom'), '细线分隔保留').toBe('1px solid var(--jy-border)')
+    expect(decl(item, 'background')).toBe('transparent')
+    expect(decl(item, 'box-shadow')).toBe('none')
+  })
+
+  it('compact 来源无框（非 999px 胶囊）、未读点方形', () => {
+    const source = newsRule('\.juya-feed-compact \.juya-feed-source')
+    expect(decl(source, 'border')).toBe('0')
+    expect(decl(source, 'border-radius'), '来源不得是胶囊').toBe('0')
+    expect(decl(source, 'background')).toBe('none')
+    expect(decl(source, 'padding')).toBe('0')
+    const dot = newsRule('\.juya-feed-compact \.juya-feed-read-dot')
+    expect(decl(dot, 'width')).toBe('4px')
+    expect(decl(dot, 'height')).toBe('4px')
+    expect(decl(dot, 'border-radius'), '未读点必须方角').toBe('0')
+  })
+})

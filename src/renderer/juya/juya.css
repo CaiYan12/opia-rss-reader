@@ -1506,6 +1506,59 @@
   }
 }
 
+/* ---- 订阅页 compact 态（#31）：保留小缩略图但改直角，行式结构不变 ----
+   沿用 #30 的纸面语言：条目去卡片化（无底色 / 上边框 / 阴影，细线分隔）、hover 不上浮。
+   来源与未读点必须在 compact 态重声明 —— #30 的元信息规则只接 .juya-feed-grid。 */
+.jynews .juya-feed-compact .juya-feed-item {
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  /* 行式结构不变（图版 + 正文横排）；去掉水平内衬，标题与 #30 网格条目同一条左边线 */
+  padding: 10px 0;
+}
+
+/* 小缩略图 72 × 40 直角细框（基础层靠 --jy-radius 得直角，这里显式钉死，防 token 变更静默回退） */
+.jynews .juya-feed-compact .juya-feed-cover {
+  width: 72px;
+  height: 40px;
+  aspect-ratio: auto;
+  border: 1px solid var(--jy-border);
+  border-radius: 0;
+}
+
+/* 行式标题 14px（字号沿用基础 compact 值，字体栈走 --jy-font-heading 的 SimHei 优先） */
+.jynews .juya-feed-compact .juya-feed-title {
+  font-size: 14px;
+}
+
+/* hover 同 #30：纸面微亮 + 标题下划线，无上浮位移 */
+.jynews .juya-feed-compact .juya-feed-item:hover {
+  transform: none;
+  background: var(--jy-lead-bg);
+}
+
+.jynews .juya-feed-compact .juya-feed-item:hover .juya-feed-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 来源无框小字、未读点 4px 方形（与 #30 一致） */
+.jynews .juya-feed-compact .juya-feed-source {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+}
+
+.jynews .juya-feed-compact .juya-feed-read-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+}
+
 /* ---- 蒸汽梦核式 ---- */
 [data-juya-variant='dreamcore-light'] {
   --jy-bg: #f3ecff;

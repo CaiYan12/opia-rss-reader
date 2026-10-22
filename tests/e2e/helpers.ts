@@ -119,6 +119,9 @@ export type Scenario =
   | 'fieldsoff'
   | 'newsprintGrid'
   | 'newsprintNoCover'
+  | 'newsprintCompact'
+  | 'newsprintMagazine'
+  | 'newsprintEmpty'
   | 'many'
   | 'zoom2'
   | 'zoomBuiltin'
@@ -198,6 +201,20 @@ export function makeStubScript(scenario: Scenario): string {
     settings.juyaLightStyleId = 'newsprint90s'
     settings.layout = { ...settings.layout, fields: { ...settings.layout.fields, cover: false } }
     articles = manyJuya(2)
+  } else if (scenario === 'newsprintCompact') {
+    // #31 compact 三态：newsprint 亮侧 + 单列行式 + 4 期（保留小缩略图）
+    settings.juyaLightStyleId = 'newsprint90s'
+    settings.layout = { ...settings.layout, preset: 'compact' }
+    articles = manyJuya(4)
+  } else if (scenario === 'newsprintMagazine') {
+    // #31 magazine 三态：newsprint 亮侧 + 首条大图 + 其余网格 + 5 期
+    settings.juyaLightStyleId = 'newsprint90s'
+    settings.layout = { ...settings.layout, preset: 'magazine' }
+    articles = manyJuya(5)
+  } else if (scenario === 'newsprintEmpty') {
+    // #31 空态：newsprint 亮侧 + 0 期（grid 预设 2 列，公告框须通栏）
+    settings.juyaLightStyleId = 'newsprint90s'
+    articles = []
   } else if (scenario === 'many') {
     articles = manyJuya(6)
   } else if (scenario === 'zoom2') {

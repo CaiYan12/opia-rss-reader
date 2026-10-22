@@ -72,6 +72,10 @@ test('editorial T1：亮暗排字层级、对比度与栏目首条导语', async
     els.map((el) => getComputedStyle(el, '::first-letter').float)
   )
   expect(floats, '每个栏目首条导语下沉，后续条目正常排字').toEqual(['left', 'none', 'none', 'left'])
+  await expect(
+    root.locator('.juya-section').first().locator('.juya-entry').nth(1),
+    '开篇后的相邻条目分隔线应保持'
+  ).toHaveCSS('border-top-width', '1px')
   await expect(leads.nth(0)).toHaveText('中文开篇导语，字形应完整显示。')
   await expect(leads.nth(1)).toHaveText('English opening lead stays in normal typesetting.')
   await expect(leads.nth(2)).toHaveText('“引号开头的导语”应完整显示。')

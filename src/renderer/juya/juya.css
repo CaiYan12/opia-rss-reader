@@ -3558,7 +3558,7 @@
   color: var(--jy-accent);
 }
 
-.jyedit .jyedit-opening .juya-lead::first-letter {
+.jyedit .juya-section > .juya-entry:first-of-type .juya-lead::first-letter {
   font-family: var(--jy-font-heading);
   font-size: 2.6em;
   float: left;

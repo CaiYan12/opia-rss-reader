@@ -188,7 +188,7 @@ describe('juya.css 静态守卫', () => {
 
   it('editorial 首字下沉的选择器只命中模板标记的栏目开篇', () => {
     const editorial = css.slice(css.indexOf('杂志编辑式'), css.indexOf('侘寂日杂式'))
-    expect(editorial).toContain('.jyedit .jyedit-opening .juya-lead::first-letter')
+    expect(editorial).toContain('.jyedit .juya-section > .juya-entry:first-of-type .juya-lead::first-letter')
     expect(editorial).not.toMatch(/\.jyedit \.juya-lead::first-letter/)
   })
 })

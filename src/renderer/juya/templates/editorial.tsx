@@ -29,9 +29,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
             <h2>{section.heading}</h2>
             {section.entries.map((entry, i) =>
               i === 0 ? (
-                <div className="jyedit-opening" key={i}>
-                  <EntrySplit entry={entry} onOpenLink={onOpenLink} mediaMode="hero" />
-                </div>
+                <EntrySplit key={i} entry={entry} onOpenLink={onOpenLink} mediaMode="hero" />
               ) : (
                 <article className="juya-entry" key={i}>
                   <EntryTitle entry={entry} onOpenLink={onOpenLink} />

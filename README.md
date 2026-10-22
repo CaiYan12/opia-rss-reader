@@ -143,7 +143,7 @@ npm run perf:probe -- --help
 
 隔离：探针在 require 主进程前把 `userData` / `sessionData` 指向临时目录，并在运行前后对真实 profile（`%APPDATA%/opia-rss-reader` 等）做只读 stat 快照；报告记录临时 / 真实路径与前后变化。无法隔离时立即停止，不改用真实 profile。运行前请关闭正在使用的 Opia 实例；若真实 profile 在采样期间被别的进程写入，报告会判为无法证明隔离。实现上使用 Playwright `_electron` 启动真实应用，再从页面会话开 CDP `Tracing` / `Input.synthesizeScrollGesture`；调试端口由 Playwright 以临时端口分配，不占用 `4173` / `9222`，也不需要手写 websocket CDP 客户端。采样前会把被测窗口聚焦并移到 z 序最前（不设 always-on-top），避免遮挡节流污染样本。
 
-边界：**这不是显示 FPS 验收**。rAF 回调频率不是显示 FPS；trace 的呈现 / 掉帧是 Chromium compositor 口径，不等于显示器扫描输出。每次运行是一个单段样本，机器负载或温度会带来明显波动；比较时应看同一批次的多次复跑，不要用单次数字下结论。样本是合成固定文章，不是 `docs/GPU-AUDIT-2026-10-22.md` 的缓存文章，绝对值不可跨样本比较。`SPEC-2026-10-22-grid-compositing.md` 提到的同口径 ≥100Hz 只是本机人工复测参考目标，不写入测试门槛、不进 `verify` / CI；探针本身也不判定 100Hz。
+边界：**这不是显示 FPS 验收**。rAF 回调频率不是显示 FPS；trace 的呈现 / 掉帧是 Chromium compositor 口径，不等于显示器扫描输出。每次运行是一个单段样本，机器负载或温度会带来明显波动；比较时应看同一批次的多次复跑，不要用单次数字下结论。样本是合成固定文章，不是 `docs/GPU-AUDIT-2026-10-22.md` 的缓存文章，绝对值不可跨样本比较。初版 ≥100Hz 绝对目标已撤销，100Hz 仅作历史参考，不写入测试门槛、不进 `verify` / CI 或探针退出码；旧 / 新比较按交错复跑的成对差值、中位数与组内波动判断。synthwave 本轮本地实现及 A/B 已完成，结果与适用范围见 `docs/GPU-AUDIT-2026-10-22.md`；代码与发行状态另行区分。
 
 ### 橘鸦风格的额外闸门
 

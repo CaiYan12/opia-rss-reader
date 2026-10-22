@@ -163,6 +163,43 @@ test('90 年代报刊式刊头（#26）：1280 三栏——日期最左、期号
   assertWide(await mastheadBoxes(masthead))
 })
 
+test('90 年代报刊式刊头（#32）：900 宽度三栏刊头与双栏正文互斥命中、不溢出 752 版心', async ({
+  page
+}) => {
+  // 断点收敛：刊头堆叠 max-width 899 与正文双栏 min-width 900 互斥，900 恰好宽时两者同时成立
+  // 是刻意的（三栏刊头在 752 内容宽内放得下），此用例把该边界钉住。
+  await page.setViewportSize({ width: 900, height: 900 })
+  await loadApp(page, 'newsprint')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.juya-masthead')
+  const title = masthead.locator('h1')
+
+  // 900 命中宽窗态：期号仍是 38px（堆叠态为 30px），正文两栏
+  await expect(title).toHaveCSS('font-size', '38px')
+  await expect(title).toHaveCSS('letter-spacing', '6px')
+  const columnCount = await root
+    .locator('.juya-entry-columns')
+    .first()
+    .evaluate((el) => getComputedStyle(el).columnCount)
+  expect(columnCount, '900 宽度正文应保持双栏').toBe('2')
+
+  // 三栏几何：日期 < 期号 < 星期，互不重叠；刊头内容不溢出自身盒子
+  const g = await mastheadBoxes(masthead)
+  expect(g, '刊头三栏元素必须齐备').not.toBeNull()
+  expect(g!.date.right, '日期与期号不得重叠').toBeLessThanOrEqual(g!.title.left)
+  expect(g!.title.right, '期号与星期不得重叠').toBeLessThanOrEqual(g!.weekday.left)
+  expect(g!.self.right - g!.self.left, '刊头宽度即 752 版心').toBeLessThanOrEqual(752 + 1)
+  // 期号单行（换行会让三栏刊头读成两行标题）
+  expect(g!.title.bottom - g!.title.top, '900 宽度期号应保持单行').toBeLessThan(60)
+  const overflow = await masthead.evaluate((el) => ({
+    sw: el.scrollWidth,
+    cw: el.clientWidth
+  }))
+  expect(overflow.sw, '刊头内容不得溢出').toBeLessThanOrEqual(overflow.cw + 1)
+})
+
 test('90 年代报刊式刊头（#26）：560 宽度回落居中堆叠、页面无横向溢出', async ({ page }) => {
   await page.setViewportSize({ width: 560, height: 800 })
   await loadApp(page, 'newsprint')
@@ -219,9 +256,16 @@ test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋�
     await expect(badge).toHaveCSS('color', 'rgb(236, 226, 198)')
   }
 
-  // 正文：2em 首行缩进（14.5px × 2 = 29px）、段距 6px、宋体优先
+  // 正文：2em 首行缩进（按字号比例断言，不锁死像素）、段距 6px、宋体优先
   const para = root.locator('.juya-entry p:not(.juya-links-label)').first()
-  await expect(para).toHaveCSS('text-indent', '29px')
+  const paraMetrics = await para.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { indent: cs.textIndent, fontSize: cs.fontSize }
+  })
+  expect(
+    Number.parseFloat(paraMetrics.indent) / Number.parseFloat(paraMetrics.fontSize),
+    '首行缩进应为 2em（与基准字号比例）'
+  ).toBeCloseTo(2, 1)
   await expect(para).toHaveCSS('margin-bottom', '6px')
   await expect(para).toHaveCSS('font-family', /SimSun/)
 
@@ -245,6 +289,24 @@ test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋�
   const link = root.locator('.juya-links a').first()
   await expect(link).toHaveCSS('color', 'rgb(43, 38, 32)')
   await expect(link).toHaveCSS('text-decoration-line', 'underline')
+
+  // #32：概览链接与相关链接同一条常驻下划线（2px offset），标题链接保持静默的报刊例外
+  const overviewLink = root.locator('.juya-overview a').first()
+  await expect(overviewLink).toBeVisible()
+  await expect(overviewLink).toHaveCSS('text-decoration-line', 'underline')
+  await expect(overviewLink).toHaveCSS('text-underline-offset', '2px')
+  const titleLink = root.locator('.juya-entry h3 a').first()
+  await expect(titleLink).toHaveCSS('text-decoration-line', 'none')
+
+  // hover 一律转报刊红（亮侧 accent #8b1a1a）：概览 / 相关链接 / 条目标题
+  for (const [name, l] of [
+    ['概览', overviewLink],
+    ['相关链接', link],
+    ['条目标题', titleLink]
+  ] as const) {
+    await l.hover()
+    await expect(l, `${name}链接 hover 应转 accent 红`).toHaveCSS('color', 'rgb(139, 26, 26)')
+  }
 })
 
 test('90 年代报刊式框线导读（#29）：真实「导读」小标、上下框线、单列、链接可点、焦点环可见', async ({

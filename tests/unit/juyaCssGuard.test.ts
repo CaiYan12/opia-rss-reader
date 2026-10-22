@@ -115,6 +115,13 @@ const extractBlocks = (src: string, opener: RegExp): string[] => {
   return blocks
 }
 
+/** 按选择器原文取规则块（选择器含 `[` `]` `.` `(` 等正则元字符时不必转义）；找不到返空串 */
+const ruleBySelector = (src: string, selector: string): string => {
+  const head = `\n${selector} {`
+  const i = src.indexOf(head)
+  return i < 0 ? '' : extractBlock(src.slice(i + 1), /^[^{]*\{/)
+}
+
 describe('juya.css 静态守卫', () => {
   it('变体覆盖不得使用「变体前缀 + 空格 + 风格类」的死形态', () => {
     const dead = css.match(/\[data-juya-variant='[^']+'\]\s+\.jy[\w-]*/g) ?? []
@@ -4027,10 +4034,12 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
   ]
 
   /** 非 nocturne 场景层（太阳/透视网格/星空只有 synthwave 与 y2k 暗挂载，本变体模板不渲染）。
-   *  透视网格自 #36 起用双类选择器（.juya-scene-grid.juya-scene-grid-persp）压过地平网格规则。 */
+   *  透视网格自 #36 起用双类选择器（.juya-scene-grid.juya-scene-grid-persp）压过地平网格规则；
+   *  #44 起网格动画挂在纹理层伪元素上，载体是 `…-persp::after`。 */
   const FOREIGN_SCENE = [
     '.juya-scene-sun',
     '.juya-scene-grid.juya-scene-grid-persp',
+    '.juya-scene-grid.juya-scene-grid-persp::after',
     '.juya-scene-stars'
   ]
 
@@ -4608,12 +4617,16 @@ describe('synthwave 场景守卫（2026-10-22，#36）', () => {
     expect(css, '落日需进入暂停清单').toContain(
       "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-sun {"
     )
+    // #44：网格动画载体已迁到纹理层伪元素，暂停必须指向 ::after（父层没有动画可暂停）
     expect(css, '网格需进入暂停清单').toContain(
-      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp {"
+      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp::after {"
     )
     const sunPause = extractBlock(css, new RegExp('[.]juya-scene-sun [{]'))
     expect(decl(sunPause, 'animation-play-state')).toBe('paused')
-    const gridPause = extractBlock(css, new RegExp('[.]juya-scene-grid-persp [{]'))
+    const gridPause = ruleBySelector(
+      css,
+      "[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp::after"
+    )
     expect(decl(gridPause, 'animation-play-state')).toBe('paused')
   })
 })
@@ -4971,13 +4984,19 @@ describe('synthwave 亮侧守卫（2026-10-22，#41）', () => {
   })
 
   it('③ 亮侧落日与网格也纳入「窗口不可见时暂停」，暂停规则不落到无变体限定的选择器上', () => {
-    for (const [name, cls] of [
-      ['落日', '.juya-scene-sun'],
-      ['网格', '.juya-scene-grid-persp']
+    // #44：网格的动画载体是纹理层伪元素，暂停选择器必须带 ::after
+    for (const [name, selector] of [
+      [
+        '落日',
+        "[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-sun"
+      ],
+      [
+        '网格',
+        "[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp::after"
+      ]
     ] as const) {
-      const selector = `[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth ${cls}`
       expect(css, `${name}需进入亮侧暂停清单`).toContain(`${selector} {`)
-      const rule = extractBlock(css, new RegExp(`\\[data-app-hidden\\] \\[data-juya-variant='synthwave-light'\\]\\.jysynth ${cls} \\{`))
+      const rule = ruleBySelector(css, selector)
       expect(decl(rule, 'animation-play-state'), `${name}在窗口不可见时暂停`).toBe('paused')
     }
     // 亮暗两侧各两条，共四条；每条都必须带变体限定（裸选择器会波及 y2k / nocturne 的动画载体）
@@ -5048,6 +5067,99 @@ describe('synthwave 亮侧守卫（2026-10-22，#41）', () => {
         '.juya-scene-grid.juya-scene-grid-persp',
         "[data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp"
       ].sort()
+    )
+  })
+})
+
+describe('synthwave 网格合成层守卫（2026-10-22，#44）', () => {
+  /** 蒸汽梦核式段（段头 → 下一段「暗夜精修式」段头）：网格规则必须落在此区间。 */
+  const synthSection = (): string => css.slice(css.indexOf('蒸汽梦核式'), css.indexOf('暗夜精修式'))
+
+  /** 剥注释后的段内代码：注释里叙述旧实现（background-position）不算实现 */
+  const code = (): string => synthSection().replace(/\/\*[\s\S]*?\*\//g, '')
+
+  /** 父层：几何 / mask / 地面底色 */
+  const plane = (): string =>
+    extractBlock(css, /(?:^|\n)\.juya-scene-grid\.juya-scene-grid-persp \{/)
+
+  /** 纹理层：周期网格 + 位移动画 */
+  const texture = (): string =>
+    extractBlock(css, /(?:^|\n)\.juya-scene-grid\.juya-scene-grid-persp::after \{/)
+
+  it('① 父层不再承担动画：无 animation / will-change / 背景纹理', () => {
+    expect(plane(), '父层规则必须存在').not.toBe('')
+    expect(decl(plane(), 'animation'), '父层动画须迁到纹理层').toBe('')
+    expect(decl(plane(), 'will-change'), '父层不得再声明 will-change').toBe('')
+    // 网格作用域的规则一律不得再碰 background-position（段内的 dust 是另一个预设，不在本条范围）
+    const gridBg = [...code().matchAll(/([^{}]*\.juya-scene-grid[^{}]*)\{([^{}]*)\}/g)]
+      .filter(([, , body]) => /background-position/.test(body))
+      .map(([, selector]) => selector.trim())
+    expect(gridBg, '网格规则不得再用 background-position 做动画').toEqual([])
+    // 基础 .juya-scene-grid（y2k 地平网格）自带 background-image；父层不显式清空会漏出
+    // 那套 1px / 44px 纹理，与纹理层叠加成双网格（实施时实测到过，故立此守卫）
+    expect(decl(plane(), 'background-image'), '基础网格纹理必须显式清掉').toBe('none')
+    // 几何 / mask / 地面底色仍归父层
+    expect(decl(plane(), 'height')).toBe('95vh')
+    expect(decl(plane(), 'bottom')).toBe('136px')
+    expect(decl(plane(), 'background-color')).toBe('#170a2a')
+    expect(decl(plane(), 'mask-image')).toContain('linear-gradient(180deg')
+  })
+
+  it('② 纹理层：多留一个周期的高度、两条渐变，位移全程不露底', () => {
+    const t = texture()
+    expect(t, '纹理层规则必须存在').not.toBe('')
+    expect(decl(t, 'position')).toBe('absolute')
+    expect(decl(t, 'top'), '整体上移一个周期').toBe('-56px')
+    expect(decl(t, 'height'), '高度多一个周期，translateY 到 56px 时底边仍有料').toBe(
+      'calc(100% + 56px)'
+    )
+    expect(decl(t, 'left')).toBe('0')
+    expect(decl(t, 'right')).toBe('0')
+    const bg = decl(t, 'background-image')
+    expect(bg, '竖线周期 72px').toContain('repeating-linear-gradient(90deg')
+    expect(bg, '横线周期 56px').toContain('repeating-linear-gradient(0deg')
+    expect(bg.match(/72px/g), '竖线周期只出现一次').toHaveLength(1)
+    expect(bg.match(/56px/g), '横线周期只出现一次').toHaveLength(1)
+    expect(bg, '线色走变体 token（亮侧 0.35 / 暗侧 0.55）').toContain('var(--jy-scene-grid-line)')
+  })
+
+  it('③ 关键帧只动 transform、周期 56px / 3.2s linear infinite，will-change 挂在纹理层', () => {
+    const t = texture()
+    expect(decl(t, 'animation')).toBe('jy-grid-scroll 3.2s linear infinite')
+    expect(decl(t, 'will-change'), 'will-change 必须在纹理层').toBe('transform')
+    const kf = extractBlock(css, /(?:^|\n)@keyframes jy-grid-scroll \{/)
+    expect(kf, '网格关键帧必须存在').not.toBe('')
+    expect(kf, '关键帧不得再动 background-position').not.toContain('background-position')
+    const decls = [...kf.matchAll(/([a-z-]+)\s*:\s*([^;}]+)/g)].map(([, p, v]) => [p, v.trim()] as const)
+    expect(decls.map(([p]) => p), '关键帧只允许 transform').toEqual(['transform', 'transform'])
+    expect(decls[0]![1]).toBe('translateY(0)')
+    expect(decls[1]![1], '位移量 = 横向网格周期').toBe('translateY(56px)')
+  })
+
+  it('④ 地平线 ::before 仍压在纹理层之上', () => {
+    const before = extractBlock(css, /(?:^|\n)\.juya-scene-grid-persp::before \{/)
+    expect(before, '地平线伪元素必须存在').not.toBe('')
+    const z = (block: string): number => Number.parseInt(decl(block, 'z-index'), 10)
+    expect(Number.isNaN(z(before)), '地平线必须显式声明 z-index').toBe(false)
+    expect(Number.isNaN(z(texture())), '纹理层必须显式声明 z-index').toBe(false)
+    expect(z(before), '纹理层伪元素在树序上靠后，只能靠 z-index 让地平线压住它').toBeGreaterThan(
+      z(texture())
+    )
+  })
+
+  it('⑤ 不可见暂停与 reduced-motion 也指向纹理层（父层已无动画可暂停）', () => {
+    for (const variant of ['synthwave-dark', 'synthwave-light']) {
+      const selector = `[data-app-hidden] [data-juya-variant='${variant}'].jysynth .juya-scene-grid-persp::after`
+      const rule = ruleBySelector(css, selector)
+      expect(rule, `${variant} 的网格暂停规则必须选中纹理层`).not.toBe('')
+      expect(decl(rule, 'animation-play-state')).toBe('paused')
+    }
+    const rm = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).find((b) =>
+      b.includes('.juya-scene-sun')
+    )
+    expect(rm, '场景 reduced-motion 块必须存在').toBeTruthy()
+    expect(rm, '网格静止必须选中纹理层').toContain(
+      '.juya-scene-grid.juya-scene-grid-persp::after'
     )
   })
 })

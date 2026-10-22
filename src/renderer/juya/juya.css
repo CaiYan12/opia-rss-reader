@@ -1792,7 +1792,7 @@
 [data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-sun {
   animation-play-state: paused;
 }
-[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp {
+[data-app-hidden] [data-juya-variant='synthwave-dark'].jysynth .juya-scene-grid-persp::after {
   animation-play-state: paused;
 }
 
@@ -1819,7 +1819,7 @@
 [data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-sun {
   animation-play-state: paused;
 }
-[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp {
+[data-app-hidden] [data-juya-variant='synthwave-light'].jysynth .juya-scene-grid-persp::after {
   animation-play-state: paused;
 }
 
@@ -2156,46 +2156,67 @@
   }
 }
 
-/* 透视霓虹网格：rotateX 压向地平线，mask 渐隐近端，background-position 滚动 = 向观者涌来。
+/* 透视霓虹网格：rotateX 压向地平线，mask 渐隐近端，纹理层 translateY 滚动 = 向观者涌来。
    #36（2026-10-22）：原 46vh / perspective 360px / bottom 0 的投影高只有 70.9px，
    低于窗口 chrome（130px），整块永远落在视口下方。改为 95vh + 1600px + 52deg，
    bottom 抬到 chrome 之上（136px），平面自带地面底色，避免地平线以下透空。
    **必须双类选择器**：Scene 同时挂 .juya-scene-grid 与 -persp，
-   单类规则会被后面同特异性的地平网格规则（30vh / 60deg / bottom 0）整体覆盖。 */
+   单类规则会被后面同特异性的地平网格规则（30vh / 60deg / bottom 0）整体覆盖。
+   #44（2026-10-22）：父层只留几何 / mask / 地面底色 —— 周期纹理挪进 ::after，动画改成
+   只动 transform，落在合成层。原来 animate background-position 会让 95vh 的透视平面
+   每帧重绘（GPU 核查：本机 rAF 回调 14.9–48.9Hz，暂停网格后 129.3Hz）。 */
 .juya-scene-grid.juya-scene-grid-persp {
   left: -25%;
   right: -25%;
   bottom: 136px;
   height: 95vh;
   background-color: #170a2a;
+  /* 必须显式清空：基础 .juya-scene-grid 规则（y2k 地平网格）也带 background-image，
+     双类选择器不再声明该属性时会漏出那套 1px / 44px 纹理，与 ::after 叠加成双网格 */
+  background-image: none;
   transform: perspective(1600px) rotateX(52deg);
   transform-origin: bottom center;
-  background-image:
-    repeating-linear-gradient(90deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 72px),
-    repeating-linear-gradient(0deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 56px);
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 28%);
   mask-image: linear-gradient(180deg, transparent 0, #000 28%);
-  animation: jy-grid-scroll 3.2s linear infinite;
-  will-change: background-position;
   contain: strict;
 }
 
+/* 网格纹理层（#44）：多出一个周期的高度（top: -56px），translateY 0 → 56px 期间底边始终
+   有料可画，不会露出父层的地面底色。注意位移方向：本地 +y 在 rotateX 平面上下压后仍指向
+   画面下缘 = 观者方向，与原来 background-position 0 → 56px 同向（见 #44 报告的实测截图）。 */
+.juya-scene-grid.juya-scene-grid-persp::after {
+  content: '';
+  position: absolute;
+  top: -56px;
+  left: 0;
+  right: 0;
+  height: calc(100% + 56px);
+  z-index: 0;
+  background-image:
+    repeating-linear-gradient(90deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 72px),
+    repeating-linear-gradient(0deg, var(--jy-scene-grid-line) 0 2px, transparent 2px 56px);
+  animation: jy-grid-scroll 3.2s linear infinite;
+  will-change: transform;
+}
+
+/* 只动 transform：合成层位移，不触发布局/绘制 */
 @keyframes jy-grid-scroll {
   from {
-    background-position: 0 0;
+    transform: translateY(0);
   }
   to {
-    background-position: 0 56px;
+    transform: translateY(56px);
   }
 }
 
-/* 地平线辉光线 */
+/* 地平线辉光线：#44 起纹理层是几何兄弟节点，显式 z-index 保证辉光线压在网格之上 */
 .juya-scene-grid-persp::before {
   content: '';
   position: absolute;
   top: -1px;
   left: 0;
   right: 0;
+  z-index: 1;
   height: 2px;
   background: var(--jy-scene-horizon);
   box-shadow: 0 0 18px 4px var(--jy-scene-horizon);
@@ -2255,7 +2276,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .juya-scene-sun,
-  .juya-scene-grid.juya-scene-grid-persp,
+  .juya-scene-grid.juya-scene-grid-persp::after,
   .juya-scene-stars,
   .juya-scene-dust {
     animation: none;

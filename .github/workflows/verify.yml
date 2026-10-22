@@ -31,6 +31,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # @playwright/test / playwright 1.62 没有 postinstall，npm ci 不会下载浏览器；
+      # 缺失时 E2E 与 nocturne 视觉走查都会报 executable doesn't exist。
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
       # 用户环境里有 ELECTRON_RUN_AS_NODE=1 的坑（见 AGENTS.md）；CI 是干净环境，不继承该变量，
       # 但仍显式清一次 —— 让本工作流在自托管 runner 上也成立。
       - name: Clear ELECTRON_RUN_AS_NODE

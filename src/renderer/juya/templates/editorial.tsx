@@ -1,12 +1,38 @@
-import { EntryTitle, ImageGrid, Lead, LinksBlock, OverviewItems, Paragraphs } from './shared'
-import { DefaultFeedItem, EntrySplit, FeedShell } from './parts'
+import { EntryTitle, Lead, LinksBlock, OverviewItems } from './shared'
+import { DefaultFeedItem, FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
+import type { JuyaEntry } from '../parseJuyaIssue'
 import { useAppStore } from '../../stores/useAppStore'
 
 const VARIANT_CLASS = 'jyedit'
 
-/** 杂志编辑式（第二轮定制排版）：deck 副题 + 每栏目首条封面故事（图文并排图右 46%），
- *  条目间发丝线留白节奏，末尾 colophon 刊尾；颗粒与裁切角标为纸质细节。 */
+function EditorialEntry({
+  entry,
+  onOpenLink
+}: {
+  entry: JuyaEntry
+  onOpenLink: JuyaIssueProps['onOpenLink']
+}): JSX.Element {
+  return (
+    <article className="juya-entry">
+      <EntryTitle entry={entry} onOpenLink={onOpenLink} />
+      {entry.lead && <Lead lead={entry.lead} />}
+      {entry.blocks.map((block, i) =>
+        block.kind === 'p' ? (
+          <p key={i}>{block.text}</p>
+        ) : (
+          <figure className="juya-plate" key={i}>
+            <img src={block.image.src} alt={block.image.alt} loading="lazy" />
+            {block.image.alt && <figcaption>{block.image.alt}</figcaption>}
+          </figure>
+        )
+      )}
+      <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
+    </article>
+  )
+}
+
+/** 杂志编辑式：正文段落与图片沿内容流呈现；条目间发丝线留白，末尾为 colophon 刊尾。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   const publicationDate = new Date(article.pubDate)
   const publicationDay = [
@@ -34,19 +60,9 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
         {issue.sections.map((section) => (
           <section className="juya-section" key={section.heading}>
             <h2>{section.heading}</h2>
-            {section.entries.map((entry, i) =>
-              i === 0 ? (
-                <EntrySplit key={i} entry={entry} onOpenLink={onOpenLink} mediaMode="hero" />
-              ) : (
-                <article className="juya-entry" key={i}>
-                  <EntryTitle entry={entry} onOpenLink={onOpenLink} />
-                  {entry.lead && <Lead lead={entry.lead} />}
-                  <Paragraphs paragraphs={entry.paragraphs} />
-                  {entry.images.length > 0 && <ImageGrid images={entry.images} mode="plate" />}
-                  <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
-                </article>
-              )
-            )}
+            {section.entries.map((entry, i) => (
+              <EditorialEntry key={i} entry={entry} onOpenLink={onOpenLink} />
+            ))}
           </section>
         ))}
         <footer className="juya-colophon">本期编辑 · 橘鸦日报 · {publicationDay}</footer>

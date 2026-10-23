@@ -136,6 +136,137 @@ test('editorial T1：亮暗排字层级、对比度与栏目首条导语', async
   }
 })
 
+test('editorial T3：段落与图片按文档顺序各出现一次且相关链接位于末尾', async ({ page }) => {
+  await loadApp(page, 'editorialT3')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'editorial-light')
+  const entries = root.locator('.juya-section').first().locator(':scope > .juya-entry')
+  await expect(entries).toHaveCount(2)
+
+  const stream = async (entry: typeof entries) => entry.locator('p:not(.juya-links-label), img').evaluateAll((els) =>
+    els.map((el) => el instanceof HTMLImageElement ? `img:${el.alt}` : el.textContent?.trim())
+  )
+  expect(await stream(entries.nth(0))).toEqual([
+    '首条段落甲。',
+    'img:横向图题注',
+    '首条段落乙。',
+    'img:近方图题注',
+    '首条段落丙。',
+    'img:链接图题注',
+    '首条段落丁。'
+  ])
+  expect(await stream(entries.nth(1))).toEqual([
+    '后续段落甲。这段文字用于验证长文与单图之间的连续排版。'.repeat(8),
+    'img:竖向图题注',
+    '后续段落乙。'
+  ])
+  await expect(root.locator('.juya-entry img')).toHaveCount(5)
+  await expect(root.locator('.juya-entry img[loading="lazy"]')).toHaveCount(5)
+  await expect(entries.nth(0).locator('h3')).toContainText('EditorialT3')
+  await expect(entries.nth(0).locator('.juya-links')).toHaveCount(1)
+  await expect(entries.nth(0).locator('.juya-links a')).toContainText('U'.repeat(160))
+  expect(await entries.nth(0).locator('.juya-links').evaluate((el) => el.parentElement?.lastElementChild === el)).toBe(true)
+
+  const noImageEntry = root.locator('.juya-section').nth(1).locator(':scope > .juya-entry')
+  await expect(noImageEntry).toContainText('无图正文仍完整呈现。')
+  await expect(noImageEntry.locator('img, .juya-entry-figure, .juya-media, .juya-plate')).toHaveCount(0)
+  await expect(noImageEntry.locator('.juya-lead, .juya-index, .juya-links, .juya-links-label')).toHaveCount(0)
+
+  const brokenImageEntry = root.locator('.juya-section').nth(2).locator(':scope > .juya-entry')
+  await expect(brokenImageEntry).toContainText('坏图之前的段落仍可读。')
+  await expect(brokenImageEntry).toContainText('坏图之后的段落仍可读。')
+  expect(await stream(brokenImageEntry)).toEqual([
+    '坏图之前的段落仍可读。',
+    'img:损坏图片',
+    '坏图之后的段落仍可读。'
+  ])
+})
+
+test('editorial T3：正文图保留原比例与题注，窄窗不溢出且图片交互不扩张', async ({ page }) => {
+  await loadApp(page, 'editorialT3')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const images = root.locator('.juya-entry img:not([alt="损坏图片"])')
+  await expect(images).toHaveCount(4)
+
+  for (const variantId of ['editorial-light', 'editorial-dark'] as const) {
+    await root.evaluate((el, id) => el.setAttribute('data-juya-variant', id), variantId)
+    for (const width of [1280, 560]) {
+      await page.setViewportSize({ width, height: 900 })
+      for (let i = 0; i < await images.count(); i++) {
+        const image = images.nth(i)
+        await image.scrollIntoViewIfNeeded()
+        await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+        const facts = await image.evaluate((el) => {
+          const img = el as HTMLImageElement
+          const style = getComputedStyle(img)
+          const rect = img.getBoundingClientRect()
+          const borderWidth = Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.borderRightWidth)
+          const borderHeight = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth)
+          const figure = img.closest('figure')
+          return {
+            src: img.getAttribute('src'),
+            alt: img.alt,
+            loading: img.loading,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+            displayedRatio: (rect.width - borderWidth) / (rect.height - borderHeight),
+            fit: style.objectFit,
+            caption: figure?.querySelector('figcaption')?.textContent?.trim() ?? null,
+            overflow: figure ? getComputedStyle(figure).overflow : null,
+            clipPath: style.clipPath,
+            maskImage: style.maskImage,
+            left: rect.left,
+            right: rect.right,
+            role: img.getAttribute('role'),
+            tabIndex: img.tabIndex,
+            cursor: style.cursor,
+            linked: img.closest('a') !== null
+          }
+        })
+        expect(facts.src).toMatch(/^data:image\/svg\+xml,/)
+        expect(facts.alt).not.toBe('')
+        expect(facts.loading).toBe('lazy')
+        expect(facts.caption).toBe(facts.alt)
+        expect(facts.fit).not.toBe('cover')
+        expect(facts.overflow).not.toBe('hidden')
+        expect(facts.clipPath).toBe('none')
+        expect(facts.maskImage).toBe('none')
+        expect(Math.abs(facts.displayedRatio - facts.naturalWidth / facts.naturalHeight)).toBeLessThan(0.015)
+        const rootBounds = await root.boundingBox()
+        expect(rootBounds).not.toBeNull()
+        expect(facts.left).toBeGreaterThanOrEqual(rootBounds!.x - 1)
+        expect(facts.right).toBeLessThanOrEqual(rootBounds!.x + rootBounds!.width + 1)
+        expect(facts.role).toBeNull()
+        expect(facts.tabIndex).toBe(-1)
+        expect(facts.cursor).not.toBe('zoom-in')
+        expect(facts.cursor).not.toBe('pointer')
+        expect(facts.linked).toBe(false)
+      }
+      const scroller = root.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " view-scroll ")]')
+      expect(await scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+    }
+
+    for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+      await page.emulateMedia({ reducedMotion })
+      for (const index of [0, 2]) {
+        const image = images.nth(index)
+        await image.hover()
+        await expect(image).toHaveCSS('transform', 'none')
+        await image.click()
+      }
+    }
+  }
+
+  const externalCalls = await page.evaluate(() =>
+    (window as unknown as { __stubCalls: Array<[string, string]> }).__stubCalls.filter(([kind]) => kind === 'openExternal')
+  )
+  expect(externalCalls).toEqual([])
+})
+
 test('editorial T2：摘要左对齐并使用正体', async ({ page }) => {
   await loadApp(page, 'editorial')
   await openFirstArticle(page)

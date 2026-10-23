@@ -3585,7 +3585,7 @@
   line-height: 1.85;
 }
 
-/* 第二轮定制排版：deck 副题、封面故事节奏、colophon 刊尾、裁切角标 */
+/* 第二轮定制排版：deck 副题、colophon 刊尾、装裱题注、裁切角标 */
 .jyedit .juya-deck {
   max-width: 68ch;
   margin: -8px 0 24px;
@@ -3613,22 +3613,6 @@
 .jyedit .juya-entry + .juya-entry {
   border-top: 1px solid var(--jy-border);
   padding-top: 28px;
-}
-
-.jyedit .juya-entry-row {
-  gap: 40px;
-}
-
-.jyedit .juya-entry-row .juya-entry-figure {
-  width: 46%;
-}
-
-.jyedit .juya-media-hero img {
-  transition: transform 600ms var(--ease-out, ease-out);
-}
-
-.jyedit .juya-media-hero img:hover {
-  transform: scale(1.02);
 }
 
 .jyedit .juya-plate {
@@ -3687,12 +3671,6 @@
 
 .jyedit .juya-feed-featured .juya-feed-title {
   font-size: 26px;
-}
-
-@media (max-width: 640px) {
-  .jyedit .juya-entry-row .juya-entry-figure {
-    width: 100%;
-  }
 }
 
 /* ---- 侘寂日杂式（2026-09-24 重设计新增） ----

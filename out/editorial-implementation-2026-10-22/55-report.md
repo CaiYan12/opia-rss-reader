@@ -26,11 +26,11 @@ CDP `CSS.getPlatformFontsForNode` 实读当前 renderer 的字形字体：阅读
 
 补充视觉样本来自本机保存的 2026-10-22 RSS（622,701 bytes，SHA256 `B1638031CFF8467FA1699D53818887F03F0B63072CBD368A7A2BD6498B102031`），由 loopback HTTP 服务交给真实 `RssProvider`。当前 hidden native run 的本地服务收到 2 次请求；真实主进程／preload／IPC 页面出现 10 条订阅、6 个栏目、32 条正文、34 张图和 32 个概览项。开篇图自然尺寸为 640×360，展示比例为 1.77777779；原生阅读滚动条 thumb 实测 `rgb(138, 47, 43)`。应用真实设置交互将主题切到暗色，并通过 Zoom 控件设置 120%。本机真实期号截图保存在 `screenshots/native-real-rss/`，作为本地 RSS 补充目视材料，不与合成样本前后图作逐像素比较。
 
-原生证据分两段保存，未混为一次 PASS：
+原生证据分三段保存，未混为一次 PASS：
 
 1. 前台限制生效前的第一次真实 Electron 尝试生成了 8 张真实期号截图并完成 UI 走查；随后报告清理因 harness 的 `snapshotRealProfile` 未定义而退出非零。截图仅作历史视觉证据；其中焦点截图在 CSS 过渡中，不能用于稳定焦点颜色结论。原始日志为 `55/logs/native-acceptance-attempt-1.log`。
-2. 后续主 native run 从创建起保持隐藏，真实 `BrowserWindow` 的 `show()` 被外部测试 bootstrap 记录并拦截；`isVisible()` 三个阶段均为 false。隔离 profile 下实际执行 main/preload/IPC、RSS 刷新、主题与缩放交互。原始结果保存在 [native-acceptance-attempt-2.json](55/native-acceptance-attempt-2.json)，exit 1 的 5 项分别是：把 1100×720 初始尺寸当作精确外框、把最小外框和 viewport 当作精确 720×480、焦点在过渡中途测量，以及 launch 返回后才开始读 stdout。这些原始失败保留，不回写成当次通过。
-3. 为上述采集缺口做了一次最小隐藏 follow-up，没有截图、没有 `show/focus/bringToFront` 或 OS 输入。真实窗口仍隐藏。DPR 为 1.75；默认尺寸请求 1100×720，实测 bounds 1102×722、viewport 1099×721；最小约束 `[720,480]`，实测 bounds 723×482、viewport 720×481。实测尺寸均满足配置下限，作为配置值与系统缩放／窗口框的测量差异记录，不视为产品缺陷。
+2. 后续主 native run 从创建起保持隐藏，真实 `BrowserWindow` 的 `show()` 被外部测试 bootstrap 记录并拦截；`isVisible()` 三个阶段均为 false。隔离 profile 下实际执行 main/preload/IPC、RSS 刷新、主题与缩放交互。该主 hidden run 的 DPR 为 1.75；默认尺寸请求 1100×720，实测 bounds 1102×722、viewport 1099×721；最小约束 `[720,480]`，实测 bounds 723×482、viewport 720×481。实测尺寸均满足配置下限，作为配置值与系统缩放／窗口框的测量差异记录，不视为产品缺陷。原始结果保存在 [native-acceptance-attempt-2.json](55/native-acceptance-attempt-2.json)，exit 1 的 5 项分别是：把 1100×720 初始尺寸当作精确外框、把最小外框和 viewport 当作精确 720×480、焦点在过渡中途测量，以及 launch 返回后才开始读 stdout。这些原始失败保留，不回写成当次通过。
+3. 为上述采集缺口做了一次最小隐藏 follow-up，没有截图、没有 `show/focus/bringToFront` 或 OS 输入。真实窗口仍隐藏；该 follow-up 只补充稳定焦点与主进程日志采集，没有重新测量窗口尺寸。稳定焦点与日志结果见下文及 [native-focus-followup.json](55/native-focus-followup.json)。
 
 稳定焦点采样在 700ms 后连续观察到 3 个相同状态：`:focus-visible=true`、`document.hasFocus()=true`、`outlineStyle=solid`、最终 `outlineColor=rgb(138, 47, 43)`、`outlineWidth=1.71429px`（DPR 1.75 的设备像素量化）。该键盘事件由 Playwright/CDP 在隐藏窗口 renderer 内发送；它证明稳定 DOM 焦点样式，不证明 OS 前台焦点行为。真实 main 控制台在 `require(out/main/index.js)` 之前由 bootstrap 包装 `console.log/warn/error` 并保留原调用；[main-console.log](55/native/run-2026-10-23T09-57-15-747Z/main-console.log) 捕获到插件加载与 `[main] initial refresh, added=10`。follow-up 结果 [native-focus-followup.json](55/native-focus-followup.json) 与退出码 0 可复查。
 
@@ -45,4 +45,18 @@ CDP `CSS.getPlatformFontsForNode` 实读当前 renderer 的字形字体：阅读
 
 ## 边界与文件
 
-本票没有重新测试发行包、公开站点的当日在线内容、物理显示 FPS，也没有声称原生 OS 前台焦点验收通过；受前台保护约束，后续 Electron run 均保持隐藏。所有 `out/editorial-implementation-2026-10-22/55/` 图片、JSON、脚本和日志均为本机忽略证据，未加入 Git；本仓记录文件为本报告、`docs/SPEC-2026-10-22-editorial.md`、`docs/STYLE-WORKLOG.md`、`AGENTS.md` 和 `.design-flow.json`。父代理的全分支双轴 code review、集成与 #49 最终处理仍按既定流程进行。
+本票没有重新测试发行包、公开站点的当日在线内容、物理显示 FPS，也没有声称原生 OS 前台焦点验收通过；受前台保护约束，后续 Electron run 均保持隐藏。所有 `out/editorial-implementation-2026-10-22/55/` 图片、JSON、脚本和日志均为本机忽略证据，未加入 Git；本仓记录文件为本报告、`docs/SPEC-2026-10-22-editorial.md`、`docs/STYLE-WORKLOG.md`、`AGENTS.md` 和 `.design-flow.json`。父代理的全分支双轴 review 已完成且无阻断；本地 #50–#55 已合入 `codex/editorial`，#49 仍 OPEN，等待用户选择后续发布／封稿；wabi 全面体检未启动。
+
+独立双轴评审针对基线 `bfcf32928481a805f5c5f45bde26f5607d60d062` 与冻结候选 `300cc02d9aa8e0f995f40004fcd315872b6e8ed3` 完成，只读且未重跑测试。以下结果保持 Standards 与 Spec 两轴；本次文档收口不改变产品、测试或共享代码。
+
+## Standards
+
+- 硬性违规：0。
+- 两条可选低优先级重复建议，均无正确性影响：`src/renderer/juya/templates/editorial.tsx:31-42,55-57` 的图像／懒加载／题注结构部分重复（首图另有布局 `onLoad`）；`tests/e2e/helpers.ts:284-310` 的 editorial T1–T4 亮暗 fixture 配置重复。本轮遵守最小变更，不做产品或测试重构。
+
+## Spec
+
+- 缺失要求：0；范围外扩：0；有证据错误：0。
+- 依据 `docs/SPEC-2026-10-22-editorial.md` 的开篇、`blocks` 顺序与原图比例、订阅页 `FeedShell` 约束及图片交互排除项；核对路径包括 `src/renderer/juya/templates/editorial.tsx` 与 `tests/e2e/helpers.ts`。评审确认实现符合上述要求，未发现阻断问题。
+
+汇总：Standards 为 0 项硬违规、2 条可选低优先级建议（该轴最严重问题无阻断）；Spec 的缺失／范围外扩／证据错误均为 0（该轴最严重问题无阻断）。

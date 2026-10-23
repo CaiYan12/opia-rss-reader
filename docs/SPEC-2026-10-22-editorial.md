@@ -1,7 +1,7 @@
 # SPEC：杂志编辑式（editorial）风格完善
 
 **日期**：2026-10-22  
-**状态**：设计共识已确认；#50–#54 实施票已完成并合入 editorial 集成分支；#55 验收记录已在 `codex/editorial-t6` 完成，待父代理双轴审查与集成；父票 #49 保持 OPEN。本状态不代表用户已封稿。
+**状态**：设计共识已确认；#50–#55 实施与验收已全部合入本地 `codex/editorial`；独立双轴评审已完成且无阻断，收口记录见 `out/editorial-implementation-2026-10-22/55-report.md`；父票 #49 保持 OPEN，等待用户选择后续发布／封稿。本状态不代表用户已封稿或已发布。
 **基线**：`main`，`bfcf32928481a805f5c5f45bde26f5607d60d062`。  
 **范围**：editorial 的亮暗两侧、阅读页与订阅页。图片放大、灯箱及新增图片链接交互明确排除。
 
@@ -211,4 +211,4 @@
 
 - 集成验收、改造前后证据、真实 RSS/Electron 边界、全量验证与剩余未测项见本机记录 [`out/editorial-implementation-2026-10-22/55-report.md`](../out/editorial-implementation-2026-10-22/55-report.md)。忽略目录证据不作为新克隆运行测试的前提。
 - 验收使用确定性 helper 完成 112 组浏览器测量与亮暗／阅读／订阅前后截图；真实 Electron 主进程、preload、IPC 与隔离 profile 已在本机验证。后续受前台保护约束的 Electron run 保持隐藏；报告区分了先前可见截图、hidden runtime 与不覆盖的 OS 前台焦点行为。
-- `npm run verify` 与 nocturne 归档写入／逐字节校验均在该候选上实跑并退出 0。验收分支尚待父代理双轴审查及集成；#49 保持 OPEN，未声明用户封稿。
+- `npm run verify` 与 nocturne 归档写入／逐字节校验均在该候选上实跑并退出 0。父代理独立双轴评审已完成且无阻断；本次仅修正文档收口，没有重跑测试或归档。#50–#55 已合入本地 `codex/editorial`；#49 保持 OPEN，等待用户选择后续发布／封稿，未声明用户封稿或已发布。

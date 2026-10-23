@@ -1,5 +1,5 @@
 import { EntryTitle, Lead, LinksBlock, OverviewItems } from './shared'
-import { DefaultFeedItem, FeedShell } from './parts'
+import { FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
@@ -42,16 +42,50 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
 }
 
 function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
-  const { openArticle } = useAppStore()
+  const { openArticle, history, sources } = useAppStore()
   return (
     <FeedShell
       articles={articles}
       variantId={variantId}
       variantClass={VARIANT_CLASS}
       layout={layout}
-      renderItem={(a, _i, mode, gates, delay) => (
-        <DefaultFeedItem a={a} mode={mode} gates={gates} delay={delay} onOpen={() => void openArticle(a)} />
-      )}
+      renderItem={(a, _i, mode, gates, delay) => {
+        const read = history[a.guid]?.read ?? false
+        const sourceName = sources.find((source) => source.id === a.sourceId)?.name ?? ''
+        const hasMeta = !read || gates.pubDate || (gates.source && sourceName)
+        return (
+          <button
+            type="button"
+            className={`juya-feed-item${mode === 'featured' ? ' juya-feed-featured' : ''}`}
+            style={{ animationDelay: `${delay}ms` }}
+            onClick={() => void openArticle(a)}
+          >
+            <span className="juya-feed-body">
+              {hasMeta && (
+                <span className={`juya-feed-meta${!read ? ' juya-feed-meta-unread' : ''}`}>
+                  {!read && <span className="juya-feed-read-dot" aria-hidden />}
+                  {gates.pubDate && (
+                    <span className="juya-feed-date">
+                      {new Date(a.pubDate).toLocaleString('zh-CN', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                      })}
+                    </span>
+                  )}
+                  {gates.source && sourceName && (
+                    <span className="juya-feed-source">{sourceName}</span>
+                  )}
+                </span>
+              )}
+              <span className="juya-feed-title">{a.title}</span>
+            </span>
+            {gates.cover && a.coverUrl && (
+              <img className="juya-feed-cover" src={a.coverUrl} alt="" loading="lazy" />
+            )}
+            {gates.summary && a.summary && <span className="juya-feed-summary">{a.summary}</span>}
+          </button>
+        )
+      }}
     />
   )
 }

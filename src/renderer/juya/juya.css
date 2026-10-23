@@ -3824,10 +3824,12 @@
   --jy-border: #d5d0c2;
   --jy-heading: #37332b;
   --jy-text: #4a463c;
-  --jy-muted: #6f6a58;
+  --jy-muted: #655f4c;
+  --jy-index-text: #82442f;
+  --jy-lead-text: #655e4d;
   --jy-accent: #a5654a;
   --jy-on-accent: #f6f1e8;
-  --jy-link: #6e7a5b;
+  --jy-link: #59664a;
   --jy-lead-bg: #e7e3d6;
   --jy-focus: #a5654a;
   --jy-radius: 18px 6px 18px 6px;
@@ -3837,15 +3839,17 @@
 
 [data-juya-variant='wabi-dark'] {
   --jy-bg: #1e1c18;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55 0.09' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.75 0 0 0 0 0.72 0 0 0 0 0.65 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23w)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55 0.09' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.75 0 0 0 0 0.72 0 0 0 0 0.65 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23w)'/%3E%3C/svg%3E");
   --jy-card: #262420;
   --jy-border: #3d392f;
   --jy-heading: #e3ded1;
   --jy-text: #bdb7a7;
-  --jy-muted: #96907c;
+  --jy-muted: #a39a82;
+  --jy-index-text: #d49a7c;
+  --jy-lead-text: #a39a82;
   --jy-accent: #b37a5e;
   --jy-on-accent: #221c16;
-  --jy-link: #96a07f;
+  --jy-link: #b2bc95;
   --jy-lead-bg: #292620;
   --jy-focus: #c99a7d;
   --jy-radius: 18px 6px 18px 6px;
@@ -3853,8 +3857,7 @@
   --jy-font-body: 'Segoe UI', 'Noto Sans SC', sans-serif;
 }
 
-/* 低饱和平涂 + 软双影（接触影 + 环境影）；手绘感有机圆序号；栏目题陶土小方块 */
-.jywabi .juya-entry,
+/* 订阅期号保留既有粗陶卡片；阅读条目直接落在纸面上。 */
 .jywabi .juya-feed-item {
   background: var(--jy-card);
   border: 1px solid var(--jy-border);
@@ -3863,7 +3866,13 @@
 }
 
 .jywabi .juya-entry {
-  padding: 22px 24px;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .jywabi .juya-masthead h1 {
@@ -3873,7 +3882,7 @@
 
 .jywabi .juya-index {
   background: transparent;
-  color: var(--jy-accent);
+  color: var(--jy-index-text);
   border: 1px solid var(--jy-accent);
   border-radius: 46% 54% 52% 48% / 48% 46% 54% 52%;
 }
@@ -3895,20 +3904,26 @@
 }
 
 .jywabi .juya-lead {
-  border-left: none;
-  background: color-mix(in srgb, var(--jy-accent) 8%, var(--jy-card));
-  border-radius: var(--jy-radius);
+  margin-bottom: 12px;
+  padding: 4px 0 4px 14px;
+  border-left: 2px solid var(--jy-accent);
+  background: transparent;
+  border-radius: 0;
+  color: var(--jy-lead-text);
+  font-size: 14px;
+  line-height: 1.8;
 }
 
-/* 第二轮定制排版：条目奇偶错位的不对称节奏；图片两列有机圆角网格 */
-.jywabi .juya-entry:nth-of-type(odd) {
-  margin-right: clamp(0px, 6vw, 56px);
+/* 正文轴线保持稳定；无首行缩进，以段间留白分节，并允许长 URL 在窄窗断行。 */
+.jywabi .juya-entry p:not(.juya-links-label) {
+  margin-bottom: 12px;
+  font-size: 16px;
+  line-height: 1.85;
+  text-indent: 0;
+  overflow-wrap: anywhere;
 }
 
-.jywabi .juya-entry:nth-of-type(even) {
-  margin-left: clamp(0px, 6vw, 56px);
-}
-
+/* 图片两列有机圆角网格 */
 .jywabi .juya-media-grid {
   grid-template-columns: repeat(2, 1fr);
 }
@@ -3920,15 +3935,6 @@
 
 .jywabi .juya-feed-featured {
   border-radius: 28px 8px 28px 8px;
-}
-
-@media (max-width: 640px) {
-  .jywabi .juya-entry:nth-of-type(odd) {
-    margin-right: 0;
-  }
-  .jywabi .juya-entry:nth-of-type(even) {
-    margin-left: 0;
-  }
 }
 
 /* 窄窗口（≤480px 内容区）：收紧边距，取消分栏 */

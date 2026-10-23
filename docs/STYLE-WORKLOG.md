@@ -175,3 +175,19 @@
 - 2026-10-22 文档与票据收口：统一两份 SPEC、GPU 核查记录、README 与本节的最终状态；撤销初版绝对 100Hz 目标与预设模糊降级顺序，将用户已接受的焦点色、链接 4.08:1 和悬停边框取舍明确为保留。最新代码验证仍引用 `77f245d` 的 572 单测 / 139 E2E / 对比度 70+14 / 5 张归档一致、exit 0，本次仅改文档；全量结果引用此前实测，另跑相关样式守卫 221 项通过，不冒称重跑全量。远端 #34 / #43 / #47 按用户授权回填完成证据并收口，关闭不代表代码已 push 或发行。
 - 远端收口已回读确认（2026-10-22 21:11，UTC+8）：[#47](https://github.com/CaiYan12/opia-rss-reader/issues/47)、[#43](https://github.com/CaiYan12/opia-rss-reader/issues/43)、[#34](https://github.com/CaiYan12/opia-rss-reader/issues/34) 均为 CLOSED，完成证据与正文已同步，`ready-for-agent` 标签已移除。两张父票关闭前均已核对其原生子票全部关闭。
 - 2026-10-22 封稿交付：用户授权提交、PR 合并 main、同步远端并关闭 synthwave 分支。本轮已接受的视觉取舍与测量边界保持不变，后续需求另行立项。移除临时工作区前，将其 out 证据完整复制至本检出的 `out/synthwave-seal-2026-10-22/`，其中 1026 个 out 文件逐文件 SHA256 校验一致；性能批次与验证日志的引用已改到该归档，原始 profile 仍只存本机、不提交。
+
+### Editorial 集成验收（#50–#55，2026-10-23）
+
+- #50–#54 的实施与分票报告见同目录 `out/editorial-implementation-2026-10-22/50-report.md` 至 `54-report.md`。#55 验收报告为 `out/editorial-implementation-2026-10-22/55-report.md`。本地 #50–#55 实施与验收已全部合入 `codex/editorial`，冻结候选为 `300cc02d9aa8e0f995f40004fcd315872b6e8ed3`；独立双轴评审已完成且无阻断，结果见 #55 报告附录。父票在该验收阶段保持 OPEN；用户随后确认封版，见下节。此前的验收不代表当时已封稿或发布。
+- 改造前旧 renderer 源树 `113337cce6b0b0f4bb0644be0ea1f401e671145c` 与当前 renderer `0e111892b638b39d5558d1ee0fba81d57c8b4afd` 共享同一确定性样本进行 112 组测量（亮暗 × 阅读/订阅 × 7 宽度 × 2 缩放 × 前后）。这是初版写错的地方：当前 renderer 的 `src` 树哈希曾多写一个 `0`；已按 `git rev-parse 300cc02d9aa8e0f995f40004fcd315872b6e8ed3:src` 核对修正。当前 renderer 最大横向溢出 0px、图片比例最大误差 0.0000611；1280/100% 首条与后续正文宽均 567.265625px。641/120% 概览实测仍为两列（阈值为 640px），开篇图文堆叠、长 URL 5 行且滚动区无溢出。实际字形由 CDP 读得标题 Noto Serif SC、正文 Noto Sans SC。
+- before/after 主矩阵截图、正文滚动位置、边界图与 hover/focus/reduced-motion 图保存在本机忽略目录；交互分类后当前 renderer 12 个状态无验收失败。旧 renderer feed hover 上移 2px 是改造前观察，不归为新增缺陷。原始几何采集的 20 项 `opening-layout` 误报源于把图片方向标签当成 CSS 列布局；按矩形复算后几何与比例 findings 均为空。
+- 本机真实 Electron 使用已保存的 2026-10-22 RSS 文件经 loopback HTTP 驱动真实 provider/main/preload/IPC，并将 userData/sessionData/crashDumps 指向独立 profile；默认用户 profile 的前后只读 stat 无变化。前台限制生效前的第一次可见尝试保存 8 张真实 RSS 截图，但在报告清理时以 harness helper 未定义退出；焦点图当时处在过渡态。随后 hidden native runtime 保持窗口不可见，按实际系统缩放记录默认 bounds 1102×722 / viewport 1099×721、最小 bounds 723×482 / viewport 720×481（DPR 1.75），不硬凑 1100×720 或 720×480 精确外框。独立 hidden follow-up 稳定采样到 `:focus-visible` 环 `rgb(138, 47, 43)`，并由 bootstrap 捕获真实 `[main] initial refresh, added=10`。该 DOM 测量不证明 OS 前台焦点。
+- 当前候选只运行一次 `npm run verify`：23 个 Vitest 文件／574 项、Playwright E2E 158 项、nocturne contrast text 70/70 与 UI 14/14 均通过；先执行 nocturne 归档写入再验证，五张归档 PNG 的字节数和 SHA256 均未变化。此记录不宣称所有风格逐字节一致，也不包含性能、发行包或 OS 前台焦点验收。
+- wabi 最小负对照仅走现有确定性 helper 的 headless 订阅／阅读截图；两页均为 `wabi-light`，背景 token `#efede6`，实际标题字体 Noto Serif SC、正文 Noto Sans SC，横向溢出为 0。截图与 bundle 指纹保存在 `55/wabi-negative-control.json`；这不是 wabi 全面重新验收，wabi 独立全面体检尚未启动。
+
+### Editorial 用户确认封版（2026-10-23）
+
+- 用户明确表示当前风格已较为满意、可以封版。已接受的亮暗阅读／订阅版式作为本轮定稿；后续需求另行立项。
+- 最后微调只在既有下沉首字规则新增 `font-weight: 700`，保留栏目首条导语范围，周围文字仍为 400。六个 headless 样本覆盖亮暗 × 中文／英文／引号开头，无横向溢出；没有启动可见应用或前台宏。
+- 加粗后已重新实跑 `npm run verify` exit 0：23 个单测文件／574 项、158 项 E2E；既有 nocturne 归档先写入再验证，五张全部逐字节一致。原始日志、样本与截图在本机 `out/editorial-dropcap-bold-2026-10-23/`；封版文档更新不重复运行相同验证。
+- 本地封版提交包含该字重与记录，不执行 push、PR、合并 main、tag 或发行；不删除历史分支和证据。

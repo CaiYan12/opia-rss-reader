@@ -78,6 +78,72 @@ const LIGHTBOX_ISSUE_HTML = `<div style="max-width:760px">
 <p><img src="${svgImage(480, 320, '2f6f6a', 'bare-2')}" alt="裸图二"></p>
 </div>`
 
+const EDITORIAL_T1_ISSUE_HTML = `<div>
+<h1>杂志编辑式 T1</h1>
+<h2>概览</h2>
+<ul><li><a href="https://example.com/overview">目录链接</a> <code>#1</code></li></ul>
+<h2>首篇</h2>
+<h3><a href="https://example.com/title">中文开篇</a> <code>#1</code></h3>
+<blockquote>中文开篇导语，字形应完整显示。</blockquote>
+<h3>英文条目</h3>
+<blockquote>English opening lead stays in normal typesetting.</blockquote>
+<p>普通正文用来确认条目标题与正文层级。</p>
+<p><img src="${svgImage(480, 320, '3b4a8f', 'editorial')}" alt="图片题注可读"></p>
+<p>相关链接：</p><ul><li><a href="https://example.com/related">相关链接文字</a></li></ul>
+<h3>引号条目</h3>
+<blockquote>“引号开头的导语”应完整显示。</blockquote>
+<h2>第二篇</h2>
+<h3>英文开篇 <code>#4</code></h3>
+<blockquote>Another English opening lead.</blockquote>
+</div>`
+
+const EDITORIAL_T2_OVERVIEW = Array.from({ length: 32 }, (_, i) => {
+  const index = i + 1
+  return `<li><a href="https://example.com/editorial/${index}">第${index}条概览项目含完整中文标题</a> <code>#${index}</code></li>`
+}).join('')
+const EDITORIAL_T2_ISSUE_HTML = `<div>
+<h1>杂志编辑式 T2 长标题 Magazine Editorial Issue</h1>
+<h2>概览</h2><ul>${EDITORIAL_T2_OVERVIEW}</ul>
+<h2>正文栏目</h2><h3>正文条目 <code>#1</code></h3><p>用于核对刊头与概览后正文仍完整保留。</p>
+</div>`
+const EDITORIAL_T2_FALLBACK_HTML = '<div><h2>栏目</h2><h3>标题回退样本</h3><p>正文内容保留。</p></div>'
+const EDITORIAL_T3_UNBREAKABLE = `EditorialT3${'W'.repeat(120)}`
+const EDITORIAL_T3_LONG_PARAGRAPH = '后续段落甲。这段文字用于验证长文与单图之间的连续排版。'.repeat(8)
+const EDITORIAL_T3_ISSUE_HTML = `<div>
+<h1>杂志编辑式 T3 图文流</h1>
+<h2>连续内容</h2>
+<h3>栏目首条交错样本 ${EDITORIAL_T3_UNBREAKABLE} <code>#1</code></h3>
+<blockquote>首条导语保持现有来源。</blockquote>
+<p>首条段落甲。</p>
+<p><img src="${svgImage(640, 360, '3b4a8f', 'wide')}" alt="横向图题注"></p>
+<p>首条段落乙。</p>
+<p><img src="${svgImage(360, 340, '2f6f6a', 'square')}" alt="近方图题注"></p>
+<p>首条段落丙。</p>
+<p><a href="https://example.com/editorial-image"><img src="${svgImage(480, 240, '7a3f6b', 'linked')}" alt="链接图题注"></a></p>
+<p>首条段落丁。</p>
+<p>相关链接：</p><ul><li><a href="https://example.com/editorial-related?ref=${'u'.repeat(160)}">首条相关链接 ${'U'.repeat(160)}</a></li></ul>
+<h3>栏目后续交错样本 <code>#2</code></h3>
+<p>${EDITORIAL_T3_LONG_PARAGRAPH}</p>
+<p><img src="${svgImage(300, 540, '8a5a2f', 'portrait')}" alt="竖向图题注"></p>
+<p>后续段落乙。</p>
+<p>相关链接：</p><ul><li><a href="https://example.com/editorial-related-2">后续相关链接</a></li></ul>
+<h2>无图边界</h2>
+<h3>没有图片的条目</h3><p>无图正文仍完整呈现。</p>
+<h2>图片失败边界</h2>
+<h3>坏图周围文字仍可读</h3>
+<p>坏图之前的段落仍可读。</p>
+<p><img src="data:image/svg+xml;base64,not-a-valid-image" alt="损坏图片"></p>
+<p>坏图之后的段落仍可读。</p>
+</div>`
+const EDITORIAL_T4_ISSUE_HTML = EDITORIAL_T3_ISSUE_HTML.replace(
+  '</div>',
+  `<h2>竖图开篇边界</h2>
+<h3>无导语竖图首条</h3>
+<p><img src="${svgImage(300, 540, '8a5a2f', 'opening-portrait')}" alt="竖图开篇题注"></p>
+<p>竖图开篇后的连续正文。</p>
+</div>`
+)
+
 export function juyaArticle(overrides: Partial<Article> = {}): Article {
   return {
     guid: 'https://daily.juya.uk/issues/2026-08-28/',
@@ -119,6 +185,23 @@ export type Scenario =
   | 'nocturneSvg'
   | 'nocturneLightbox'
   | 'editorial'
+  | 'editorialT1'
+  | 'editorialT2'
+  | 'editorialT2Fallback'
+  | 'editorialT3'
+  | 'editorialT4'
+  | 'editorialT4Dark'
+  | 'editorialT4Zoom'
+  | 'editorialT5LightGrid2'
+  | 'editorialT5DarkGrid4Fields'
+  | 'editorialT5LightCompact'
+  | 'editorialT5DarkCompactNoCover'
+  | 'editorialT5LightMagazineFieldsOff'
+  | 'editorialT5DarkMagazineGrid4'
+  | 'editorialT5LightSingleNoCover'
+  | 'editorialT5DarkEmpty'
+  | 'editorialT5LightGrid2Zoom'
+  | 'editorialT5LightGridFavorites'
   | 'wabi'
   | 'system'
   | 'grid4'
@@ -198,6 +281,73 @@ export function makeStubScript(scenario: Scenario): string {
     articles = [juyaArticle({ contentHtml: LIGHTBOX_ISSUE_HTML })]
   } else if (scenario === 'editorial') {
     settings.juyaLightStyleId = 'editorial'
+  } else if (scenario === 'editorialT1') {
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    articles = [juyaArticle({ contentHtml: EDITORIAL_T1_ISSUE_HTML })]
+  } else if (
+    scenario === 'editorialT2' ||
+    scenario === 'editorialT2Fallback'
+  ) {
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    articles = [juyaArticle({
+      pubDate: scenario === 'editorialT2' ? '2026-10-21T17:00:00.000Z' : '2026-10-22T01:00:00.000Z',
+      title: '文章标题回退来源：长标题 fallback',
+      summary: scenario === 'editorialT2Fallback' ? '' : '摘要完整，无改写无截断。'.repeat(12),
+      contentHtml: scenario === 'editorialT2Fallback' ? EDITORIAL_T2_FALLBACK_HTML : EDITORIAL_T2_ISSUE_HTML
+    })]
+  } else if (scenario === 'editorialT3') {
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    articles = [juyaArticle({ contentHtml: EDITORIAL_T3_ISSUE_HTML })]
+  } else if (scenario === 'editorialT4' || scenario === 'editorialT4Dark' || scenario === 'editorialT4Zoom') {
+    settings.themeMode = scenario === 'editorialT4Dark' ? 'dark' : 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    if (scenario === 'editorialT4Zoom') settings.uiZoom = 1.2
+    articles = [juyaArticle({ contentHtml: EDITORIAL_T4_ISSUE_HTML })]
+  } else if (scenario.startsWith('editorialT5')) {
+    settings.themeMode = scenario.includes('Dark') ? 'dark' : 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    if (scenario.includes('Compact')) settings.layout = { ...settings.layout, preset: 'compact' }
+    if (scenario.includes('Magazine')) settings.layout = { ...settings.layout, preset: 'magazine' }
+    if (scenario.includes('Grid4')) settings.layout = { ...settings.layout, gridColumns: 4 }
+    if (scenario === 'editorialT5LightMagazineFieldsOff') {
+      settings.layout = {
+        ...settings.layout,
+        fields: { cover: false, summary: false, pubDate: false, source: false }
+      }
+    } else if (scenario === 'editorialT5DarkGrid4Fields') {
+      settings.layout = {
+        ...settings.layout,
+        fields: { ...settings.layout.fields, summary: false, source: false }
+      }
+    } else if (scenario === 'editorialT5DarkCompactNoCover') {
+      settings.layout = {
+        ...settings.layout,
+        fields: { ...settings.layout.fields, cover: false }
+      }
+    }
+    if (scenario === 'editorialT5LightGrid2Zoom') settings.uiZoom = 1.2
+
+    if (scenario === 'editorialT5LightSingleNoCover') {
+      articles = [juyaArticle({ coverUrl: null, summary: '单篇无封面期号摘要' })]
+    } else if (scenario === 'editorialT5DarkEmpty') {
+      articles = []
+    } else {
+      articles = manyJuya(4).map((article, index) => ({
+        ...article,
+        coverUrl: index === 1 ? null : article.coverUrl,
+        ...(scenario === 'editorialT5LightGrid2Zoom' && index === 0
+          ? { title: `${'EditorialT5'.repeat(14)} 窄窗标题折行验证` }
+          : {})
+      }))
+    }
   } else if (scenario === 'wabi') {
     settings.juyaLightStyleId = 'wabi'
   } else if (scenario === 'system') {
@@ -323,7 +473,18 @@ export function makeStubScript(scenario: Scenario): string {
     }
   }
 
-  const data = { settings, sources, articles, themes: BUILTIN_THEMES, session }
+  const favoriteArticle = scenario === 'editorialT5LightGridFavorites' ? articles[0] : undefined
+  const history = favoriteArticle
+    ? {
+        [favoriteArticle.guid]: {
+          guid: favoriteArticle.guid,
+          read: false,
+          readAt: null,
+          favorite: true
+        }
+      }
+    : undefined
+  const data = { settings, sources, articles, themes: BUILTIN_THEMES, session, history }
 
   return `
     window.__stubData = ${JSON.stringify(data)};

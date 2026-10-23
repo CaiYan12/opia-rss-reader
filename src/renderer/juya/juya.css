@@ -3495,7 +3495,7 @@
   --jy-heading: #ede8dd;
   --jy-text: #c5bfb2;
   --jy-muted: #8b8577;
-  --jy-accent: #b3564c;
+  --jy-accent: #c86b5f;
   --jy-on-accent: #161310;
   --jy-link: #cf7d6f;
   --jy-lead-bg: #1e1c18;
@@ -3528,8 +3528,9 @@
 }
 
 .jyedit .juya-masthead h1 {
-  font-size: 40px;
-  letter-spacing: -0.01em;
+  font-size: 42px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .jyedit .juya-date-line {
@@ -3542,9 +3543,12 @@
 
 .jyedit .juya-section > h2 {
   counter-increment: jysec;
-  font-size: 22px;
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
   border-bottom: 1px solid var(--jy-border);
-  padding-bottom: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
 }
 
 .jyedit .juya-section > h2::before {
@@ -3554,9 +3558,10 @@
   color: var(--jy-accent);
 }
 
-.jyedit .juya-lead::first-letter {
+.jyedit .juya-section > .juya-entry:first-of-type .juya-lead::first-letter {
   font-family: var(--jy-font-heading);
   font-size: 2.6em;
+  font-weight: 700;
   float: left;
   line-height: 0.85;
   padding: 4px 8px 0 0;
@@ -3568,41 +3573,81 @@
   font-weight: 700;
 }
 
+/* 开篇图只与标题/导语并置；后续内容仍是 article 的常规连续子项。容器查询按实际版心宽度响应内容区缩放。 */
+.jyedit .juya-issue {
+  container-type: inline-size;
+  container-name: editorial-reading;
+}
+
+.jyedit .juya-editorial-opening {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.jyedit .juya-editorial-opening-copy,
+.jyedit .juya-editorial-opening-image {
+  min-width: 0;
+}
+
+.jyedit .juya-editorial-opening-copy .juya-lead {
+  margin-bottom: 0;
+}
+
+.jyedit .juya-editorial-opening-image {
+  width: 100%;
+  margin: 0;
+}
+
+@container editorial-reading (min-width: 700px) {
+  .jyedit .juya-editorial-opening[data-image-layout='landscape'] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
+  }
+}
+
 .jyedit .juya-entry p {
   max-width: 68ch;
 }
 
-/* 第二轮定制排版：deck 副题、封面故事节奏、colophon 刊尾、裁切角标 */
+.jyedit .juya-section {
+  margin-top: 44px;
+}
+
+.jyedit .juya-entry p:not(.juya-links-label) {
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+/* 第二轮定制排版：deck 副题、colophon 刊尾、装裱题注、裁切角标 */
 .jyedit .juya-deck {
-  max-width: 46ch;
-  margin: -8px auto 24px;
-  text-align: center;
+  max-width: 68ch;
+  margin: -8px 0 24px;
+  text-align: left;
   font-family: var(--jy-font-heading);
-  font-style: italic;
+  font-style: normal;
   font-size: 16px;
   line-height: 1.6;
   color: var(--jy-muted);
 }
 
+.jyedit .juya-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  row-gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .jyedit .juya-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .jyedit .juya-entry + .juya-entry {
   border-top: 1px solid var(--jy-border);
   padding-top: 28px;
-}
-
-.jyedit .juya-entry-row {
-  gap: 40px;
-}
-
-.jyedit .juya-entry-row .juya-entry-figure {
-  width: 46%;
-}
-
-.jyedit .juya-media-hero img {
-  transition: transform 600ms var(--ease-out, ease-out);
-}
-
-.jyedit .juya-media-hero img:hover {
-  transform: scale(1.02);
 }
 
 .jyedit .juya-plate {
@@ -3654,19 +3699,120 @@
   border-bottom: 1px solid var(--jy-border);
 }
 
-/* 订阅封面 3/2 杂志摄影横图；featured 大卡标题 26px */
+/* T5 订阅页：封面、日期线、标题层级与留白承载期号，不画整卡边框。 */
+.jyedit .juya-feed {
+  max-width: 1040px;
+  gap: 28px;
+  padding-block: 32px 48px;
+}
+
+.jyedit .juya-feed-grid {
+  column-gap: 32px;
+  row-gap: 40px;
+}
+
+.jyedit .juya-feed-item {
+  overflow: visible;
+  padding: 0 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: color 160ms var(--ease-out, ease-out);
+}
+
+.jyedit .juya-feed-item:hover {
+  transform: none;
+}
+
+.jyedit .juya-feed-item:hover .juya-feed-title {
+  text-decoration: underline;
+  text-decoration-color: var(--jy-accent);
+  text-underline-offset: 4px;
+}
+
+.jyedit .juya-feed-item:focus-visible {
+  outline-color: var(--jy-focus);
+  outline-offset: 0;
+}
+
 .jyedit .juya-feed-cover {
+  display: block;
   aspect-ratio: 3 / 2;
+  border-bottom: 0;
+  border-radius: 0;
+  margin-bottom: 14px;
+}
+
+.jyedit .juya-feed-body {
+  padding: 0;
+  gap: 8px;
+}
+
+.jyedit .juya-feed-meta {
+  order: 0;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.jyedit .juya-feed-meta > span:not(.juya-feed-read-dot):not(.juya-feed-source) {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.jyedit .juya-feed-source {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  letter-spacing: 0.04em;
+}
+
+.jyedit .juya-feed-title {
+  order: 1;
+  font-size: 18px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.jyedit .juya-feed-summary {
+  order: 2;
+  line-height: 1.65;
+  -webkit-line-clamp: 4;
+}
+
+.jyedit .juya-feed-compact .juya-feed-item {
+  gap: 16px;
+  padding: 14px 0;
+}
+
+.jyedit .juya-feed-compact .juya-feed-cover {
+  width: 96px;
+  height: 64px;
+  aspect-ratio: 3 / 2;
+  flex: none;
+  margin: 0;
+}
+
+.jyedit .juya-feed-compact .juya-feed-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.jyedit .juya-feed-compact .juya-feed-title {
+  font-size: 15px;
 }
 
 .jyedit .juya-feed-featured .juya-feed-title {
   font-size: 26px;
 }
 
-@media (max-width: 640px) {
-  .jyedit .juya-entry-row .juya-entry-figure {
-    width: 100%;
-  }
+.jyedit .juya-feed-empty {
+  padding: 40px 0;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
 }
 
 /* ---- 侘寂日杂式（2026-09-24 重设计新增） ----
@@ -3916,8 +4062,8 @@
 }
 
 .view-scroll:has([data-juya-variant='editorial-dark'])::-webkit-scrollbar-thumb {
-  /* editorial-dark 砖红 accent #b3564c，对暗底 #131210 对比 3.88；圆角随 --jy-radius 2px */
-  background: #b3564c;
+  /* editorial-dark 砖红 accent #c86b5f，对纹理合成纸面 #1a1916 对比 4.79；圆角随 --jy-radius 2px */
+  background: #c86b5f;
   border-radius: 2px;
 }
 

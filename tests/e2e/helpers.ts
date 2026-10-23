@@ -135,6 +135,14 @@ const EDITORIAL_T3_ISSUE_HTML = `<div>
 <p><img src="data:image/svg+xml;base64,not-a-valid-image" alt="损坏图片"></p>
 <p>坏图之后的段落仍可读。</p>
 </div>`
+const EDITORIAL_T4_ISSUE_HTML = EDITORIAL_T3_ISSUE_HTML.replace(
+  '</div>',
+  `<h2>竖图开篇边界</h2>
+<h3>无导语竖图首条</h3>
+<p><img src="${svgImage(300, 540, '8a5a2f', 'opening-portrait')}" alt="竖图开篇题注"></p>
+<p>竖图开篇后的连续正文。</p>
+</div>`
+)
 
 export function juyaArticle(overrides: Partial<Article> = {}): Article {
   return {
@@ -181,6 +189,9 @@ export type Scenario =
   | 'editorialT2'
   | 'editorialT2Fallback'
   | 'editorialT3'
+  | 'editorialT4'
+  | 'editorialT4Dark'
+  | 'editorialT4Zoom'
   | 'wabi'
   | 'system'
   | 'grid4'
@@ -283,6 +294,12 @@ export function makeStubScript(scenario: Scenario): string {
     settings.juyaLightStyleId = 'editorial'
     settings.juyaDarkStyleId = 'editorial'
     articles = [juyaArticle({ contentHtml: EDITORIAL_T3_ISSUE_HTML })]
+  } else if (scenario === 'editorialT4' || scenario === 'editorialT4Dark' || scenario === 'editorialT4Zoom') {
+    settings.themeMode = scenario === 'editorialT4Dark' ? 'dark' : 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    if (scenario === 'editorialT4Zoom') settings.uiZoom = 1.2
+    articles = [juyaArticle({ contentHtml: EDITORIAL_T4_ISSUE_HTML })]
   } else if (scenario === 'wabi') {
     settings.juyaLightStyleId = 'wabi'
   } else if (scenario === 'system') {

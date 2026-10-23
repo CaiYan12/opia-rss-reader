@@ -3927,7 +3927,7 @@
   border-radius: var(--jy-radius);
 }
 
-/* 第二轮定制排版：条目奇偶错位的不对称节奏；图片两列有机圆角网格 */
+/* 第二轮定制排版：条目奇偶错位的不对称节奏 */
 .jywabi .juya-entry:nth-of-type(odd) {
   margin-right: clamp(0px, 6vw, 56px);
 }
@@ -3936,8 +3936,29 @@
   margin-left: clamp(0px, 6vw, 56px);
 }
 
-.jywabi .juya-media-grid {
-  grid-template-columns: repeat(2, 1fr);
+.jywabi .juya-entry .jywabi-figure {
+  width: fit-content;
+  max-width: 100%;
+  margin: 16px 0 18px;
+}
+
+.jywabi .jywabi-figure img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius, 8px);
+}
+
+.jywabi .jywabi-figure figcaption {
+  max-width: 100%;
+  margin-top: 7px;
+  color: var(--jy-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 /* 订阅封面 4/3 横版（最接近方形但仍宽 > 高）；featured 加大版粗陶圆角 */

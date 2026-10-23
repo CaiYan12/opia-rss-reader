@@ -3698,13 +3698,120 @@
   border-bottom: 1px solid var(--jy-border);
 }
 
-/* 订阅封面 3/2 杂志摄影横图；featured 大卡标题 26px */
+/* T5 订阅页：封面、日期线、标题层级与留白承载期号，不画整卡边框。 */
+.jyedit .juya-feed {
+  max-width: 1040px;
+  gap: 28px;
+  padding-block: 32px 48px;
+}
+
+.jyedit .juya-feed-grid {
+  column-gap: 32px;
+  row-gap: 40px;
+}
+
+.jyedit .juya-feed-item {
+  overflow: visible;
+  padding: 0 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--jy-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: color 160ms var(--ease-out, ease-out);
+}
+
+.jyedit .juya-feed-item:hover {
+  transform: none;
+}
+
+.jyedit .juya-feed-item:hover .juya-feed-title {
+  text-decoration: underline;
+  text-decoration-color: var(--jy-accent);
+  text-underline-offset: 4px;
+}
+
+.jyedit .juya-feed-item:focus-visible {
+  outline-color: var(--jy-focus);
+  outline-offset: 0;
+}
+
 .jyedit .juya-feed-cover {
+  display: block;
   aspect-ratio: 3 / 2;
+  border-bottom: 0;
+  border-radius: 0;
+  margin-bottom: 14px;
+}
+
+.jyedit .juya-feed-body {
+  padding: 0;
+  gap: 8px;
+}
+
+.jyedit .juya-feed-meta {
+  order: 0;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.jyedit .juya-feed-meta > span:not(.juya-feed-read-dot):not(.juya-feed-source) {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.jyedit .juya-feed-source {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  letter-spacing: 0.04em;
+}
+
+.jyedit .juya-feed-title {
+  order: 1;
+  font-size: 18px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.jyedit .juya-feed-summary {
+  order: 2;
+  line-height: 1.65;
+  -webkit-line-clamp: 4;
+}
+
+.jyedit .juya-feed-compact .juya-feed-item {
+  gap: 16px;
+  padding: 14px 0;
+}
+
+.jyedit .juya-feed-compact .juya-feed-cover {
+  width: 96px;
+  height: 64px;
+  aspect-ratio: 3 / 2;
+  flex: none;
+  margin: 0;
+}
+
+.jyedit .juya-feed-compact .juya-feed-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.jyedit .juya-feed-compact .juya-feed-title {
+  font-size: 15px;
 }
 
 .jyedit .juya-feed-featured .juya-feed-title {
   font-size: 26px;
+}
+
+.jyedit .juya-feed-empty {
+  padding: 40px 0;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
 }
 
 /* ---- 侘寂日杂式（2026-09-24 重设计新增） ----

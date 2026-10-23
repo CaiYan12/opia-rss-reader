@@ -14,7 +14,6 @@ test('默认（纸感精读式）：橘鸦订阅页渲染风格化期号列表',
   await expect(feed.locator('.juya-feed-title')).toHaveText(['2026-08-28'])
   await expect(feed.locator('.juya-feed-cover')).toHaveAttribute('loading', 'lazy')
 })
-
 test('短内容（单篇）：纸面铺满订阅页视口（.juya-root 高度 ≥ 滚动容器）', async ({ page }) => {
   // default 场景仅 1 篇期号 = 短内容：修复前 zoom div 高度 auto，
   // .juya-root { min-height: 100% } 百分比解析失败，纸面在内容尽头截断。
@@ -791,5 +790,204 @@ test('视觉合理性（几何）：compact 单列垂直堆叠、行式紧凑', 
   // 行式：每行高度紧凑
   for (const b of boxes) {
     expect(b.height).toBeLessThan(100)
+  }
+})
+
+test('editorial T5：亮暗期号去整卡外框、悬停不位移且键盘焦点可见', async ({ page }) => {
+  for (const scenario of ['editorialT5LightGrid2', 'editorialT5DarkGrid2'] as const) {
+    await loadApp(page, scenario)
+    const item = activeTab(page).locator('.juya-feed-item').first()
+    await expect(item).toBeVisible()
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+
+    const surface = await item.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return {
+        background: style.backgroundColor,
+        borderTop: style.borderTopWidth,
+        borderRight: style.borderRightWidth,
+        borderBottom: style.borderBottomWidth,
+        borderLeft: style.borderLeftWidth,
+        radius: style.borderTopLeftRadius,
+        shadow: style.boxShadow
+      }
+    })
+    expect(surface.background, `${scenario} 整卡透明`).toBe('rgba(0, 0, 0, 0)')
+    expect(surface.borderTop, `${scenario} 无整卡描边`).toBe('0px')
+    expect(surface.borderRight).toBe('0px')
+    expect(surface.borderBottom, `${scenario} 底部分隔线保留`).toBe('1px')
+    expect(await item.evaluate((el) => getComputedStyle(el).borderBottomStyle)).toBe('solid')
+    expect(surface.borderLeft).toBe('0px')
+    expect(surface.radius).toBe('0px')
+    expect(surface.shadow).toBe('none')
+
+    const order = await item.evaluate((el) => {
+      const box = (selector: string) => el.querySelector<HTMLElement>(selector)!.getBoundingClientRect()
+      return {
+        coverBottom: box('.juya-feed-cover').bottom,
+        dateTop: box('.juya-feed-meta > span:not(.juya-feed-read-dot):not(.juya-feed-source)').top,
+        titleTop: box('.juya-feed-title').top,
+        titleBottom: box('.juya-feed-title').bottom,
+        summaryTop: box('.juya-feed-summary').top
+      }
+    })
+    expect(order.coverBottom).toBeLessThan(order.dateTop)
+    expect(order.dateTop).toBeLessThan(order.titleTop)
+    expect(order.titleBottom).toBeLessThanOrEqual(order.summaryTop)
+
+    await item.hover()
+    expect(await item.evaluate((el) => getComputedStyle(el).transform), `${scenario} 悬停无位移`).toBe('none')
+
+    await item.focus()
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Shift+Tab')
+    const focus = await item.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return {
+        visible: el.matches(':focus-visible'),
+        outlineStyle: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+        outlineColor: style.outlineColor
+      }
+    })
+    expect(focus.visible, `${scenario} 键盘焦点可见`).toBe(true)
+    expect(focus.outlineStyle).toBe('solid')
+    expect(focus.outlineWidth).toBe('2px')
+    expect(focus.outlineColor).not.toBe('rgba(0, 0, 0, 0)')
+  }
+})
+
+test('editorial T5：亮暗三种订阅预设保留列数、顺序与字段语义', async ({ page }) => {
+  const dates = ['2026-08-28', '2026-08-27', '2026-08-26', '2026-08-25']
+  const cases = [
+    {
+      scenario: 'editorialT5LightGrid2', variant: 'editorial-light', preset: 'grid', columns: 2,
+      covers: 3, summaries: 4, dates: 4, sources: 4
+    },
+    {
+      scenario: 'editorialT5DarkGrid4Fields', variant: 'editorial-dark', preset: 'grid', columns: 4,
+      covers: 3, summaries: 0, dates: 4, sources: 0
+    },
+    {
+      scenario: 'editorialT5LightCompact', variant: 'editorial-light', preset: 'compact',
+      covers: 3, summaries: 0, dates: 4, sources: 4
+    },
+    {
+      scenario: 'editorialT5DarkCompactNoCover', variant: 'editorial-dark', preset: 'compact',
+      covers: 0, summaries: 0, dates: 4, sources: 4
+    },
+    {
+      scenario: 'editorialT5LightMagazineFieldsOff', variant: 'editorial-light', preset: 'magazine', columns: 2,
+      covers: 1, summaries: 1, dates: 0, sources: 0
+    },
+    {
+      scenario: 'editorialT5DarkMagazineGrid4', variant: 'editorial-dark', preset: 'magazine', columns: 4,
+      covers: 3, summaries: 4, dates: 4, sources: 4
+    }
+  ] as const
+
+  for (const c of cases) {
+    await loadApp(page, c.scenario)
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root).toHaveAttribute('data-juya-variant', c.variant)
+    const feed = root.locator('.juya-feed')
+    const items = feed.locator('.juya-feed-item')
+    await expect(items).toHaveCount(4)
+    expect(await items.locator('.juya-feed-title').allTextContents(), `${c.scenario} 期号顺序`).toEqual(dates)
+    await expect(feed.locator('.juya-feed-cover')).toHaveCount(c.covers)
+    await expect(feed.locator('.juya-feed-summary')).toHaveCount(c.summaries)
+    await expect(feed.locator('.juya-feed-meta > span:not(.juya-feed-read-dot):not(.juya-feed-source)')).toHaveCount(c.dates)
+    await expect(feed.locator('.juya-feed-source')).toHaveCount(c.sources)
+
+    if (c.preset === 'grid') {
+      const grid = root.locator('.juya-feed-grid')
+      await expect(grid).toHaveCount(1)
+      expect(await grid.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(c.columns)
+    } else if (c.preset === 'compact') {
+      await expect(root.locator('.juya-feed-compact')).toBeVisible()
+    } else {
+      const featured = feed.locator('.juya-feed-featured')
+      await expect(featured).toHaveCount(1)
+      await expect(feed.locator('.juya-feed-grid > .juya-feed-item')).toHaveCount(3)
+      expect(await feed.locator('.juya-feed-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(c.columns)
+      if (c.scenario === 'editorialT5LightMagazineFieldsOff') {
+        await expect(featured.locator('.juya-feed-cover')).toHaveCount(1)
+        await expect(featured.locator('.juya-feed-summary')).toHaveCount(1)
+        await expect(feed.locator('.juya-feed-grid .juya-feed-cover, .juya-feed-grid .juya-feed-summary')).toHaveCount(0)
+      }
+    }
+  }
+})
+
+test('editorial T5：单篇无封面仍可打开阅读，空态继续引导刷新', async ({ page }) => {
+  await loadApp(page, 'editorialT5LightSingleNoCover')
+  const item = activeTab(page).locator('.juya-feed-item')
+  await expect(item).toHaveCount(1)
+  await expect(item.locator('.juya-feed-cover')).toHaveCount(0)
+  await expect(item.locator('.juya-feed-summary')).toHaveText('单篇无封面期号摘要')
+  await item.click()
+  await expect(activeTab(page).locator('.juya-root .juya-issue')).toBeVisible()
+  await page.locator('.tab-item').first().getByRole('button').first().click()
+  await expect(activeTab(page).locator('.juya-feed-item .juya-feed-read-dot')).toHaveCount(0)
+
+  await loadApp(page, 'editorialT5DarkEmpty')
+  const emptyFeed = activeTab(page).locator('.juya-feed')
+  await expect(emptyFeed.locator('.juya-feed-item')).toHaveCount(0)
+  await expect(emptyFeed.locator('.juya-feed-empty')).toHaveText('暂无内容，点击右上角刷新获取')
+})
+
+test('editorial T5：收藏过滤只保留已收藏的期号', async ({ page }) => {
+  await loadApp(page, 'editorialT5LightGridFavorites')
+  const feed = activeTab(page).locator('.juya-feed')
+  await expect(feed.locator('.juya-feed-item')).toHaveCount(4)
+  await page.getByRole('banner').getByTitle('只看收藏').click()
+  await expect(feed.locator('.juya-feed-item')).toHaveCount(1)
+  await expect(feed.locator('.juya-feed-title')).toHaveText('2026-08-28')
+  await page.getByRole('banner').getByTitle('显示全部').click()
+  await expect(feed.locator('.juya-feed-item')).toHaveCount(4)
+})
+
+test('editorial T5：减少动态效果下无期号入场与悬停位移', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await loadApp(page, 'editorialT5DarkMagazineGrid4')
+  const item = activeTab(page).locator('.juya-feed-featured')
+  await expect(item).toBeVisible()
+  expect(await item.evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
+  await item.hover()
+  expect(await item.evaluate((el) => getComputedStyle(el).transform)).toBe('none')
+  expect(await item.locator('.juya-feed-cover').evaluate((el) => getComputedStyle(el).transform)).toBe('none')
+})
+
+test('editorial T5：120% 缩放下宽窄窗口标题不裁切、期号不越界', async ({ page }) => {
+  await loadApp(page, 'editorialT5LightGrid2Zoom')
+  for (const width of [1280, 641, 480]) {
+    await page.setViewportSize({ width, height: 800 })
+    const main = activeTab(page).locator('main.view-scroll')
+    await expect(main.locator(':scope > div')).toHaveCSS('zoom', '1.2')
+    const layout = await main.evaluate((scroller) => {
+      const rect = scroller.getBoundingClientRect()
+      const items = [...scroller.querySelectorAll<HTMLElement>('.juya-feed-item')]
+      const titles = items.map((item) => {
+        const title = item.querySelector<HTMLElement>('.juya-feed-title')!
+        const itemRect = item.getBoundingClientRect()
+        return {
+          titleOverflow: title.scrollWidth - title.clientWidth,
+          itemLeft: itemRect.left,
+          itemRight: itemRect.right
+        }
+      })
+      return {
+        scrollOverflow: scroller.scrollWidth - scroller.clientWidth,
+        left: rect.left,
+        right: rect.right,
+        titles
+      }
+    })
+    expect(layout.scrollOverflow, `${width}px 横向溢出`).toBeLessThanOrEqual(0)
+    for (const [index, title] of layout.titles.entries()) {
+      expect(title.titleOverflow, `${width}px 第 ${index + 1} 个标题裁切`).toBeLessThanOrEqual(0)
+      expect(title.itemLeft, `${width}px 期号左侧越界`).toBeGreaterThanOrEqual(layout.left - 1)
+      expect(title.itemRight, `${width}px 期号右侧越界`).toBeLessThanOrEqual(layout.right + 1)
+    }
   }
 })

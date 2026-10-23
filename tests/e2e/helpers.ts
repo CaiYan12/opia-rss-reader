@@ -192,6 +192,16 @@ export type Scenario =
   | 'editorialT4'
   | 'editorialT4Dark'
   | 'editorialT4Zoom'
+  | 'editorialT5LightGrid2'
+  | 'editorialT5DarkGrid4Fields'
+  | 'editorialT5LightCompact'
+  | 'editorialT5DarkCompactNoCover'
+  | 'editorialT5LightMagazineFieldsOff'
+  | 'editorialT5DarkMagazineGrid4'
+  | 'editorialT5LightSingleNoCover'
+  | 'editorialT5DarkEmpty'
+  | 'editorialT5LightGrid2Zoom'
+  | 'editorialT5LightGridFavorites'
   | 'wabi'
   | 'system'
   | 'grid4'
@@ -300,6 +310,44 @@ export function makeStubScript(scenario: Scenario): string {
     settings.juyaDarkStyleId = 'editorial'
     if (scenario === 'editorialT4Zoom') settings.uiZoom = 1.2
     articles = [juyaArticle({ contentHtml: EDITORIAL_T4_ISSUE_HTML })]
+  } else if (scenario.startsWith('editorialT5')) {
+    settings.themeMode = scenario.includes('Dark') ? 'dark' : 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    if (scenario.includes('Compact')) settings.layout = { ...settings.layout, preset: 'compact' }
+    if (scenario.includes('Magazine')) settings.layout = { ...settings.layout, preset: 'magazine' }
+    if (scenario.includes('Grid4')) settings.layout = { ...settings.layout, gridColumns: 4 }
+    if (scenario === 'editorialT5LightMagazineFieldsOff') {
+      settings.layout = {
+        ...settings.layout,
+        fields: { cover: false, summary: false, pubDate: false, source: false }
+      }
+    } else if (scenario === 'editorialT5DarkGrid4Fields') {
+      settings.layout = {
+        ...settings.layout,
+        fields: { ...settings.layout.fields, summary: false, source: false }
+      }
+    } else if (scenario === 'editorialT5DarkCompactNoCover') {
+      settings.layout = {
+        ...settings.layout,
+        fields: { ...settings.layout.fields, cover: false }
+      }
+    }
+    if (scenario === 'editorialT5LightGrid2Zoom') settings.uiZoom = 1.2
+
+    if (scenario === 'editorialT5LightSingleNoCover') {
+      articles = [juyaArticle({ coverUrl: null, summary: '单篇无封面期号摘要' })]
+    } else if (scenario === 'editorialT5DarkEmpty') {
+      articles = []
+    } else {
+      articles = manyJuya(4).map((article, index) => ({
+        ...article,
+        coverUrl: index === 1 ? null : article.coverUrl,
+        ...(scenario === 'editorialT5LightGrid2Zoom' && index === 0
+          ? { title: `${'EditorialT5'.repeat(14)} 窄窗标题折行验证` }
+          : {})
+      }))
+    }
   } else if (scenario === 'wabi') {
     settings.juyaLightStyleId = 'wabi'
   } else if (scenario === 'system') {
@@ -425,7 +473,18 @@ export function makeStubScript(scenario: Scenario): string {
     }
   }
 
-  const data = { settings, sources, articles, themes: BUILTIN_THEMES, session }
+  const favoriteArticle = scenario === 'editorialT5LightGridFavorites' ? articles[0] : undefined
+  const history = favoriteArticle
+    ? {
+        [favoriteArticle.guid]: {
+          guid: favoriteArticle.guid,
+          read: false,
+          readAt: null,
+          favorite: true
+        }
+      }
+    : undefined
+  const data = { settings, sources, articles, themes: BUILTIN_THEMES, session, history }
 
   return `
     window.__stubData = ${JSON.stringify(data)};

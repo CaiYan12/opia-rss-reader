@@ -3826,7 +3826,7 @@
   --jy-text: #4a463c;
   --jy-muted: #655f4c;
   --jy-index-text: #82442f;
-  --jy-lead-text: #655e4d;
+  --jy-wabi-lead-text: #655e4d;
   --jy-accent: #a5654a;
   --jy-on-accent: #f6f1e8;
   --jy-link: #59664a;
@@ -3846,7 +3846,7 @@
   --jy-text: #bdb7a7;
   --jy-muted: #a39a82;
   --jy-index-text: #d49a7c;
-  --jy-lead-text: #a39a82;
+  --jy-wabi-lead-text: #a39a82;
   --jy-accent: #b37a5e;
   --jy-on-accent: #221c16;
   --jy-link: #b2bc95;
@@ -3936,7 +3936,7 @@
   border-left: 2px solid var(--jy-accent);
   background: transparent;
   border-radius: 0;
-  color: var(--jy-lead-text);
+  color: var(--jy-wabi-lead-text);
   font-size: 14px;
   line-height: 1.8;
 }

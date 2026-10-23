@@ -3572,6 +3572,40 @@
   font-weight: 700;
 }
 
+/* 开篇图只与标题/导语并置；后续内容仍是 article 的常规连续子项。容器查询按实际版心宽度响应内容区缩放。 */
+.jyedit .juya-issue {
+  container-type: inline-size;
+  container-name: editorial-reading;
+}
+
+.jyedit .juya-editorial-opening {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.jyedit .juya-editorial-opening-copy,
+.jyedit .juya-editorial-opening-image {
+  min-width: 0;
+}
+
+.jyedit .juya-editorial-opening-copy .juya-lead {
+  margin-bottom: 0;
+}
+
+.jyedit .juya-editorial-opening-image {
+  width: 100%;
+  margin: 0;
+}
+
+@container editorial-reading (min-width: 700px) {
+  .jyedit .juya-editorial-opening[data-image-layout='landscape'] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
+  }
+}
+
 .jyedit .juya-entry p {
   max-width: 68ch;
 }

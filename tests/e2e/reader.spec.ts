@@ -149,8 +149,8 @@ test('editorial T3：段落与图片按文档顺序各出现一次且相关链�
     els.map((el) => el instanceof HTMLImageElement ? `img:${el.alt}` : el.textContent?.trim())
   )
   expect(await stream(entries.nth(0))).toEqual([
-    '首条段落甲。',
     'img:横向图题注',
+    '首条段落甲。',
     '首条段落乙。',
     'img:近方图题注',
     '首条段落丙。',
@@ -178,10 +178,186 @@ test('editorial T3：段落与图片按文档顺序各出现一次且相关链�
   await expect(brokenImageEntry).toContainText('坏图之前的段落仍可读。')
   await expect(brokenImageEntry).toContainText('坏图之后的段落仍可读。')
   expect(await stream(brokenImageEntry)).toEqual([
-    '坏图之前的段落仍可读。',
     'img:损坏图片',
+    '坏图之前的段落仍可读。',
     '坏图之后的段落仍可读。'
   ])
+})
+
+test('editorial T4：栏目首条首图进入开篇且其余图文顺序不变', async ({ page }) => {
+  await loadApp(page, 'editorialT4')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const firstEntry = root.locator('.juya-section').first().locator(':scope > .juya-entry').first()
+  const opening = firstEntry.locator(':scope > .juya-editorial-opening')
+  await expect(opening.locator('h3')).toContainText('栏目首条交错样本')
+  await expect(opening.locator('.juya-lead')).toHaveText('首条导语保持现有来源。')
+
+  const openingImage = opening.locator('figure img')
+  await expect(openingImage).toHaveAttribute('alt', '横向图题注')
+  await expect.poll(() => openingImage.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(640)
+  await expect(root.locator('.juya-entry img')).toHaveCount(6)
+  await expect(root.locator('.juya-entry img[alt="横向图题注"]')).toHaveCount(1)
+
+  const remainingStream = await firstEntry
+    .locator(':scope > p:not(.juya-links-label), :scope > figure img')
+    .evaluateAll((els) => els.map((el) =>
+      el instanceof HTMLImageElement ? `img:${el.alt}` : el.textContent?.trim()
+    ))
+  expect(remainingStream).toEqual([
+    '首条段落甲。',
+    '首条段落乙。',
+    'img:近方图题注',
+    '首条段落丙。',
+    'img:链接图题注',
+    '首条段落丁。'
+  ])
+})
+
+test('editorial T4：宽屏横图开篇并排且后续正文回到连续列宽', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'editorialT4')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const entries = root.locator('.juya-section').first().locator(':scope > .juya-entry')
+  const first = entries.first()
+  const opening = first.locator('.juya-editorial-opening')
+  const openingImage = opening.locator('.juya-editorial-opening-image img')
+  await expect.poll(() => openingImage.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(640)
+  await expect(opening).toHaveAttribute('data-image-layout', 'landscape')
+
+  const geometry = await opening.evaluate((el) => {
+    const copy = el.querySelector('.juya-editorial-opening-copy')!.getBoundingClientRect()
+    const figure = el.querySelector('.juya-editorial-opening-image')!.getBoundingClientRect()
+    return { copyLeft: copy.left, copyRight: copy.right, imageLeft: figure.left, imageRight: figure.right }
+  })
+  expect(geometry.copyLeft).toBeLessThan(geometry.imageLeft)
+  expect(geometry.copyRight).toBeLessThan(geometry.imageLeft)
+  const firstBounds = await first.boundingBox()
+  expect(firstBounds).not.toBeNull()
+  expect(geometry.imageRight).toBeLessThanOrEqual(firstBounds!.x + firstBounds!.width + 1)
+  await page.screenshot({
+    path: 'out/editorial-implementation-2026-10-22/53/editorial-light-1280.png',
+    fullPage: true
+  })
+
+  const firstBody = first.locator(':scope > p:not(.juya-links-label)').first()
+  const laterBody = entries.nth(1).locator(':scope > p:not(.juya-links-label)').first()
+  const [firstWidth, laterWidth] = await Promise.all([
+    firstBody.evaluate((el) => el.getBoundingClientRect().width),
+    laterBody.evaluate((el) => el.getBoundingClientRect().width)
+  ])
+  expect(Math.abs(firstWidth - laterWidth)).toBeLessThanOrEqual(1)
+})
+
+test('editorial T4：亮暗两侧按版心宽度切换横图开篇布局', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'editorialT4')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const opening = root.locator('.juya-section').first().locator('.juya-editorial-opening').first()
+  const image = opening.locator('.juya-editorial-opening-image img')
+  await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(640)
+
+  for (const variantId of ['editorial-light', 'editorial-dark'] as const) {
+    await root.evaluate((el, id) => el.setAttribute('data-juya-variant', id), variantId)
+    for (const width of [1280, 900, 800, 641, 640, 560, 520, 480]) {
+      await page.setViewportSize({ width, height: 900 })
+      const geometry = await opening.evaluate((el) => {
+        const copy = el.querySelector('.juya-editorial-opening-copy')!.getBoundingClientRect()
+        const figure = el.querySelector('.juya-editorial-opening-image')!.getBoundingClientRect()
+        return { copyLeft: copy.left, copyRight: copy.right, copyBottom: copy.bottom, imageLeft: figure.left, imageTop: figure.top }
+      })
+      const shouldSplit = width >= 800
+      if (shouldSplit) {
+        expect(geometry.copyRight).toBeLessThan(geometry.imageLeft)
+        expect(geometry.imageTop).toBeLessThan(geometry.copyBottom)
+      } else {
+        expect(Math.abs(geometry.copyLeft - geometry.imageLeft)).toBeLessThanOrEqual(1)
+        expect(geometry.imageTop).toBeGreaterThanOrEqual(geometry.copyBottom)
+      }
+      const scroller = root.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " view-scroll ")]')
+      expect(await scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${variantId} ${width}px 横向溢出`).toBe(true)
+      if (variantId === 'editorial-dark' && width === 1280) {
+        await page.screenshot({
+          path: 'out/editorial-implementation-2026-10-22/53/editorial-dark-1280.png',
+          fullPage: true
+        })
+      }
+    }
+  }
+})
+
+test('editorial T4：竖图与无图无导语开篇不留空位', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'editorialT4')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const portraitEntry = root.locator('.juya-section').nth(3).locator(':scope > .juya-entry').first()
+  const portraitOpening = portraitEntry.locator('.juya-editorial-opening')
+  const portrait = portraitOpening.locator('.juya-editorial-opening-image img')
+  await expect.poll(() => portrait.evaluate((el) => (el as HTMLImageElement).naturalHeight)).toBe(540)
+  await expect(portraitOpening).toHaveAttribute('data-image-layout', 'stacked')
+  await expect(portraitOpening.locator('.juya-lead')).toHaveCount(0)
+  const portraitGeometry = await portraitOpening.evaluate((el) => {
+    const copy = el.querySelector('.juya-editorial-opening-copy')!.getBoundingClientRect()
+    const figure = el.querySelector('.juya-editorial-opening-image')!.getBoundingClientRect()
+    return { copyLeft: copy.left, copyBottom: copy.bottom, figureLeft: figure.left, figureTop: figure.top }
+  })
+  expect(Math.abs(portraitGeometry.copyLeft - portraitGeometry.figureLeft)).toBeLessThanOrEqual(1)
+  expect(portraitGeometry.figureTop).toBeGreaterThanOrEqual(portraitGeometry.copyBottom)
+
+  const noImageEntry = root.locator('.juya-section').nth(1).locator(':scope > .juya-entry').first()
+  const noImageOpening = noImageEntry.locator('.juya-editorial-opening')
+  await expect(noImageOpening.locator('h3')).toHaveText('没有图片的条目')
+  await expect(noImageOpening.locator('.juya-lead, figure')).toHaveCount(0)
+  await expect(noImageEntry.locator(':scope > p')).toContainText('无图正文仍完整呈现。')
+})
+
+test('editorial T4：641px 窗宽与 120% 内容区缩放上下排列', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 })
+  await loadApp(page, 'editorialT4Zoom')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  const opening = root.locator('.juya-section').first().locator('.juya-editorial-opening').first()
+  const image = opening.locator('.juya-editorial-opening-image img')
+  await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(640)
+  for (const width of [800, 641]) {
+    await page.setViewportSize({ width, height: 900 })
+    const geometry = await opening.evaluate((el) => {
+      const copy = el.querySelector('.juya-editorial-opening-copy')!.getBoundingClientRect()
+      const figure = el.querySelector('.juya-editorial-opening-image')!.getBoundingClientRect()
+      const image = el.querySelector('img') as HTMLImageElement
+      const style = getComputedStyle(image)
+      const rect = image.getBoundingClientRect()
+      const borderWidth = Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.borderRightWidth)
+      const borderHeight = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth)
+      return {
+        copyLeft: copy.left,
+        copyBottom: copy.bottom,
+        imageLeft: figure.left,
+        imageTop: figure.top,
+        displayedRatio: (rect.width - borderWidth) / (rect.height - borderHeight),
+        naturalRatio: image.naturalWidth / image.naturalHeight
+      }
+    })
+    expect(Math.abs(geometry.copyLeft - geometry.imageLeft)).toBeLessThanOrEqual(1)
+    expect(geometry.imageTop).toBeGreaterThanOrEqual(geometry.copyBottom)
+    expect(Math.abs(geometry.displayedRatio - geometry.naturalRatio)).toBeLessThan(0.015)
+    const scroller = root.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " view-scroll ")]')
+    expect(await scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${width}px 横向溢出`).toBe(true)
+    if (width === 641) {
+      await page.screenshot({
+        path: 'out/editorial-implementation-2026-10-22/53/editorial-light-641-zoom120.png',
+        fullPage: true
+      })
+    }
+  }
 })
 
 test('editorial T3：正文图保留原比例与题注，窄窗不溢出且图片交互不扩张', async ({ page }) => {

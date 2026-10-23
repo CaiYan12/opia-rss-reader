@@ -3,22 +3,53 @@ import { DefaultFeedItem, FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import type { JuyaEntry } from '../parseJuyaIssue'
 import { useAppStore } from '../../stores/useAppStore'
+import { useState } from 'react'
 
 const VARIANT_CLASS = 'jyedit'
 
 function EditorialEntry({
   entry,
-  onOpenLink
+  onOpenLink,
+  sectionOpening = false
 }: {
   entry: JuyaEntry
   onOpenLink: JuyaIssueProps['onOpenLink']
+  sectionOpening?: boolean
 }): JSX.Element {
+  const [openingImageLayout, setOpeningImageLayout] = useState<'landscape' | 'stacked'>('stacked')
+  const openingImage = sectionOpening ? entry.blocks.find((block) => block.kind === 'img') : undefined
+
   return (
     <article className="juya-entry">
-      <EntryTitle entry={entry} onOpenLink={onOpenLink} />
-      {entry.lead && <Lead lead={entry.lead} />}
+      {sectionOpening ? (
+        <div className="juya-editorial-opening" data-image-layout={openingImageLayout}>
+          <div className="juya-editorial-opening-copy">
+            <EntryTitle entry={entry} onOpenLink={onOpenLink} />
+            {entry.lead && <Lead lead={entry.lead} />}
+          </div>
+          {openingImage?.kind === 'img' && (
+            <figure className="juya-plate juya-editorial-opening-image">
+              <img
+                src={openingImage.image.src}
+                alt={openingImage.image.alt}
+                loading="lazy"
+                onLoad={(event) => {
+                  const { naturalWidth, naturalHeight } = event.currentTarget
+                  setOpeningImageLayout(naturalWidth / naturalHeight >= 1.3 ? 'landscape' : 'stacked')
+                }}
+              />
+              {openingImage.image.alt && <figcaption>{openingImage.image.alt}</figcaption>}
+            </figure>
+          )}
+        </div>
+      ) : (
+        <>
+          <EntryTitle entry={entry} onOpenLink={onOpenLink} />
+          {entry.lead && <Lead lead={entry.lead} />}
+        </>
+      )}
       {entry.blocks.map((block, i) =>
-        block.kind === 'p' ? (
+        block === openingImage ? null : block.kind === 'p' ? (
           <p key={i}>{block.text}</p>
         ) : (
           <figure className="juya-plate" key={i}>
@@ -61,7 +92,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
           <section className="juya-section" key={section.heading}>
             <h2>{section.heading}</h2>
             {section.entries.map((entry, i) => (
-              <EditorialEntry key={i} entry={entry} onOpenLink={onOpenLink} />
+              <EditorialEntry key={i} entry={entry} onOpenLink={onOpenLink} sectionOpening={i === 0} />
             ))}
           </section>
         ))}

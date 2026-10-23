@@ -78,11 +78,12 @@
     "pop 审计结论（2026-10-11）：构成语言（3px 描边+6px 硬阴影+贴纸+三色 chip+气泡）执行完整、对比度 16 组全达标；缺口在文字层（中文标题=正文字族加粗，Impact 仅盖拉丁）与三处缺陷（星压字、RM 击穿、暗 chip 隐形）。建议 ①-⑥ 均只触 pop 段与 pop.tsx；⑦（暗色减黄）主观须裁决",
     "pop 实施裁定记录（2026-10-11）：①a 只加 text-shadow 印刷感不改字体栈；期号核实 JuyaIssue 无独立期号字段→取期头日期渲染 MM.DD（缺失回退 pubDate，均无不渲染）；⑦ 阴影选深紫 #4a2d7a（#000 对 #14141a 仅 1.14:1）；②b 期号 on-accent 白字（品红底原案不可见）、星底 #d81b60（白字 4.95:1）——三处择型经双轴评审裁定授权内",
     "pop 刊头拼贴裁定（2026-10-11）：期号影改品红 #e0e045e→#e0245e（黄面板上原 border 黄影同色隐形/亮侧黑字黑影融字，对黄底 3.72:1）；暗侧沟槽 #141414（靠黄描边分隔，刻意低对比）；期号黑/黄为波普经典对",
-    "滚动条方案裁定（2026-10-11）：滚动容器是 .juya-root 祖先读不到 --jy-*（变量只向下继承）→ `.view-scroll:has([data-juya-variant])::-webkit-scrollbar-thumb` 每变体字面色；view-scroll 挂类沿用 view-nav 先例；全局滚动条块一字节不动并进守卫字节锁；thumb 圆角仅直角/锐角风格覆写，圆润风格继承 4px（文档化决策）"
+    "滚动条方案裁定（2026-10-11）：滚动容器是 .juya-root 祖先读不到 --jy-*（变量只向下继承）→ `.view-scroll:has([data-juya-variant])::-webkit-scrollbar-thumb` 每变体字面色；view-scroll 挂类沿用 view-nav 先例；全局滚动条块一字节不动并进守卫字节锁；thumb 圆角仅直角/锐角风格覆写，圆润风格继承 4px（文档化决策）",
+    "editorial #50–#54 实施已完成；#55 本地集成验收记录在 codex/editorial-t6 完成，待父代理审查与集成。父票 #49 保持 OPEN，未表示用户封稿；wabi 全面体检仍待办。验收指针：out/editorial-implementation-2026-10-22/55-report.md。"
   ],
   "blocked": [
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
     "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
   ],
-  "next": "polish: nocturne 已封版（2026-10-12）；继续其余四风格体检（newsprint90s/dreamcore/editorial/wabi）"
+  "next": "#55 验收记录完成，待父代理双轴审查及集成；父票 #49 保持 OPEN。下一个风格级任务为 wabi 全面体检（#55 只做了一项 headless 负对照，不替代全项体检）。"
 }

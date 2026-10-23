@@ -147,7 +147,7 @@ Issues 与规格存于本仓库 GitHub Issues（`CaiYan12/opia-rss-reader`），
 
 ## 计划任务
 
-- 现行状态：v0.2.0 已发布；橘鸦八风格中 folio / y2k / pop / nocturne / newsprint90s / synthwave 已完成逐轮修复（synthwave 见 `docs/STYLE-WORKLOG.md` 同名节），其余两风格（editorial / wabi）待体检。synthwave 于 2026-10-22 封稿，交付见 PR 合并记录与 `docs/STYLE-WORKLOG.md`；后续视觉 / 性能需求另行立项，不默认继续改动已接受取舍。
+- 现行状态：v0.2.0 已发布；folio / y2k / pop / nocturne / newsprint90s / synthwave 已完成逐轮修复（synthwave 封稿记录见 `docs/STYLE-WORKLOG.md`）。editorial #50–#54 实施已完成，#55 本地集成验收记录已在 `codex/editorial-t6` 完成，待父代理双轴审查与集成；父票 #49 保持 OPEN，未表示用户封稿。wabi 全面体检仍待办；#55 中的 wabi 证据只是一项最小负对照。editorial 验收证据索引见 `out/editorial-implementation-2026-10-22/55-report.md`。
 - **发行考古**（每次发版的 tag / commit / 产物字节数 / 当时校验口径）见 `docs/RELEASES.md`。
 - **逐风格施工记录**（每轮改了什么、验了什么、还欠什么）见 `docs/STYLE-WORKLOG.md`。
 - `docs/PLAN-20260828*.md` 与 `docs/HANDOFF-*.md` 是历史计划与交接文档，仅供回溯。

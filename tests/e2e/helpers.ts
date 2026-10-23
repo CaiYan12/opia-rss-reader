@@ -190,6 +190,7 @@ export type Scenario =
   | 'editorialT2Fallback'
   | 'editorialT3'
   | 'editorialT4'
+  | 'editorialT4Dark'
   | 'editorialT4Zoom'
   | 'wabi'
   | 'system'
@@ -293,8 +294,8 @@ export function makeStubScript(scenario: Scenario): string {
     settings.juyaLightStyleId = 'editorial'
     settings.juyaDarkStyleId = 'editorial'
     articles = [juyaArticle({ contentHtml: EDITORIAL_T3_ISSUE_HTML })]
-  } else if (scenario === 'editorialT4' || scenario === 'editorialT4Zoom') {
-    settings.themeMode = 'light'
+  } else if (scenario === 'editorialT4' || scenario === 'editorialT4Dark' || scenario === 'editorialT4Zoom') {
+    settings.themeMode = scenario === 'editorialT4Dark' ? 'dark' : 'light'
     settings.juyaLightStyleId = 'editorial'
     settings.juyaDarkStyleId = 'editorial'
     if (scenario === 'editorialT4Zoom') settings.uiZoom = 1.2

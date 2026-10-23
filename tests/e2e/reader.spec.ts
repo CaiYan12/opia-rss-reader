@@ -264,6 +264,9 @@ test('editorial T4：亮暗两侧按版心宽度切换横图开篇布局', async
 
   for (const variantId of ['editorial-light', 'editorial-dark'] as const) {
     await root.evaluate((el, id) => el.setAttribute('data-juya-variant', id), variantId)
+    const expectedTextColor = variantId === 'editorial-light' ? 'rgb(46, 43, 36)' : 'rgb(197, 191, 178)'
+    await expect.poll(() => root.evaluate((el) => getComputedStyle(el.querySelector('.juya-section > .juya-entry')!).color))
+      .toBe(expectedTextColor)
     for (const width of [1280, 900, 800, 641, 640, 560, 520, 480]) {
       await page.setViewportSize({ width, height: 900 })
       const geometry = await opening.evaluate((el) => {
@@ -281,14 +284,51 @@ test('editorial T4：亮暗两侧按版心宽度切换横图开篇布局', async
       }
       const scroller = root.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " view-scroll ")]')
       expect(await scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${variantId} ${width}px 横向溢出`).toBe(true)
-      if (variantId === 'editorial-dark' && width === 1280) {
-        await page.screenshot({
-          path: 'out/editorial-implementation-2026-10-22/53/editorial-dark-1280.png',
-          fullPage: true
-        })
-      }
     }
   }
+})
+
+test('editorial T4：真实暗侧设置下正文与导语颜色稳定且截图匹配', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await loadApp(page, 'editorialT4Dark')
+  await openFirstArticle(page)
+
+  const root = activeTab(page).locator('.juya-root')
+  await expect(root).toHaveAttribute('data-juya-variant', 'editorial-dark')
+  const opening = root.locator('.juya-section').first().locator('.juya-editorial-opening').first()
+  const image = opening.locator('.juya-editorial-opening-image img')
+  await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(640)
+  await image.evaluate((el) => (el as HTMLImageElement).decode())
+
+  const colors = await root.evaluate((el) => {
+    const rootStyle = getComputedStyle(el)
+    const article = el.querySelector('.juya-section > .juya-entry')!
+    const paragraph = el.querySelector('.juya-section > .juya-entry > p:not(.juya-links-label)')!
+    const lead = el.querySelector('.juya-editorial-opening .juya-lead')!
+    return {
+      themeMode: (window as unknown as { __stubData: { settings: { themeMode: string } } }).__stubData.settings.themeMode,
+      textToken: rootStyle.getPropertyValue('--jy-text').trim(),
+      rootColor: rootStyle.color,
+      articleColor: getComputedStyle(article).color,
+      paragraphColor: getComputedStyle(paragraph).color,
+      leadColor: getComputedStyle(lead).color,
+      leadBackground: getComputedStyle(lead).backgroundColor
+    }
+  })
+  expect(colors.themeMode).toBe('dark')
+  expect(colors.textToken).toBe('#c5bfb2')
+  expect(colors.rootColor).toBe('rgb(197, 191, 178)')
+  expect(colors.articleColor).toBe(colors.rootColor)
+  expect(colors.paragraphColor).toBe(colors.rootColor)
+  expect(colors.leadColor).toBe('rgb(139, 133, 119)')
+  expect(colors.leadBackground).toBe('rgb(30, 28, 24)')
+
+  await expect.poll(() => root.locator('.juya-entry').first().evaluate((el) => getComputedStyle(el).color))
+    .toBe(colors.rootColor)
+  await page.screenshot({
+    path: 'out/editorial-implementation-2026-10-22/53/editorial-dark-1280.png',
+    fullPage: true
+  })
 })
 
 test('editorial T4：竖图与无图无导语开篇不留空位', async ({ page }) => {

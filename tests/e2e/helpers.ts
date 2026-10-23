@@ -107,6 +107,34 @@ const EDITORIAL_T2_ISSUE_HTML = `<div>
 <h2>正文栏目</h2><h3>正文条目 <code>#1</code></h3><p>用于核对刊头与概览后正文仍完整保留。</p>
 </div>`
 const EDITORIAL_T2_FALLBACK_HTML = '<div><h2>栏目</h2><h3>标题回退样本</h3><p>正文内容保留。</p></div>'
+const EDITORIAL_T3_UNBREAKABLE = `EditorialT3${'W'.repeat(120)}`
+const EDITORIAL_T3_LONG_PARAGRAPH = '后续段落甲。这段文字用于验证长文与单图之间的连续排版。'.repeat(8)
+const EDITORIAL_T3_ISSUE_HTML = `<div>
+<h1>杂志编辑式 T3 图文流</h1>
+<h2>连续内容</h2>
+<h3>栏目首条交错样本 ${EDITORIAL_T3_UNBREAKABLE} <code>#1</code></h3>
+<blockquote>首条导语保持现有来源。</blockquote>
+<p>首条段落甲。</p>
+<p><img src="${svgImage(640, 360, '3b4a8f', 'wide')}" alt="横向图题注"></p>
+<p>首条段落乙。</p>
+<p><img src="${svgImage(360, 340, '2f6f6a', 'square')}" alt="近方图题注"></p>
+<p>首条段落丙。</p>
+<p><a href="https://example.com/editorial-image"><img src="${svgImage(480, 240, '7a3f6b', 'linked')}" alt="链接图题注"></a></p>
+<p>首条段落丁。</p>
+<p>相关链接：</p><ul><li><a href="https://example.com/editorial-related?ref=${'u'.repeat(160)}">首条相关链接 ${'U'.repeat(160)}</a></li></ul>
+<h3>栏目后续交错样本 <code>#2</code></h3>
+<p>${EDITORIAL_T3_LONG_PARAGRAPH}</p>
+<p><img src="${svgImage(300, 540, '8a5a2f', 'portrait')}" alt="竖向图题注"></p>
+<p>后续段落乙。</p>
+<p>相关链接：</p><ul><li><a href="https://example.com/editorial-related-2">后续相关链接</a></li></ul>
+<h2>无图边界</h2>
+<h3>没有图片的条目</h3><p>无图正文仍完整呈现。</p>
+<h2>图片失败边界</h2>
+<h3>坏图周围文字仍可读</h3>
+<p>坏图之前的段落仍可读。</p>
+<p><img src="data:image/svg+xml;base64,not-a-valid-image" alt="损坏图片"></p>
+<p>坏图之后的段落仍可读。</p>
+</div>`
 
 export function juyaArticle(overrides: Partial<Article> = {}): Article {
   return {
@@ -152,6 +180,7 @@ export type Scenario =
   | 'editorialT1'
   | 'editorialT2'
   | 'editorialT2Fallback'
+  | 'editorialT3'
   | 'wabi'
   | 'system'
   | 'grid4'
@@ -249,6 +278,11 @@ export function makeStubScript(scenario: Scenario): string {
       summary: scenario === 'editorialT2Fallback' ? '' : '摘要完整，无改写无截断。'.repeat(12),
       contentHtml: scenario === 'editorialT2Fallback' ? EDITORIAL_T2_FALLBACK_HTML : EDITORIAL_T2_ISSUE_HTML
     })]
+  } else if (scenario === 'editorialT3') {
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'editorial'
+    settings.juyaDarkStyleId = 'editorial'
+    articles = [juyaArticle({ contentHtml: EDITORIAL_T3_ISSUE_HTML })]
   } else if (scenario === 'wabi') {
     settings.juyaLightStyleId = 'wabi'
   } else if (scenario === 'system') {

@@ -3880,6 +3880,33 @@
   font-weight: 600;
 }
 
+/* 长概览在可用版心内按行分成双列；容器查询随内容区缩放后的实际宽度退化为单列。 */
+.jywabi .juya-issue {
+  container-type: inline-size;
+}
+
+.jywabi .juya-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 6px;
+}
+
+.jywabi .juya-overview li {
+  min-width: 0;
+}
+
+.jywabi .juya-overview li > :not(.juya-index) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@container (max-width: 639px) {
+  .jywabi .juya-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .jywabi .juya-index {
   background: transparent;
   color: var(--jy-index-text);
@@ -3926,6 +3953,31 @@
 /* 图片两列有机圆角网格 */
 .jywabi .juya-media-grid {
   grid-template-columns: repeat(2, 1fr);
+}
+
+.jywabi .juya-entry .jywabi-figure {
+  width: fit-content;
+  max-width: 100%;
+  margin: 16px 0 18px;
+}
+
+.jywabi .jywabi-figure img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius, 8px);
+}
+
+.jywabi .jywabi-figure figcaption {
+  max-width: 100%;
+  margin-top: 7px;
+  color: var(--jy-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 /* 订阅封面 4/3 横版（最接近方形但仍宽 > 高）；featured 加大版粗陶圆角 */

@@ -168,7 +168,7 @@ async function sampleBackgroundContrast(
         const before = visible.pixels[y][x]
         const after = background.pixels[y][x]
         const delta = [16, 8, 0].map((shift) => Math.abs(((before >> shift) & 0xff) - ((after >> shift) & 0xff)))
-        if (Math.max(...delta) > 8) glyphBackgrounds.push({ pixel: after, before, x, y })
+        if (Math.max(...delta) >= 32) glyphBackgrounds.push({ pixel: after, before, x, y })
       }
     }
     if (glyphBackgrounds.length === 0) throw new Error('Could not isolate any rendered glyph pixels')

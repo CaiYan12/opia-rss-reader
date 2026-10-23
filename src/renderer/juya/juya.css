@@ -3913,13 +3913,118 @@
   grid-template-columns: repeat(2, 1fr);
 }
 
-/* 订阅封面 4/3 横版（最接近方形但仍宽 > 高）；featured 加大版粗陶圆角 */
+/* 订阅封面采用较矮的横幅；featured 继续使用加大版粗陶圆角。 */
 .jywabi .juya-feed-cover {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
 }
 
 .jywabi .juya-feed-featured {
   border-radius: 28px 8px 28px 8px;
+}
+
+/* 期号悬停用陶土边线反馈，不改变卡片或封面的几何。 */
+.jywabi .juya-feed-item:hover {
+  transform: none;
+  border-color: var(--jy-accent);
+}
+
+.jywabi .juya-feed-item:focus-visible {
+  outline: 2px solid var(--jy-focus);
+  outline-offset: 2px;
+}
+
+.jywabi .juya-feed-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.jywabi .juya-feed-body {
+  width: 100%;
+  min-width: 0;
+  padding: 16px 18px 10px;
+}
+
+.jywabi .juya-feed-meta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.jywabi .juya-feed-meta-unread {
+  min-height: 6px;
+  padding-left: 14px;
+}
+
+.jywabi .juya-feed-meta-unread .juya-feed-read-dot {
+  position: absolute;
+  top: 5px;
+  left: 0;
+}
+
+.jywabi .juya-feed-meta .juya-feed-date,
+.jywabi .juya-feed-meta .juya-feed-source {
+  max-width: 100%;
+  min-width: 0;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.jywabi .juya-feed-meta .juya-feed-source {
+  flex: 0 1 auto;
+  padding: 1px 6px;
+}
+
+.jywabi .juya-feed-title {
+  line-height: 1.35;
+}
+
+.jywabi .juya-feed-title > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.jywabi .juya-feed-summary {
+  display: block;
+  padding: 8px 18px 16px;
+}
+
+.jywabi .juya-feed-featured .juya-feed-body {
+  padding: 18px 20px 10px;
+}
+
+.jywabi .juya-feed-featured .juya-feed-summary {
+  padding: 10px 20px 18px;
+}
+
+.jywabi .juya-feed-compact .juya-feed-item {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+}
+
+.jywabi .juya-feed-compact .juya-feed-body {
+  flex: 1;
+  padding: 0;
+}
+
+.jywabi .juya-feed-compact .juya-feed-cover {
+  width: 72px;
+  height: 40px;
+  aspect-ratio: auto;
+  border-bottom: none;
+  border-radius: var(--jy-radius);
+  flex: none;
+}
+
+.jywabi .juya-feed-grid > .juya-feed-empty {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 640px) {

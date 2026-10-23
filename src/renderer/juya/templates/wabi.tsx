@@ -1,12 +1,11 @@
-import { EntryTitle, ImageGrid, Lead, LinksBlock, OverviewItems, Paragraphs } from './shared'
+import { EntryTitle, Lead, LinksBlock, OverviewItems } from './shared'
 import { DefaultFeedItem, FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
 const VARIANT_CLASS = 'jywabi'
 
-/** 侘寂日杂式（第二轮定制排版）：条目奇偶错位的不对称节奏（CSS 承担），
- *  图片两列有机圆角网格；空间留白即版式。 */
+/** 侘寂日杂式：用原文内容块维持段落与图版的连续阅读顺序。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
@@ -22,8 +21,16 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
               <article className="juya-entry" key={i}>
                 <EntryTitle entry={entry} onOpenLink={onOpenLink} />
                 {entry.lead && <Lead lead={entry.lead} />}
-                <Paragraphs paragraphs={entry.paragraphs} />
-                {entry.images.length > 0 && <ImageGrid images={entry.images} mode="grid" />}
+                {entry.blocks.map((block, blockIndex) =>
+                  block.kind === 'p' ? (
+                    <p key={`p-${blockIndex}`}>{block.text}</p>
+                  ) : (
+                    <figure className="jywabi-figure" key={`img-${blockIndex}`}>
+                      <img src={block.image.src} alt={block.image.alt} loading="lazy" />
+                      {block.image.alt && <figcaption>{block.image.alt}</figcaption>}
+                    </figure>
+                  )
+                )}
                 <LinksBlock links={entry.links} onOpenLink={onOpenLink} />
               </article>
             ))}

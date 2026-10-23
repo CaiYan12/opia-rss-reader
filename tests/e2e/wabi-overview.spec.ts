@@ -173,6 +173,18 @@ test('wabi overview uses the zoomed reading width and preserves all 32 entries i
     .toEqual([['openExternal', expectedHrefs[0]]])
   expect(page.url(), 'SafeLink activation does not navigate the reader page').toBe(urlBeforeActivation)
 
+  await page.setViewportSize({ width: 687, height: 900 })
+  await installArticle(page, overviewArticleHtml, 1)
+  const belowBreakpoint = await inspectOverview(page)
+  expect(belowBreakpoint.geometry.listWidth, 'measured usable content width is below 640px').toBeLessThan(640)
+  expect(belowBreakpoint.columns, 'below the usable-width breakpoint stays single-column').toBe(1)
+
+  await page.setViewportSize({ width: 688, height: 900 })
+  await installArticle(page, overviewArticleHtml, 1)
+  const atBreakpoint = await inspectOverview(page)
+  expect(atBreakpoint.geometry.listWidth, 'measured usable content width reaches 640px').toBeGreaterThanOrEqual(640)
+  expect(atBreakpoint.columns, 'at the usable-width breakpoint the grid opens two columns').toBe(2)
+
   await page.setViewportSize({ width: 720, height: 900 })
   await installArticle(page, overviewArticleHtml, 1)
   const medium = await inspectOverview(page)
@@ -186,7 +198,10 @@ test('wabi overview uses the zoomed reading width and preserves all 32 entries i
   const narrow = await inspectOverview(page)
   expect(narrow.columns, '560px at 120% uses one column').toBe(1)
   await page.screenshot({ path: join(evidence, 'overview-560-120.png'), fullPage: true })
-  console.log('[wabi-overview geometry]', JSON.stringify({ wide: wide.geometry, medium: medium.geometry, zoomedMedium: zoomedMedium.geometry, narrow: narrow.geometry }))
+  console.log(
+    '[wabi-overview geometry]',
+    JSON.stringify({ wide: wide.geometry, belowBreakpoint: belowBreakpoint.geometry, atBreakpoint: atBreakpoint.geometry, medium: medium.geometry, zoomedMedium: zoomedMedium.geometry, narrow: narrow.geometry })
+  )
 })
 
 test('wabi overview remains absent when the issue has no overview', async ({ page }) => {

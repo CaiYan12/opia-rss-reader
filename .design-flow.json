@@ -79,11 +79,12 @@
     "pop 实施裁定记录（2026-10-11）：①a 只加 text-shadow 印刷感不改字体栈；期号核实 JuyaIssue 无独立期号字段→取期头日期渲染 MM.DD（缺失回退 pubDate，均无不渲染）；⑦ 阴影选深紫 #4a2d7a（#000 对 #14141a 仅 1.14:1）；②b 期号 on-accent 白字（品红底原案不可见）、星底 #d81b60（白字 4.95:1）——三处择型经双轴评审裁定授权内",
     "pop 刊头拼贴裁定（2026-10-11）：期号影改品红 #e0e045e→#e0245e（黄面板上原 border 黄影同色隐形/亮侧黑字黑影融字，对黄底 3.72:1）；暗侧沟槽 #141414（靠黄描边分隔，刻意低对比）；期号黑/黄为波普经典对",
     "滚动条方案裁定（2026-10-11）：滚动容器是 .juya-root 祖先读不到 --jy-*（变量只向下继承）→ `.view-scroll:has([data-juya-variant])::-webkit-scrollbar-thumb` 每变体字面色；view-scroll 挂类沿用 view-nav 先例；全局滚动条块一字节不动并进守卫字节锁；thumb 圆角仅直角/锐角风格覆写，圆润风格继承 4px（文档化决策）",
-    "editorial #50–#55 实施与验收已全部合入本地 codex/editorial；独立双轴评审已完成且无阻断。父票 #49 保持 OPEN，等待用户选择后续发布／封稿；wabi 全面体检未启动。验收与评审指针：out/editorial-implementation-2026-10-22/55-report.md。"
+    "editorial #50–#55 实施与验收已全部合入本地 codex/editorial；独立双轴评审已完成且无阻断。验收与评审指针：out/editorial-implementation-2026-10-22/55-report.md。",
+    "editorial 封版（用户明确确认，2026-10-23）：保留当前亮暗阅读／订阅版式，最后将栏目首条导语的下沉首字加粗至700，其余文字与应用范围不变。加粗后的全量verify exit0：574单测、158E2E、5张既有归档一致；后续需求另行立项。本地封版不等同push、main合并或发行。"
   ],
   "blocked": [
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
     "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
   ],
-  "next": "等待用户选择 editorial 后续发布／封稿；父票 #49 保持 OPEN。wabi 独立全面体检尚未启动（#55 只做了一项 headless 负对照，不替代全项体检）。"
+  "next": "editorial 已封版；远端交付与发行等待用户单独授权。wabi 独立全面体检尚未启动（#55 的 headless 负对照不替代全项体检）。"
 }

@@ -1,6 +1,6 @@
 # GitHub #55：editorial 集成验收记录
 
-本票验收与记录已完成。代码验收基于 `codex/editorial-t6` 的 `dcc622aa4fe50a7245cb41bb6580032d3f9a7a8c`；该提交的 `src` tree 为 `0e111892b638b39d5558d1ee0fba81d57c8b4afd`。本票没有改产品源码。#50–#54 已按集成记录合入并关闭；父票 #49 仍为 OPEN，等待父代理双轴审查及用户后续决定。本记录不表示用户已封稿，也未执行 push、PR、issue 关闭、发行或性能验收。
+本票验收与记录已完成。代码验收基于 `codex/editorial-t6` 的 `dcc622aa4fe50a7245cb41bb6580032d3f9a7a8c`；该提交的 `src` tree 为 `0e111892b638b39d5558d1ee0fba81d57c8b4afd`。本票验收阶段没有改产品源码。#50–#54 已按集成记录合入并关闭；父票 #49 在该阶段保持 OPEN。后续双轴审查与用户封版确认见文末记录；不将其追溯为当时已封稿、发布或通过性能验收。
 
 ## 浏览器集成矩阵与截图
 
@@ -45,7 +45,7 @@ CDP `CSS.getPlatformFontsForNode` 实读当前 renderer 的字形字体：阅读
 
 ## 边界与文件
 
-本票没有重新测试发行包、公开站点的当日在线内容、物理显示 FPS，也没有声称原生 OS 前台焦点验收通过；受前台保护约束，后续 Electron run 均保持隐藏。所有 `out/editorial-implementation-2026-10-22/55/` 图片、JSON、脚本和日志均为本机忽略证据，未加入 Git；本仓记录文件为本报告、`docs/SPEC-2026-10-22-editorial.md`、`docs/STYLE-WORKLOG.md`、`AGENTS.md` 和 `.design-flow.json`。父代理的全分支双轴 review 已完成且无阻断；本地 #50–#55 已合入 `codex/editorial`，#49 仍 OPEN，等待用户选择后续发布／封稿；wabi 全面体检未启动。
+本票没有重新测试发行包、公开站点的当日在线内容、物理显示 FPS，也没有声称原生 OS 前台焦点验收通过；受前台保护约束，后续 Electron run 均保持隐藏。所有 `out/editorial-implementation-2026-10-22/55/` 图片、JSON、脚本和日志均为本机忽略证据，未加入 Git；本仓记录文件为本报告、`docs/SPEC-2026-10-22-editorial.md`、`docs/STYLE-WORKLOG.md`、`AGENTS.md` 和 `.design-flow.json`。父代理的全分支双轴 review 已完成且无阻断；本地 #50–#55 已合入 `codex/editorial`。用户后续确认封版见下文；wabi 全面体检未启动。
 
 独立双轴评审针对基线 `bfcf32928481a805f5c5f45bde26f5607d60d062` 与冻结候选 `300cc02d9aa8e0f995f40004fcd315872b6e8ed3` 完成，只读且未重跑测试。以下结果保持 Standards 与 Spec 两轴；本次文档收口不改变产品、测试或共享代码。
 
@@ -60,3 +60,9 @@ CDP `CSS.getPlatformFontsForNode` 实读当前 renderer 的字形字体：阅读
 - 依据 `docs/SPEC-2026-10-22-editorial.md` 的开篇、`blocks` 顺序与原图比例、订阅页 `FeedShell` 约束及图片交互排除项；核对路径包括 `src/renderer/juya/templates/editorial.tsx` 与 `tests/e2e/helpers.ts`。评审确认实现符合上述要求，未发现阻断问题。
 
 汇总：Standards 为 0 项硬违规、2 条可选低优先级建议（该轴最严重问题无阻断）；Spec 的缺失／范围外扩／证据错误均为 0（该轴最严重问题无阻断）。
+
+## 用户封版确认（2026-10-23）
+
+用户明确确认满意当前风格并授权封版。评审后仅将既有栏目首条导语的下沉首字加粗为 700，未扩大应用范围；亮暗两侧与周围文字字重已用六个后台样本核对。该微调之后的全量 `npm run verify` 实际 exit 0：574 项单测、158 项 E2E；既有五张 nocturne 归档先生成再验证，逐字节一致。日志、测量与截图在本机 `out/editorial-dropcap-bold-2026-10-23/`。此前的双轴评审针对上文冻结候选，不冒称重新评审了该微调；新增字重已有独立后台验证。
+
+封版保留当前视觉与交互范围，后续需求另行立项。本次仅本地提交，不执行 push、PR、合并 main、tag 或发行；不新增图片放大／链接行为，也不重启可见窗口或执行 OS 前台输入。

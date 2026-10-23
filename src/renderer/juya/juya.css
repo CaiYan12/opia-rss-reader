@@ -3561,6 +3561,7 @@
 .jyedit .juya-section > .juya-entry:first-of-type .juya-lead::first-letter {
   font-family: var(--jy-font-heading);
   font-size: 2.6em;
+  font-weight: 700;
   float: left;
   line-height: 0.85;
   padding: 4px 8px 0 0;

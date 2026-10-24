@@ -1980,6 +1980,54 @@
   color: var(--jy-muted);
 }
 
+/* ---- 订阅页头版（#72）：报刊报头 ----
+   与阅读页三栏刊头同一框线语汇：上沿 1px 细线、下沿 4px double，居中报头字（楷体 token）。
+   头版只承载源身份（引导词 + 源名 + host），期号日期留在各卡片 —— 阅读页刊头的
+   日期/星期行语义不搬进头版。色与字全走变体 token（亮暗由 data-juya-variant 自然取色，
+   无需变体专属覆盖，editorial 打样同形态）；头版自身零装饰伪元素、零动画。
+   版心两档与基类 .juya-feed（760）/ grid 预设（1120）同值，头版与卡片列表同版心：
+   :has(+ .juya-feed-grid) 依赖「场景槽位渲染在 .juya-feed 之前」的既有结构（parts.tsx）。 */
+.jynews .jynews-feed-masthead {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 24px 20px;
+  text-align: center;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 4px double var(--jy-border);
+}
+
+.jynews .jynews-feed-masthead:has(+ .juya-feed-grid) {
+  max-width: 1120px;
+}
+
+/* 引导词与 host：宋体 11px / 1px 字距 / 次要文字色 —— 与阅读页刊头的日期、星期行
+   同一套家具字语汇。muted 对纸纹最不利行实算 ≥4.5（守卫口径，见报告数值）。 */
+.jynews .jynews-feed-masthead-kicker {
+  font-family: var(--jy-font-body);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--jy-muted);
+}
+
+.jynews .jynews-feed-masthead h1 {
+  margin-top: 10px;
+  font-family: var(--jy-font-masthead);
+  font-size: clamp(32px, 5vw, 48px);
+  letter-spacing: 2px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--jy-heading);
+  overflow-wrap: anywhere;
+}
+
+.jynews .jynews-feed-masthead-domain {
+  margin-top: 10px;
+  font-family: var(--jy-font-body);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--jy-muted);
+}
+
 /* ---- 蒸汽梦核式 ---- */
 /* 亮侧（#41）：同一母题的日间版 —— 洋红橙高饱和，卡片同为 0.62 毛玻璃，
    不再是与应用其它页面无异的低饱和淡紫。场景层会覆盖 --jy-bg，该值只是无场景时的兜底。 */

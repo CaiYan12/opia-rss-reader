@@ -191,3 +191,20 @@
 - 最后微调只在既有下沉首字规则新增 `font-weight: 700`，保留栏目首条导语范围，周围文字仍为 400。六个 headless 样本覆盖亮暗 × 中文／英文／引号开头，无横向溢出；没有启动可见应用或前台宏。
 - 加粗后已重新实跑 `npm run verify` exit 0：23 个单测文件／574 项、158 项 E2E；既有 nocturne 归档先写入再验证，五张全部逐字节一致。原始日志、样本与截图在本机 `out/editorial-dropcap-bold-2026-10-23/`；封版文档更新不重复运行相同验证。
 - 本地封版提交包含该字重与记录，不执行 push、PR、合并 main、tag 或发行；不删除历史分支和证据。
+
+## 订阅页头版推广（八风格，2026-10-24，SPEC #67）
+
+wabi 引入的订阅页头版（GLOSSARY 已收录该术语，与阅读页「刊头」区分）推广到其余七风格；editorial 以打样（`627c846`）为基线，批量票覆盖 folio/y2k/pop/newsprint90s/synthwave/nocturne。完整 30 条故事映射、逐风格对比度与边界见[验收报告](FEED-MASTHEAD-ACCEPTANCE-2026-10-24.md)；本机证据根 `out/feed-masthead-implementation-2026-10-24/`（ledger、evidence 代表帧、verify 日志）。
+
+**共享预置（#68，SDD 主代理编排 + 子代理实施，2 并发流水）**：host 派生收敛到共享原子层（wabi/editorial 头版组件改引用，本地副本删除，渲染零变化）；订阅页模板工厂新增 `feedScene` 回调透传（newsprint90s 接线前提）；playwright 端口可经 `PLAYWRIGHT_PORT` 覆盖（并行 worktree 隔离，默认 4173 不变）。
+
+**逐风格一档**（形态与对比度详见验收报告）：
+
+- folio（#69 `42c2fda`）：居中信笺刊头，文武线上缘 + 朱菱花押 + 书目信息行；纯 token 零变体覆盖；feed.spec 场景锁形断言更新为「folio 挂头版且其余风格不受影响」。
+- y2k（#70 `8b98cc8`）：像素浮雕 plaque + 铬字渐变（`drop-shadow` 非 text-shadow，`@supports` 实色回退），暗侧霓虹描边；订阅页无新增场景层。
+- pop（#71 `183aaa5`）：蓝沟槽底板 + 品红标题面板 + 奶油 host 面板 + Ben-Day 反转色带；深紫阴影等既有取舍未动。
+- newsprint90s（#72 `4d53421`）：报头与三栏刊头同源（楷体 `--jy-font-masthead`、上 1px 下 4px double），经工厂回调接线，空态同位挂头版；AA 按「纹理全叠最不利行」实算。
+- synthwave（#73 `b0d8b56`）：nameplate 与落日/透视网格**共存**（grilling 裁决）；fragment 中 Scene 在 nameplate 之前（反序会位移 sticky 场景流位、破坏 #40/#45 锁定）；小字走 `--jy-text`（muted 对最不利合成底不过小字门槛）。
+- nocturne（#74 `5c9f7b5`）：亮侧冻结解除**仅限头版**（diff 三处均在头版块，4 张阅读页归档逐字节一致佐证零漂移）；无装饰层故分层硬约束由结构满足；暗侧订阅页归档按设计重生成（写入模式，`--verify` exit 0）。
+
+**验证**：每票定向 E2E 全绿（46–48 过/次，含亮暗×宽窄 120% 几何、空态、长源名换行、版心对齐、装饰 aria 语义）；每票合并后集成态抽检（typecheck + build + 头版/feed 定向套件）全绿。最终全量门与双轴评审见验收报告。

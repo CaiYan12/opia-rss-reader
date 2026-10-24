@@ -1575,6 +1575,9 @@
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0 L58 30 L85 15 L70 42 L100 50 L70 58 L85 85 L58 70 L50 100 L42 70 L15 85 L30 58 L0 50 L30 42 L15 15 L42 30 Z' fill='%23ffffff'/%3E%3C/svg%3E")
     no-repeat center / contain;
   transform: rotate(-8deg);
+  /* 双保险拉齐本批其余装饰（y2k 标题栏/folio 印章/editorial 角标）的命中口径：
+     星形落在面板左留白死区，伪元素命中本就归 h1 本体，显式声明不改变行为 */
+  pointer-events: none;
 }
 
 /* host 面板：奶油卡面（--jy-card）竖直居中放大写 host，与标题面板同边框/硬影语言 */
@@ -4146,7 +4149,7 @@
    块级子元素，负向顶部落在滚动容器原点以上、被视口裁掉 —— 裁切线处两层均已衰减到近透明
    （青蓝幕帘 ~0.25 / 品红尾 ~0.15），不产生可辨硬边；可见主体（前层亮脊 y≈+11、幕帘垂落
    至 y≈66）落在头版上内衬与 kicker/h1 一带，纵向不出头版盒、不与卡片列表相撞。
-   零横向溢出：left/right: 0 严格收在头版内容盒内（守卫⑥）。
+   零横向溢出：left/right: 0 严格收在头版盒内（padding box，含 24px 侧内衬；守卫⑥）。
    取色来源（**零新增色相**，四色全部取自阅读页极光带既有色、逐字一致）：
      · 冷白亮脊 rgba(214,236,255) = 阅读页极光亮脊（h1 顶档 #ffffff 向既有青蓝
        rgba(90,160,255)（--jy-nebula-2）偏移所得的「被极光照亮的白」）；

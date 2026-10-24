@@ -905,6 +905,99 @@
   color: var(--jy-accent);
 }
 
+/* 订阅页头版（2026-10-24 #70）：像素浮雕 plaque 漂浮于根层星野之上——星光语言留在
+   根背景（订阅页不新增场景层），头版为纯排版区块：kicker + 铬字渐变源名 + 等宽 host，
+   只承载源身份，期号日期留在各自卡片；头版自身无动画。
+   版心取 min(1120px, 100%)（wabi 先例）：与卡片网格预设（默认）的 .juya-feed.juya-feed-grid
+   1120px 版心对齐；compact/magazine 预设下列表本身收窄为 760px，头版保持网格版心不跟随
+   （三预设下头版均稳定成立，无横向溢出）。
+   plaque 两端底色为 --jy-card / --jy-lead-bg（渐变两端覆盖中段过渡）。 */
+.jyy2k .jyy2k-feed-masthead {
+  width: min(1120px, 100%);
+  margin: 16px auto 0;
+  padding: 38px 28px 26px;
+  border: 2px solid var(--jy-border);
+  background: linear-gradient(180deg, var(--jy-card), var(--jy-lead-bg));
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.65),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.18),
+    2px 2px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* 引导词取 accent：小字对 plaque 两端实算 5.84:1 / 5.38:1（亮）、6.29:1 / 6.17:1（暗），≥4.5 过线；
+   前置 8px accent 像素点与订阅卡右上角像素点（.juya-feed-item::after）同语汇 */
+.jyy2k .jyy2k-feed-masthead-kicker {
+  font-family: var(--jy-font-heading);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--jy-accent);
+}
+
+.jyy2k .jyy2k-feed-masthead-kicker::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  background: var(--jy-accent);
+}
+
+/* 铬面渐变源名（复用阅读页刊头已审计档）。取色来源与对比度实算（对 plaque 两端底色，同审计④口径）：
+   亮侧末端 #6b82b8 对 card/lead-bg 3.58:1 / 3.30:1，暗侧末端 #5c77a8 对 3.80:1 / 3.73:1，
+   均达大文本 AA ≥3:1；渐变首档高光/中段为装饰层次（字身由不透明渐变填充，最深档托底可读）。
+   text-shadow 会盖住 background-clip:text 的渐变填充，禁用；外描边效果分别用
+   filter: drop-shadow（亮侧）与 -webkit-text-stroke（暗侧霓虹）。 */
+.jyy2k .jyy2k-feed-masthead h1 {
+  margin-top: 10px;
+  font-family: var(--jy-font-heading);
+  font-size: clamp(44px, 6.5vw, 72px);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+  background: linear-gradient(180deg, #ffffff, #b9c8e8 55%, #6b82b8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+/* 经典「上白高光 + 下暗描边」双影（与阅读页刊头亮侧同值）：text-shadow 在
+   background-clip:text 下会盖住渐变填充（Chromium 绘制顺序），故用 filter: drop-shadow
+   对最终合成结果投影 */
+[data-juya-variant='y2k-light'].jyy2k .jyy2k-feed-masthead h1 {
+  filter: drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.9)) drop-shadow(0 1px 0 rgba(14, 30, 60, 0.45));
+}
+
+/* 暗侧霓虹描边：取色来源 accent #5b9dff（同 RGB、alpha 0.35，与既有
+   --jy-scene-grid-line rgba(91, 157, 255, 0.35) 同值）；描边是装饰性轮廓
+   （字身由不透明渐变填充，synthwave 刊头 #34 先例），不套对比度门槛 */
+[data-juya-variant='y2k-dark'].jyy2k .jyy2k-feed-masthead h1 {
+  background: linear-gradient(180deg, #f4f8ff, #9fb6e0 55%, #5c77a8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 1px rgba(91, 157, 255, 0.35);
+}
+
+/* 回退：不支持 background-clip:text 的引擎上透明字会整体消失，退回实色标题；
+   显式覆盖亮/暗两条渐变规则（含复合选择器），保证回退在任何变体下生效 */
+@supports not (background-clip: text) {
+  .jyy2k .jyy2k-feed-masthead h1,
+  [data-juya-variant='y2k-light'].jyy2k .jyy2k-feed-masthead h1,
+  [data-juya-variant='y2k-dark'].jyy2k .jyy2k-feed-masthead h1 {
+    background: none;
+    color: var(--jy-heading);
+  }
+}
+
+/* host 用等宽字族的地址栏质感；取 muted 色对 plaque 两端实算：
+   亮 5.28:1 / 4.87:1，暗 5.53:1 / 5.43:1（小文本 ≥4.5 过线） */
+.jyy2k .jyy2k-feed-masthead-domain {
+  margin-top: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--jy-muted);
+}
+
 /* ---- 波普艺术式 ---- */
 [data-juya-variant='pop-light'] {
   --jy-bg: #ffe957;

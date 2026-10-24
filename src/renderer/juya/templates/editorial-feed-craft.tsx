@@ -1,15 +1,8 @@
+import { sourceHostname } from './shared'
+
 interface EditorialFeedMastheadProps {
   sourceName: string
   sourceUrl: string
-}
-
-function sourceHostname(sourceUrl: string): string {
-  if (!sourceUrl) return ''
-  try {
-    return new URL(sourceUrl).hostname
-  } catch {
-    return ''
-  }
 }
 
 /** Feed identity stays source-scoped; issue dates remain on their own cards. */

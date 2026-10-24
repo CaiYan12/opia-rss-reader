@@ -691,6 +691,65 @@
   height: 40px;
 }
 
+/* 订阅页头版（2026-10-24 #69）：信笺刊头——上缘文武线（1px 细线 + 2px 朱色全宽线，
+   与栏目条 .juya-section > h2 同构同序）、书眉式引导词、衬线大字源名、朱菱花押分隔、
+   host 作书目信息行，下缘细线收底；居中信笺排法。
+   块宽与内衬对齐 .juya-feed（grid 预设 max-width 1120）版心，色值全部走 token；
+   期号日期不进头版（留在卡片日期行）。 */
+.jyfolio .jyfolio-feed-masthead {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 40px 24px 24px;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+  position: relative;
+  text-align: center;
+}
+
+/* 文武线粗线：2px 朱色全宽，压在细线下方 2px（细线 y 0..1、粗线 y 3..5，与 h2 栏目条同序） */
+.jyfolio .jyfolio-feed-masthead::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  border-top: 2px solid var(--jy-accent);
+  pointer-events: none;
+}
+
+/* 书眉式引导词：朱砂小字拉开字距（accent 对 bg 亮 4.94 / 暗 5.38 ≥4.5）；
+   padding-left 补偿居中排法的字距尾隙 */
+.jyfolio .jyfolio-feed-masthead-kicker {
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  padding-left: 0.32em;
+  color: var(--jy-accent);
+}
+
+.jyfolio .jyfolio-feed-masthead h1 {
+  margin-top: 10px;
+  font-family: var(--jy-font-heading);
+  font-size: clamp(40px, 7vw, 76px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--jy-heading);
+  overflow-wrap: anywhere;
+}
+
+/* 头版朱菱花押：复用条目分隔符（细线—朱菱—细线）同构，收窄纵向节奏并加装饰静默 */
+.jyfolio .jyfolio-feed-masthead .jyfolio-divider {
+  margin: 20px auto 14px;
+  pointer-events: none;
+}
+
+/* host 书目信息行：与阅读页日期线同款（12px / 0.08em / muted，muted 对 bg 亮 5.41 / 暗 5.67 ≥4.5） */
+.jyfolio .jyfolio-feed-masthead-domain {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--jy-muted);
+}
+
 @media (max-width: 520px) {
   .jyfolio .juya-issue::after {
     display: none;

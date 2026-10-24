@@ -1,6 +1,7 @@
 import { test, expect, type Locator } from '@playwright/test'
 import { loadApp, openFirstArticle, activeTab } from './setup'
 import { readGridPlane, SYNTHWAVE_GRID, type GridPlaneFacts } from './helpers'
+import { DEFAULT_SOURCE } from '../../src/shared/types'
 
 /** 订阅页（HomeView 橘鸦源）风格化 + 响应式基线（Playwright 可覆盖部分）。
  *  keep-alive 下断言限定活动标签容器。 */
@@ -124,7 +125,7 @@ test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场
   await expect(noctScene.locator('.juya-scene-nebula')).toHaveCount(1)
 })
 
-test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio 订阅页无场景节点', async ({ page }) => {
+test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio 订阅页挂信笺刊头且其余风格不受影响', async ({ page }) => {
   await loadApp(page, 'dark')
   const root = activeTab(page).locator('.juya-root.jysynth')
   const scene = root.locator('.juya-scene')
@@ -133,6 +134,8 @@ test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio
   await expect(scene.locator('.juya-scene-sun')).toBeVisible()
   const grid = scene.locator('.juya-scene-grid.juya-scene-grid-persp')
   await expect(grid).toBeVisible()
+  // 其他风格不受影响：synthwave 订阅页只有自己的场景层，不出现 folio 头版
+  await expect(root.locator('.jyfolio-feed-masthead')).toHaveCount(0)
 
   // 场景挂在 .juya-root 内、.juya-feed 之前（z-index 0 的固定层必须位于内容之下）
   const order = await root.evaluate((el) => {
@@ -156,10 +159,20 @@ test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio
   )
   expect(gridBottom, '网格底边应贴住可视区下缘').toBeGreaterThan(scrollBox.y + scrollBox.height - 40)
 
-  // 可选插槽不外溢：folio（默认）订阅页没有任何场景节点
+  // 头版接线（#69）：folio 订阅页挂信笺刊头（内容块，非 .juya-scene 装饰层）——
+  // .juya-scene 计数仍为 0，头版不借场景层通道
   await loadApp(page, 'default')
-  await expect(activeTab(page).locator('.juya-root.jyfolio .juya-feed')).toBeVisible()
-  await expect(activeTab(page).locator('.juya-root .juya-scene')).toHaveCount(0)
+  const folioRoot = activeTab(page).locator('.juya-root.jyfolio')
+  await expect(folioRoot.locator('.jyfolio-feed-masthead h1')).toHaveText(DEFAULT_SOURCE.name)
+  await expect(folioRoot.locator('.juya-scene')).toHaveCount(0)
+
+  // 未接线的风格订阅页 DOM 不受影响：无 folio 头版，且订阅页本就无场景层
+  for (const scenario of ['y2k', 'pop', 'newsprint', 'nocturne'] as const) {
+    await loadApp(page, scenario)
+    const otherRoot = activeTab(page).locator('.juya-root')
+    await expect(otherRoot.locator('.jyfolio-feed-masthead')).toHaveCount(0)
+    await expect(otherRoot.locator('.juya-scene')).toHaveCount(0)
+  }
 })
 
 test('订阅页亮侧（#41）：日间版场景同样挂载，网格底边在可视区内，条目同为 18px 毛玻璃', async ({

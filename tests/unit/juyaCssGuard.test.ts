@@ -6246,3 +6246,106 @@ describe('synthwave 订阅页头版卡内 CRT 质感守卫（2026-10-24，#81：
     expect(decl(domain, 'color')).toBe('var(--jy-text)')
   })
 })
+
+describe('pop 订阅页头版印刷硬影与爆炸星守卫（2026-10-24，#82：阅读页 h1 硬影与爆炸星静帧搬入标题面板）', () => {
+  // #82 把阅读页刊头两件波普语汇以「现值搬运」落进订阅页头版标题面板：
+  // - 印刷硬影：h1 text-shadow 3px 3px 0 rgba(0,0,0,.28)（阅读页刊头 h1 同值）。头版 h1 是
+  //   白字实色（var(--jy-on-accent)，非 background-clip:text），text-shadow 可用——仓库硬约束
+  //   只禁「渐变字」用 text-shadow（y2k/nocturne 已踩坑的 Chromium 绘制顺序陷阱）。
+  // - 爆炸星：h1::before 36px 白色星形 SVG data URI（与阅读页 .jypop .juya-masthead h1::before
+  //   逐字节同源）、left -40px top -12px rotate(-8deg)。落位沿用阅读页「h1 左移留白 + ::before
+  //   负偏移」技法：头版标题面板 padding-left 24px + h1 margin-left 16px = 40px 左留白 ≥ 36px
+  //   星形，星形盒（h1 局部 -40..-4）整体收在文字盒外，不压字；kicker 在 h1 上方 12px 沟槽处，
+  //   星形顶缘贴沟槽起线，与 2° 斜置贴纸的下沉角（在贴纸右端）不相交。空 content 对辅助技术
+  //   静默（不进朗读树、不进焦点顺序）；头版静帧，零 hover 零动画零 transition。
+  // 不变量：V1 面板拼贴（品红标题面板/host 面板/Ben-Day 色带/贴纸 kicker/斜置 h1）不动；
+  // 阅读页爆炸星与 h1 硬影原样保留。
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+
+  /** 头版段（.jypop .jypop-feed-masthead 首条规则 → 下一段「90 年代报刊式」段头） */
+  const feedSection = (): string => {
+    const from = css.indexOf('.jypop .jypop-feed-masthead {')
+    const to = css.indexOf('90 年代报刊式')
+    expect(from, '头版段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    return css.slice(from, to)
+  }
+
+  it('① h1 印刷硬影：3px 3px 0 rgba(0,0,0,.28) 与阅读页刊头 h1 同值；h1 白字实色可安全用 text-shadow', () => {
+    const h1 = popRule('\\.jypop-feed-masthead h1')
+    expect(h1, '头版 h1 规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(h1, 'text-shadow'), '硬影与阅读页刊头 h1 同值').toBe(
+      '3px 3px 0 rgba(0, 0, 0, 0.28)'
+    )
+    expect(decl(h1, 'color'), '白字实色（非 background-clip:text，text-shadow 安全）').toBe(
+      'var(--jy-on-accent)'
+    )
+    expect(
+      h1,
+      '硬影不得伴随 background-clip（仓库硬约束：渐变字禁 text-shadow，Chromium 绘制顺序）'
+    ).not.toContain('background-clip')
+    // 同值来源：阅读页刊头 h1 硬影原样保留，未被头版搬运波及
+    expect(decl(popRule('\\.juya-masthead h1'), 'text-shadow')).toBe(
+      '3px 3px 0 rgba(0, 0, 0, 0.28)'
+    )
+  })
+
+  it('② 爆炸星静帧搬入：h1::before 36px 白色星形 SVG、left -40px top -12px rotate -8deg，AT 静默零动效', () => {
+    const star = popRule('\\.jypop-feed-masthead h1::before')
+    expect(star, '爆炸星 ::before 规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(star, 'content'), '伪元素承载，空 content 对 AT 静默').toBe("''")
+    expect(decl(star, 'position')).toBe('absolute')
+    expect(decl(star, 'left'), '阅读页现值 left -40px').toBe('-40px')
+    expect(decl(star, 'top'), '阅读页现值 top -12px').toBe('-12px')
+    expect(decl(star, 'width'), '阅读页现值 36×36').toBe('36px')
+    expect(decl(star, 'height')).toBe('36px')
+    expect(decl(star, 'transform'), '阅读页现值 rotate(-8deg)').toBe('rotate(-8deg)')
+    expect(star, '星形为阅读页同款 SVG data URI').toContain('data:image/svg+xml')
+    expect(star, '白色填充沿用阅读页现值 %23ffffff').toContain('%23ffffff')
+    expect(star, '头版静帧：零 animation / 零 transition').not.toMatch(NO_EFFECT)
+  })
+
+  it('③ 落位不压字：面板内衬 24px + h1 左缩进 16px = 40px 留白 ≥ 36px 星形，星形右缘收在文字盒外', () => {
+    const h1 = popRule('\\.jypop-feed-masthead h1')
+    expect(decl(h1, 'position'), '星形定位参照（阅读页同技法）').toBe('relative')
+    const marginLeft = Number.parseFloat(decl(h1, 'margin-left'))
+    expect(Number.isNaN(marginLeft), 'h1 左缩进应可解析').toBe(false)
+    const panel = popRule('\\.jypop-feed-masthead-panel')
+    const panelPaddingLeft = Number.parseFloat(decl(panel, 'padding').split(/\s+/)[3] ?? '')
+    expect(
+      panelPaddingLeft + marginLeft,
+      '面板内衬 + h1 左缩进 ≥ 星形宽（星形整体收在面板左留白内）'
+    ).toBeGreaterThanOrEqual(36)
+    const star = popRule('\\.jypop-feed-masthead h1::before')
+    const starRight = Number.parseFloat(decl(star, 'left')) + Number.parseFloat(decl(star, 'width'))
+    expect(starRight, '星形右缘 ≤ 0，整体在 h1 文字盒外（不压字）').toBeLessThanOrEqual(0)
+  })
+
+  it('④ V1 面板拼贴零回归：标题面板/host 面板/贴纸 kicker/斜置 h1/色带关键声明不动；全段零动效、构成色只用既有值', () => {
+    const bare = feedSection().replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, '头版段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 构成色白名单：#82 只引入阅读页既有两值（星形白填充 + h1 硬影黑影），其余头版段零字面色
+    const found = [...bare.matchAll(/%23[0-9a-fA-F]{6}|rgba?\([^)]*\)/g)].map((m) => m[0])
+    const allowed = new Set(['%23ffffff', 'rgba(0, 0, 0, 0.28)'])
+    const stray = [...new Set(found)].filter((color) => !allowed.has(color))
+    expect(stray, `头版段出现白名单外色值：${stray.join(', ')}`).toEqual([])
+    const panel = popRule('\\.jypop-feed-masthead-panel')
+    expect(decl(panel, 'background'), '标题面板品红底不动').toBe('var(--jy-accent)')
+    expect(decl(panel, 'border')).toBe('3px solid var(--jy-border)')
+    expect(decl(panel, 'box-shadow'), '蓝色硬位移影不动').toBe('6px 6px 0 var(--jy-link)')
+    const kicker = popRule('\\.jypop-feed-masthead-kicker')
+    expect(decl(kicker, 'background'), '贴纸反白底不动').toBe('var(--jy-heading)')
+    expect(decl(kicker, 'color')).toBe('var(--jy-bg)')
+    expect(decl(kicker, 'transform'), '贴纸 +2° 斜置不动').toBe('rotate(2deg)')
+    const h1 = popRule('\\.jypop-feed-masthead h1')
+    expect(decl(h1, 'font-size'), '大字档位不动').toBe('clamp(40px, 6.5vw, 68px)')
+    expect(decl(h1, 'transform'), 'h1 -1.5° 斜置不动').toBe('rotate(-1.5deg)')
+    const side = popRule('\\.jypop-feed-masthead-side')
+    expect(decl(side, 'background'), 'host 面板奶油底不动').toBe('var(--jy-card)')
+    expect(decl(side, 'box-shadow')).toBe('6px 6px 0 var(--jy-link)')
+    const strip = popRule('\\.jypop-feed-masthead-strip')
+    expect(decl(strip, 'height'), 'Ben-Day 色带高度不动').toBe('22px')
+    expect(decl(strip, 'pointer-events'), '色带不进指针路径不动').toBe('none')
+  })
+})

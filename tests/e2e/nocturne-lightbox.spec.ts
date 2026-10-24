@@ -63,7 +63,7 @@ test('事件委托覆盖任意张数：第 3 张裸图（通栏回流带）同�
   await expect(lightbox(page).locator('img')).toHaveAttribute('src', src as string)
 })
 
-test('链接包裹的图：不打开放大视图，仍走既有外链分流', async ({ page }) => {
+test('链接包裹的图：不打开放大视图，仍走既有外链分流', async ({ page, baseURL }) => {
   const entry = await openLightboxEntry(page)
   const linked = entry.locator('a img[alt="链接图"]')
   await expect(linked).toBeVisible()
@@ -77,7 +77,8 @@ test('链接包裹的图：不打开放大视图，仍走既有外链分流', as
   expect(external, '链接图应走既有外链分流（openExternal）').toEqual([
     ['openExternal', 'https://example.com/linked-image']
   ])
-  expect(page.url(), '不得发生页内导航').toBe('http://localhost:4173/')
+  // 断言「留在根路径、无页内导航」：从配置 baseURL 派生而非硬编码端口（PLAYWRIGHT_PORT 并行纪律）
+  expect(page.url(), '不得发生页内导航').toBe(new URL('/', baseURL!).href)
 })
 
 test('ESC 关闭放大视图', async ({ page }) => {

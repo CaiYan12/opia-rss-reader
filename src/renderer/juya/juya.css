@@ -1992,6 +1992,76 @@
   flex: none;
 }
 
+/* ---- 订阅页头版 nameplate（2026-10-24，#73）----
+   与场景共存（grilling 裁决）：nameplate 是内容层，浮于落日/透视网格装饰底之上；
+   场景仍是 aria-hidden + pointer-events:none 的装饰层，交互与既有 E2E 行为不变。
+   分层：.juya-scene 是 z-index 0 的定位元素（CSS 2.1 附录 E 第 6 步），头版显式 z-index: 1
+   才能保证装饰几何上不盖字（与 nocturne 极光 z=-1 教训同一推理，方向相反：这里抬高内容）。
+   卡面即文字遮罩（本风格语汇）：0.62 毛玻璃与条目卡同源；外发光取 --jy-lead-bg
+   （accent 12% 同值 token，与 #39 卡面发光 0 0 18px rgba(255,45,149,.12) 渲染一致，不新增字面色）。
+   对比度（最不利合成底实算，既有「0.62 卡面压落日峰」口径扩展到落日三色全站，普通 4.5 / 大字 3）：
+   暗侧最不利 = 0.62 卡面压 sun-1 #ffe14d = #6d5a35：--jy-heading 5.69 / --jy-text 5.18；
+   既有落日峰口径 #6d3f2e 上 heading 7.50 / text 6.83。
+   亮侧最不利 = 0.62 白卡压 sun-2 #ff2d95 = #ffafd7：heading 8.99 / text 9.67。
+   小字（引导词/host）因此走 --jy-text 不走 --jy-muted（muted 对上述最不利底仅 3.58 / 4.08，< 4.5，
+   次要感由 11px 字号与字距承担）；accent 不作头版文字用（对最不利底 1.92 / 2.81，连大字 3:1 都不过），
+   阅读页刊头的 heading→accent 渐变尾站同理不搬 —— 头版 h1 用实色 --jy-heading。
+   头版自身零动画（.juya-root 永无 animation 的结构承诺保持，无需进 [data-app-hidden] 暂停清单）。 */
+.jysynth .jysynth-feed-masthead {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 24px 28px;
+  background: var(--jy-card);
+  border: 1px solid var(--jy-border);
+  border-radius: var(--jy-radius);
+  backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: 0 0 18px var(--jy-lead-bg);
+}
+
+/* 版心随预设对齐列表：grid 预设的列表是 1120px 版心（基类 .juya-feed.juya-feed-grid），
+   头版按相邻兄弟匹配同宽；compact / magazine 列表保持基础 760px，头版同宽。 */
+.jysynth .jysynth-feed-masthead:has(+ .juya-feed.juya-feed-grid) {
+  max-width: 1120px;
+}
+
+.jysynth .jysynth-feed-masthead-kicker {
+  font-family: var(--jy-font-masthead, 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--jy-text);
+}
+
+.jysynth .jysynth-feed-masthead h1 {
+  margin-top: 10px;
+  font-family: var(--jy-font-masthead, 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif);
+  font-size: clamp(40px, 7vw, 72px);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  color: var(--jy-heading);
+  overflow-wrap: anywhere;
+}
+
+/* 1px 描边分变体：与阅读页刊头同源同值（各与该侧 --jy-heading 同 RGB、暗 0.45 / 亮 0.28）。
+   描边是装饰性轮廓（字身为实色填充），不套对比度门槛。 */
+[data-juya-variant='synthwave-dark'].jysynth .jysynth-feed-masthead h1 {
+  -webkit-text-stroke: 1px rgba(255, 230, 255, 0.45);
+}
+
+[data-juya-variant='synthwave-light'].jysynth .jysynth-feed-masthead h1 {
+  -webkit-text-stroke: 1px rgba(74, 7, 54, 0.28);
+}
+
+.jysynth .jysynth-feed-masthead-domain {
+  margin-top: 12px;
+  font-family: var(--jy-font-masthead, 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jy-text);
+}
+
 /* ==========================================================================
    场景固定层（.juya-scene）：synthwave 太阳/透视网格（synthwave）、星空/地平网格（y2k 暗）、
    尘埃微粒 dust / 静态渐层雾 nebula（共享层预置，2026-10-12 #1；nocturne-dark 已于 #2 接线）。

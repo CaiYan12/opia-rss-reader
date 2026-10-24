@@ -1,5 +1,6 @@
 import { EntryTitle, ImageGrid, Lead, LinksBlock, OverviewItems, Paragraphs } from './shared'
 import { DefaultFeedItem, FeedShell, Scene } from './parts'
+import { SynthwaveFeedMasthead } from './synthwave-feed-craft'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 
@@ -37,14 +38,26 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
 }
 
 function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
-  const { openArticle } = useAppStore()
+  const { openArticle, sources, activeSourceId } = useAppStore()
+  const activeSource = sources.find((source) => source.id === activeSourceId)
   return (
     <FeedShell
       articles={articles}
       variantId={variantId}
       variantClass={VARIANT_CLASS}
       layout={layout}
-      scene={<Scene sun grid="persp" />}
+      scene={
+        <>
+          {/* 共存组合（#73，grilling 裁决）：场景在前、头版在后。场景的 100vh 流高被自身
+              -100vh margin 抵消，头版被拉回流顶并占据真实流高把列表下推；若反序，场景的
+              自然流位会下移一个头版高度，sticky 下落日/网格整体下坠，破坏既有「网格贴底」几何。 */}
+          <Scene sun grid="persp" />
+          <SynthwaveFeedMasthead
+            sourceName={activeSource?.name ?? ''}
+            sourceUrl={activeSource?.url ?? ''}
+          />
+        </>
+      }
       renderItem={(a, _i, mode, gates, delay) => (
         <DefaultFeedItem
           a={a}

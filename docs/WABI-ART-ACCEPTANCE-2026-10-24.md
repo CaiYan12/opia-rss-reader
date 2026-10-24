@@ -4,7 +4,7 @@
 
 ## 候选与范围
 
-- 候选分支：`codex/wabi-art-66-20261024`，基于集成提交 `9dc58f58c7dd134dda5dd02c90019c3c4a9c69a9`。
+- 候选分支：`codex/wabi-art-66-20261024`，在本轮以 fast-forward 合入集成提交 `97d81952b1e2c0b4c816d1697d48dd44e222a7a6` 后完成纠正验收。
 - #64 与 #65 已关闭且无阻断；其集成后功能测试与页面报告作为本票证据的一部分，不冒称为本票新跑的结果。
 - 本票产品修改仅在 `src/renderer/juya/juya.css`：订阅页陶拓由软椭圆／斜线改为粗粒、断裂的固定种子印痕，按亮暗调整陶拓密度；窄屏下标题上限从 `68px` 校准到 `60px`，最小值从 `52px` 校准到 `42px`；阅读页陶拓宽度收至 `calc(100% - 40px)`，给日期留出干净纸面。来源、文章日期、标题文本和编号语义未改。标题在 1280px 保持原尺寸，480px／120% 样本中仍是刊头主视觉。
 - 订阅页最后 28 reader 变化前的 24 feed 稳定样本继续有效：reader 变更只匹配 `.wabi-reading-craft-rubbing`，不会影响 feed、off 或 editorial。负对照包记录的旧 renderer SHA 与最终 bundle SHA 分列见下文。
@@ -20,8 +20,9 @@
 | `tests/fixtures/juya-content.html` | `e0e2414941ff60096630d11eca3a0114e4969abe53eaf29466386ecbf9f8f810` |
 | `tests/e2e/helpers.ts` | `0ca143c15a4eabb267d31bde600c0f0443840950791b9d03bf119c4952d0e9d4` |
 | `tests/e2e/setup.ts` | `ad02241ae01bea0402f895cf994a3c3b19a108320ac722958593533e2e82101d` |
-| `tests/e2e/wabi-reading-craft.spec.ts` | `656eb29a6df19855d3f2db97bd67e6af1feebbd9d9eb56371184f8d35fd22dd1` |
-| `tests/e2e/wabi-feed.spec.ts` | `50fb43341d43af6e314a0ab92a148e11fd3511f69dc90e66ed1d24bf11fbb14c` |
+| `tests/e2e/wabi-reading-craft.spec.ts` | `ee67c34899aaa89ac4185a99a34710f32d5af7e3a54f0cf47bab2c900e370aaf` |
+| `tests/e2e/wabi-feed.spec.ts` | `3751cd6c1bd705d98c48d21d285ed1df5c39db7bc484756b0356f8581accbee0` |
+| `tests/e2e/platform-fonts.ts` | `5f0fea4f7dccc656e839803efdff9ad98ca8a4a678d2226b073917c56fbd25b1` |
 | `tests/unit/juyaCssGuard.test.ts` | `4c4ec4c2e45b220791d36bddc5e810a3206f438f27c6d563bacb44bf43d515de` |
 | `playwright.config.ts` | `80d197fb767aac88ade03ed26307b28454700ac770043e4b88c5de1ae61ab635` |
 
@@ -56,13 +57,13 @@ The native RSS fixture SHA-256 is `b1638031cff8467fa1699d53818887f03f0b63072cbd3
 | --- | --- | --- |
 | A1 跨页视觉 | 通过 | 亮暗阅读／订阅样本共用行楷展示字、宋体题签和真实日期、纸／炭层次及粗陶拓痕；feed 源身份仍显示为 `橘鸦AI早报`，host 为 `daily.juya.uk`。五维自评与截图路径见下文。 |
 | A2 首屏、几何与缩放 | 通过 | 40 主矩阵状态加 12 个真实 CSS 断点边缘状态，共 52 个亮暗／阅读与订阅／视口／缩放组合。最终几何合成口径为：28 个 reader 状态用最后的 reader CSS 重跑；24 个 feed 状态使用其后唯一修改 reader scoped CSS 之前的稳定图像和记录。全部水平溢出为 0，标题与日期／来源保留，mark 非交互。 |
-| A3 内容与交互 | 通过 | #64 的 32 项 reader 测试和 #65 的 15 项 feed 测试覆盖顺序、字段门控、图文比例、预设、fallback、键盘与焦点；本票隐藏 Electron 又通过真实 IPC 读取 10 篇 feed 项和 32 项概览。完整 `npm run verify` 另通过 190 项 E2E。 |
+| A3 内容与交互 | 通过 | #64 targeted run 的 32 项是 reader+feed 合并套件，其中包含 #65 单独报告的 15 项 feed 检查；两个计数不可相加成 47 个不同测试。本票隐藏 Electron 另经真实 IPC 读取 10 篇 feed 项和 32 项概览。最终 `npm run verify` 通过 190 项 E2E。 |
 | A4 字体与对比度 | 通过，滚动条有像素边界 | 当前候选实测平台字体 4/4 通过。配对 PNG 文字／焦点分析 34 条中 32 条达到阈值、0 条失败；两张滚动条截图没有检测到实色 thumb 像素，故仍标为像素证明未取得。透明 track 上从实际滚动槽截图取样，thumb 计算对比为亮 3.825:1、暗 4.749:1，均超过 3:1。 |
 | A5 原生边界 | 通过，限隐藏运行 | 真实 Electron main/preload/IPC 在独立 userData、sessionData 和 crashDumps 路径运行；初始刷新加入 10 篇，真实 preload API 返回 settings/source/article/history。默认与最小窗口、亮暗及 100%／120% 均记录，默认资料目录前后 stat 相同。窗口始终 hidden/unfocused；DOM 焦点不作为 OS 前台焦点证明。 |
 | A6 最终门 | 通过 | 冻结 CSS 后先写入 Nocturne 既有 5 张归档，再执行唯一一次 `npm run verify`。574 个 Vitest、190 个 Playwright、Nocturne 70/70 文本与 14/14 UI 对比度检查通过；5 张 PNG 逐字节相同。 |
 | A7 证据与认可边界 | 通过记录，用户认可待确认 | 保存原始命令日志、退出码、候选／输入指纹、逐样本 PNG／JSON 和初始失败。用户视觉认可未由代理或自动测试代签；未测 OS 前台行为也未声称通过。 |
 
-全量门日志：`out/wabi-art-implementation-2026-10-24/tickets/66/npm-run-verify-final.log`。滚动条对比是从实际渲染后的滚动槽像素取底色，不是拿局部纸色 token 代替；由于 Chromium 截图没有呈现实色 thumb，报告保留这两项为 pixel-unproven，而不是把计算值称为像素命中证明。
+纠正合并后的最终全量门日志：`out/wabi-art-implementation-2026-10-24/tickets/66/npm-run-verify-final-corrective.log`。该日志对应本轮共享字体 helper 和两处调用测试的最终 SHA。此前 `tickets/66/npm-run-verify-final.log` 是 helper 抽取前、同样通过的原始输入记录；不覆盖前一份结果。滚动条对比是从实际渲染后的滚动槽像素取底色，不是拿局部纸色 token 代替；由于 Chromium 截图没有呈现实色 thumb，报告保留这两项为 pixel-unproven，而不是把计算值称为像素命中证明。
 
 ## 矩阵、前后样本与失败保留
 
@@ -96,57 +97,65 @@ Nocturne write pass `tickets/66/nocturne-walkthrough-write.log` 在 full verify 
 - **正文：**正文基线 16px、行高 1.85、左轴一致；32 项概览、原条目编号、文章顺序、图像比例与图注位置由 #64 targeted E2E 和当前全量 E2E 验证。body 保持低饱和，不与刊头争夺主层级。
 - **整体：**跨亮暗和两页共享纸／墨／陶拓语汇；真实 source/日期语义可识别，容器无水平溢出。当前 #66 视觉证据为自评，**仍需用户亲自确认**。
 
+## 独立评审
+
+- **规范轴：**`out/wabi-art-implementation-2026-10-24/reviews/standards.md` 未发现硬性规范违反。唯一低风险启发式问题是 reader/feed 测试重复 CDP 字体查询设置；本轮通过 `tests/e2e/platform-fonts.ts` 窄 helper 消除该重复。
+- **SPEC 轴：**`out/wabi-art-implementation-2026-10-24/reviews/spec.md` 为 0 项发现。
+- **视觉轴：**`out/wabi-art-implementation-2026-10-24/reviews/visual.md` 独立检查 4 张代表帧：reader 亮宽、reader 暗窄 120%、feed 亮宽、feed 暗窄 120%。评审对所见帧报告 0 项新增可操作视觉缺陷；此范围不是人工逐帧检查全部矩阵。
+- **纠正后的验证：**新 helper 与 reader/feed 调用点定向 E2E 为 24/24 通过，原始日志 `tickets/66/targeted-font-helper-playwright.log`；随后唯一一次纠正后 `npm run verify` 574 单测、190 E2E、Nocturne 审计和归档比较均通过，见上方最终门日志。
+- **用户确认：**以上独立评审都不替用户确认视觉方向，用户认可仍待明确答复。
+
 当前最终几何代表帧：reader light wide `reader-date-clearance/main40/reader-light-1280-100.png`，reader light narrow `reader-date-clearance/main40/reader-light-480-120.png`；窄断点 light `reader-date-clearance/breakpoints/reader-light-641-100.png`。feed 稳定代表帧为 `final-settled/main40/feed-light-1280-100.png` 和 `final-settled-v2/main40/feed-dark-480-120.png`。feed 录屏／PNG 中的卡片封面是确定性几何 SVG，不是实际线上封面内容审美证明。
 
 ## 用户故事 1–38 映射
 
-下表依 #63 原序编号；描述是短摘要，避免把不同证明层合并为“全都通过”。
+下表按 #63 原始 38 条逐项对应；短描述保留原故事的验收含义，不重新编号或把相邻故事合并。
 
 | # | 验收摘要 | 结果与证据 |
 | ---: | --- | --- |
-| 1 | 首屏能识别 Wabi | 通过；亮暗 reader/feed 首屏样本及五维自评。 |
-| 2 | 页面共用纸、墨、陶拓语言 | 通过；52 状态样本，`final-settled/`、`final-settled-v2/`。 |
-| 3 | 正文克制、读感安静 | 通过；#64 16px／1.85 记录、当前 contrast 输出。 |
-| 4 | 展示题头为手写字 | 通过；最终平台字体 CDP 输出 `STXingkai`。 |
-| 5 | 题签与日期有衬线层级 | 通过；最终平台字体 CDP 输出 `SimSun`。 |
-| 6 | 仅原有条目编号使用陶印 | 通过；#64 reader E2E、32 项概览和当前 native DOM 记录。 |
-| 7 | 原有内容信息保留 | 通过；原标题、摘要、日期、来源和正文 IPC／DOM 输出。 |
-| 8 | 刊头结构及比例成立 | 通过；最终 reader/feed screenshots 与几何 JSON。 |
-| 9 | reader 日期来自对应文章 | 通过；#64 日期门控测试，native 实际文章 pubDate。 |
-| 10 | 缺失日期／标题时回退有界 | 通过；#64 title fallback、missing date/index E2E。 |
-| 11 | feed 显示真实来源身份 | 通过；native `橘鸦AI早报`／`daily.juya.uk` IPC 数据。 |
-| 12 | 日期归属各自 feed issue | 通过；#65 feed E2E 与当前 52 状态 JSON。 |
-| 13 | 亮色和纸材质清楚 | 通过；final light reader/feed 截图与稳定 PNG。 |
-| 14 | 暗色炭纸层次清楚 | 通过；final dark reader/feed 截图与稳定 PNG。 |
-| 15 | 纸缘、纤维和拓印体现材料感 | 通过；最终 light/dark 图及五维自评。 |
-| 16 | 窄屏边界与长内容可读 | 通过；28 个当前 reader 状态、原 52 矩阵、长标题 E2E。 |
-| 17 | 120% 缩放保持层级和信息 | 通过；主矩阵及真实最小 native 窗口 120% 样本。 |
-| 18 | 装饰与内容分层且可读 | 通过；文本与背景配对对比、reader 日期间距截图。 |
-| 19 | 装饰不挡点击、滚动或选择 | 通过；`aria-hidden`、`pointer-events:none`、无 focusable 后代和 Wabi E2E。 |
-| 20 | 焦点与辅助标记可访问 | 通过；focus 伪类／轮廓 PNG 对、#64 2 项 focus follow-up。仅证明 DOM 焦点。 |
-| 21 | 实际字体与缺字回退已验证 | 通过；4 种 reader/feed × light/dark CDP glyph 样本，`KaiTi` fallback。 |
-| 22 | 正文尺寸、行高和轴线稳定 | 通过；#64 纸层 E2E 与最终 reader matrix。 |
-| 23 | 图片、段落、链接、图注顺序不变 | 通过；#64 figures E2E、当前确定性图片矩阵与完整 verify。 |
-| 24 | 32 项概览顺序与导航保留 | 通过；#64 targeted E2E、native 32 项计数和当前全量 E2E。 |
-| 25 | feed grid／compact／magazine 及设置保持 | 通过；#65 15 项 E2E、全量 verify。 |
-| 26 | feed 字段门控语义保持 | 通过；#65 fields/layout E2E、未改共享 feed shell。 |
-| 27 | 空列表、单篇、无封面／编号边界成立 | 通过；#64/#65 fallback 与 layout 用例、完整 verify。 |
-| 28 | 键盘操作与焦点可见 | 通过；#64 keyboard/focus 用例和最终焦点像素；不声称 OS 焦点。 |
-| 29 | 开篇、阅读、收藏和链接动作保持 | 通过；共享 store/IPC 未修改，当前 190 E2E 全过；本票不添加动作语义。 |
-| 30 | 图片不新增交互或行为 | 通过；reader figures 用例和无新链接／按钮的模板差异。 |
-| 31 | 减少动态偏好时保持静态可读 | 通过；#65 降动样本、最终矩阵 animation drain；无 Wabi 专属无限动效。 |
-| 32 | 文字与功能元素对比度满足门槛 | 通过；32 条文本／焦点像素记录达到阈值；滚动条 thumb 像素本身未捕获，见 A4。 |
-| 33 | 其他风格、共享默认和 Mini 不受影响 | 通过；off/editorial 4 场景负对照在 reader-only 修改前捕获，最终改动 selector 局部化；不声称 native Mini 专项复测。 |
-| 34 | 保存改动前后首屏 | 通过；#64/#65 before 与 after 样本保留，#66 当前候选最终图单独保存。 |
-| 35 | 前后使用同一内容与图源 | 通过；相同 fixture SHA `e0e241…`、路径确定性 SVG；每个样本自有 JSON 指纹。 |
-| 36 | 需独立视觉复核 | 待 root 合并后双轴复核；本报告自评不替代独立审查。 |
-| 37 | 区分实现、验证、审核和用户确认 | 通过；本报告独立列出，用户视觉认可仍待确认。 |
-| 38 | 保留风格局部设计自由 | 通过；修改限制在 Wabi 专用 CSS，未改共享解析或全局规则。 |
+| 1 | 默认首屏有鲜明侘寂日杂身份 | 通过；亮暗 reader/feed 首屏样本与五维自评。 |
+| 2 | 特殊字样、刊头、背景形成统一工艺语言 | 通过；52 状态样本、稳定 feed 图和独立四帧评审。 |
+| 3 | 强表现集中在刊头页缘，正文仍适合连续阅读 | 通过；16px／1.85 正文记录、当前 reader matrix 与 contrast 输出。 |
+| 4 | 展示字有手写墨字性格 | 通过；平台字形审计实际命中 `STXingkai`。 |
+| 5 | 栏目名为宋体题签并与展示字区分 | 通过；平台字形审计题签为 `SimSun`，截帧显示角色分工。 |
+| 6 | 原始编号呈陶印形态且可读 | 通过；reader E2E、32 项概览 DOM 和最终 reader 图；没有生成新编号。 |
+| 7 | 标题、编号、日期等真实信息完整保留 | 通过；reader/feed DOM、native IPC 文章内容及 fallback 用例。 |
+| 8 | 大字偏左、日期竖排、拓痕有主次留白 | 通过；final reader wide/narrow 几何、日期间距截图和视觉评审。 |
+| 9 | reader 日期来自对应文章真实内容 | 通过；`pubDate`/`datetime` 对照和缺日期用例。 |
+| 10 | 缺日期或长标题时自然排版 | 通过；missing-date fallback 与 480px／120% 长标题 E2E。 |
+| 11 | 阅读页、订阅页共享同一 Wabi 视觉语言 | 通过；两页亮暗最终样本与独立视觉评审，分别保留各自信息语义。 |
+| 12 | feed 刊头标真实源身份，不能以首篇日期代替订阅列表身份 | 通过；feed source 名称／host 与每篇 issue 日期分别记录于 UI、E2E 和 native IPC。 |
+| 13 | 亮侧有可见纤维、毛边和叠页关系 | 通过；稳定 light reader/feed 样本和设计自评。 |
+| 14 | 暗侧有炭纸、陶印和局部擦痕 | 通过；稳定 dark reader/feed 样本和设计自评。 |
+| 15 | 材质按区域分配，正文仍清晰 | 通过；材质截图、32 条文本／焦点像素对比，正文 16px／1.85。 |
+| 16 | 纸边、拓痕窄窗仍可辨 | 通过；reader/feed 窄窗／120% 矩阵及真实断点边缘。 |
+| 17 | 放大内容后刊头、日期仍完整 | 通过；120% 主矩阵、最小 native bounds 和长标题用例。 |
+| 18 | 背景、文字、细笔画和焦点正确分层 | 通过；最终 reader 标题／日期几何、字形像素和焦点像素结果。 |
+| 19 | 装饰不拦截点击、选择或滚动 | 通过；装饰 `aria-hidden`、`pointer-events:none`、无焦点后代与交互检查。 |
+| 20 | 装饰不重复朗读、不增加焦点，语义顺序保持清楚 | 通过结构证据；装饰 `aria-hidden` 且无焦点后代，标题、日期、编号保留原语义节点；keyboard/focus 用例通过。未做实机屏幕阅读器语音审计。 |
+| 21 | 首选字体不可用时展示字仍完整 | 通过；四类 reader/feed 亮暗字形样本均回退 `KaiTi`，文本矩形保留。 |
+| 22 | 保留正文字号、行距、段距与稳定轴线 | 通过；#64 纸层 E2E、最终 reader 矩阵。 |
+| 23 | 导语、原文块、图片比例与题注顺序不变 | 通过；figure/paper E2E、确定性图片样本、完整 verify。 |
+| 24 | 长概览分列，视觉／DOM／Tab 顺序一致 | 通过；合并 reader+feed 32 项 targeted suite 中的 overview 检查及 native 32 项 DOM 计数。 |
+| 25 | grid、compact、magazine 和用户列数设置仍有效 | 通过；#65 单独的 15 项 feed 记录以及 full verify；该 15 项是 #64 合并 32 项中的 feed 子集，不重复相加。 |
+| 26 | 日期、封面、摘要、来源遵循原字段语义 | 通过；feed layout/fields 用例，未改共享字段门控。 |
+| 27 | 空列表、单篇、无封面、缺编号自然成版 | 通过；reader/feed fallback、布局和 figure 边界用例。 |
+| 28 | 键盘操作可达且焦点可见 | 通过；reader overview link/feed card 焦点像素均超过 3:1；不据隐藏 native 声称 OS 焦点。 |
+| 29 | 打开、已读、收藏和文字外链分流保持 | 通过；共享 store/IPC 未改，合并 targeted 测试和 190 项全量 E2E 通过。 |
+| 30 | 图片维持当前行为，不新增放大或灯箱入口 | 通过；reader figure E2E，模板 diff 无新增图片操作。 |
+| 31 | reduced-motion 下材质与构图静态成立 | 通过；#65 reduced-motion 样本、稳定动画矩阵和 full verify。 |
+| 32 | 新背景上的文字、印章、焦点、滚动条达到对比度门槛 | 通过但有边界；32 条文本／焦点栅格像素项通过；scrollbar thumb 两项无实色像素，保留 A4 的计算／像素区分。 |
+| 33 | 通用路径、其他风格、全局界面和 Mini 不受影响 | 通过；off/editorial 负对照 4 组合；最终 reader 修改为 Wabi reader scoped CSS。Native Mini 未单独复测。 |
+| 34 | 用户先看真实内容的亮暗首屏与窄窗样本 | 通过；before/after 组合和当前最终代表帧均留档。 |
+| 35 | 前后使用同一真实内容比较 | 通过；同一 fixture SHA `e0e241…`、确定性 SVG 和逐样本 JSON。 |
+| 36 | 独立视觉评审分别判断字样、刊头和材质 | 通过，代表帧范围有限；root 独立检查 4 帧并报告 0 项新增视觉缺陷，不冒称逐帧人工看完 52 矩阵。 |
+| 37 | 分开记录实现、功能验证、独立评审和用户认可 | 通过；本报告分栏；用户视觉认可仍为 pending。 |
+| 38 | 允许在 Wabi 专属区域充分校准设计 | 通过；保持修改局部于 Wabi CSS，未改共享解析或全局默认。 |
 
 ## 结论与边界
 
 - 实现：完成；产品修改集中在 Wabi 专用 CSS。
-- 功能验证：定向、完整 Playwright/Vitest、像素对比和隐藏 native 均按各自边界通过。
-- 独立 review：待 root 在最新集成 tip 上完成。
+- 功能验证：refactor 定向 E2E 24/24；最终 `npm run verify` 574 Vitest、190 E2E、70/70 text contrast、14/14 UI contrast 和 5/5 archive byte comparisons 均通过；此前隐藏 native、矩阵和像素记录按原范围复用。
+- 独立 review：规范轴无硬性违反、SPEC 轴 0 项发现、代表帧视觉评审完成；review paths 与逐轴结果见上方。
 - 用户视觉认可：**待用户明确确认；不由本报告代填。**
 - 本票没有检查物理屏幕前台焦点、显示帧率、线上真实封面审美或发布环境。滚动条保留 2 项 thumb 直接像素未证明；其他计算与截图范围按 A4 说明。

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { activeTab, loadApp, openFirstArticle } from './setup'
+import { getPlatformFontsForSelector } from './platform-fonts'
 
 type Side = 'light' | 'dark'
 const REAL_FIXTURE = join(process.cwd(), 'tests', 'fixtures', 'juya-content.html')
@@ -96,21 +97,9 @@ async function saveScreenEvidence(page: Page, side: Side, width: number, zoom: n
       clientWidth: scroller?.clientWidth ?? null
     }
   })
-  const cdp = await page.context().newCDPSession(page)
-  await cdp.send('DOM.enable')
-  await cdp.send('CSS.enable')
-  const { root: documentRoot } = await cdp.send('DOM.getDocument', { depth: -1 })
-  const { nodeId: titleNodeId } = await cdp.send('DOM.querySelector', {
-    nodeId: documentRoot.nodeId,
-    selector: '.wabi-reading-craft-title'
-  })
-  const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId: titleNodeId })
-  await cdp.detach()
-  const renderedTitleFonts = fonts.map((font: { familyName: string; glyphCount: number; isCustomFont: boolean }) => ({
-    familyName: font.familyName,
-    glyphCount: font.glyphCount,
-    isCustomFont: font.isCustomFont
-  }))
+  const renderedTitleFonts = (await getPlatformFontsForSelector(page, '.wabi-reading-craft-title')).map(
+    ({ familyName, glyphCount, isCustomFont }) => ({ familyName, glyphCount, isCustomFont })
+  )
   console.log(`[wabi reading title fonts] ${JSON.stringify({ side, width, zoom, renderedTitleFonts })}`)
   writeFileSync(
     join(evidenceDir, `reader-${side}-${width}-${Math.round(zoom * 100)}.json`),
@@ -212,21 +201,9 @@ test('wabi display title remains readable when both handwritten font names are u
   })
   await page.evaluate(() => document.fonts.ready.then(() => true))
 
-  const cdp = await page.context().newCDPSession(page)
-  await cdp.send('DOM.enable')
-  await cdp.send('CSS.enable')
-  const { root } = await cdp.send('DOM.getDocument', { depth: -1 })
-  const { nodeId } = await cdp.send('DOM.querySelector', {
-    nodeId: root.nodeId,
-    selector: '.wabi-reading-craft-title'
-  })
-  const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
-  await cdp.detach()
-  const renderedFonts = fonts.map((font: { familyName: string; glyphCount: number; isCustomFont: boolean }) => ({
-    familyName: font.familyName,
-    glyphCount: font.glyphCount,
-    isCustomFont: font.isCustomFont
-  }))
+  const renderedFonts = (await getPlatformFontsForSelector(page, '.wabi-reading-craft-title')).map(
+    ({ familyName, glyphCount, isCustomFont }) => ({ familyName, glyphCount, isCustomFont })
+  )
   const declaredFallback = await title.evaluate((element) => getComputedStyle(element).fontFamily)
   const evidenceDir = join(process.cwd(), 'out', 'wabi-art-implementation-2026-10-24', '64', 'verify')
   mkdirSync(evidenceDir, { recursive: true })

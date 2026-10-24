@@ -3950,6 +3950,300 @@
   overflow-wrap: anywhere;
 }
 
+/* 阅读页工艺封面：局部炭纸/和纸纤维、浅幅毛边、分层纸影和粗陶拓痕。
+   颜色只属于阅读页；订阅页继续由 .jywabi 的原有材质规则承载。 */
+[data-juya-variant='wabi-light'].jywabi.wabi-reading-craft {
+  --wabi-sheet: #f4f1e8;
+  --wabi-sheet-edge: #d6cfbf;
+  --wabi-sheet-fiber: rgba(97, 83, 62, 0.13);
+  --wabi-edge-wash: rgba(111, 97, 74, 0.14);
+  --wabi-paper-shadow: rgba(56, 48, 36, 0.18);
+  --wabi-slip: #ece7da;
+  --wabi-slip-edge: #d4caba;
+  --wabi-stamp-edge: #a5654a;
+  --wabi-stamp-wash: rgba(165, 101, 74, 0.06);
+  --wabi-stamp-inset: rgba(130, 68, 47, 0.36);
+  --wabi-rub-body: #a77859;
+  --wabi-rub-groove: #705640;
+  --wabi-rub-scratch: #f2e3cf;
+  --wabi-display: '华文行楷', STXingkai, 'KaiTi', '楷体', '楷体_GB2312', 'Noto Serif SC', serif;
+  --wabi-serif: 'SimSun', 'Songti SC', 'Noto Serif SC', serif;
+}
+
+[data-juya-variant='wabi-dark'].jywabi.wabi-reading-craft {
+  --wabi-sheet: #24221d;
+  --wabi-sheet-edge: #454034;
+  --wabi-sheet-fiber: rgba(204, 190, 162, 0.11);
+  --wabi-edge-wash: rgba(0, 0, 0, 0.38);
+  --wabi-paper-shadow: rgba(0, 0, 0, 0.58);
+  --wabi-slip: #2b2923;
+  --wabi-slip-edge: #4b4539;
+  --wabi-stamp-edge: #b37a5e;
+  --wabi-stamp-wash: rgba(179, 122, 94, 0.08);
+  --wabi-stamp-inset: rgba(227, 195, 164, 0.32);
+  --wabi-rub-body: #8b7b65;
+  --wabi-rub-groove: #49443a;
+  --wabi-rub-scratch: #c8b89c;
+  --wabi-display: '华文行楷', STXingkai, 'KaiTi', '楷体', '楷体_GB2312', 'Noto Serif SC', serif;
+  --wabi-serif: 'SimSun', 'Songti SC', 'Noto Serif SC', serif;
+}
+
+.wabi-reading-craft {
+  position: relative;
+  isolation: isolate;
+  background-image: none;
+}
+
+.wabi-reading-craft::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse at 0% 10%, var(--wabi-edge-wash), transparent 34%),
+    radial-gradient(ellipse at 100% 86%, var(--wabi-edge-wash), transparent 32%),
+    linear-gradient(164deg, var(--wabi-sheet-fiber) 0 38%, transparent 40%),
+    linear-gradient(12deg, var(--wabi-sheet-fiber) 0 32%, transparent 34%),
+    linear-gradient(174deg, var(--wabi-sheet-fiber) 0 46%, transparent 48%),
+    linear-gradient(9deg, var(--wabi-sheet-fiber) 0 35%, transparent 37%);
+  background-repeat: no-repeat;
+  background-size: 360px 280px, 340px 320px, 106px 1px, 82px 1px, 124px 1px, 71px 1px;
+  background-position: left top, right bottom, left 4% top 22%, left 9% top 43%, right 8% top 68%, right 4% bottom 17%;
+  -webkit-mask-image: linear-gradient(90deg, #000 0 8%, rgba(0, 0, 0, 0.7) 18%, transparent 35%, transparent 65%, rgba(0, 0, 0, 0.7) 84%, #000 100%);
+  mask-image: linear-gradient(90deg, #000 0 8%, rgba(0, 0, 0, 0.7) 18%, transparent 35%, transparent 65%, rgba(0, 0, 0, 0.7) 84%, #000 100%);
+}
+
+.wabi-reading-craft > .juya-issue {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  box-sizing: border-box;
+  width: auto;
+  max-width: 808px;
+  margin: 18px auto 52px;
+  padding: 32px 24px 64px;
+  background: transparent;
+  box-shadow:
+    0 2px 0 rgba(56, 48, 36, 0.12),
+    0 7px 0 -3px var(--wabi-paper-shadow),
+    0 26px 44px -24px var(--wabi-paper-shadow);
+}
+
+.wabi-reading-craft > .juya-issue::before,
+.wabi-reading-craft > .juya-issue::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  clip-path: polygon(
+    0.32% 0.08%, 22% 0, 48% 0.16%, 76% 0, 99.68% 0.11%,
+    99.83% 19%, 99.56% 41%, 99.78% 63%, 99.46% 83%, 99.7% 100%,
+    73% 99.84%, 48% 100%, 24% 99.88%, 0.34% 100%,
+    0.12% 78%, 0.4% 57%, 0.1% 35%, 0.35% 16%
+  );
+}
+
+.wabi-reading-craft > .juya-issue::before {
+  z-index: -2;
+  border: 1px solid var(--wabi-sheet-edge);
+  background: var(--wabi-sheet);
+}
+
+.wabi-reading-craft > .juya-issue::after {
+  z-index: -1;
+  opacity: 0.7;
+  background-image:
+    radial-gradient(ellipse at 1% 48%, var(--wabi-sheet-fiber), transparent 38%),
+    radial-gradient(ellipse at 99% 62%, var(--wabi-sheet-fiber), transparent 36%),
+    linear-gradient(157deg, var(--wabi-sheet-fiber) 0 35%, transparent 37%),
+    linear-gradient(16deg, var(--wabi-sheet-fiber) 0 42%, transparent 44%),
+    linear-gradient(171deg, var(--wabi-sheet-fiber) 0 38%, transparent 40%);
+  background-repeat: no-repeat;
+  background-size: 108px 210px, 112px 240px, 72px 1px, 95px 1px, 62px 1px;
+  background-position: left center, right center, left 2% top 38px, right 7% top 54%, left 4% bottom 28px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0 7%, rgba(0, 0, 0, 0.56) 17%, transparent 34%, transparent 66%, rgba(0, 0, 0, 0.56) 84%, #000 100%);
+  mask-image: linear-gradient(90deg, #000 0 7%, rgba(0, 0, 0, 0.56) 17%, transparent 34%, transparent 66%, rgba(0, 0, 0, 0.56) 84%, #000 100%);
+}
+
+.wabi-reading-craft > .juya-issue > * {
+  position: relative;
+  z-index: 1;
+}
+
+.wabi-reading-craft-masthead {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 16px;
+  min-height: 216px;
+  margin: 0 -8px 38px;
+  padding: 26px 16px 38px;
+  border-bottom: 1px solid var(--wabi-sheet-edge);
+  container-type: inline-size;
+}
+
+.jywabi.wabi-reading-craft .wabi-reading-craft-title {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1;
+  max-width: 100%;
+  margin: 0;
+  color: var(--jy-heading);
+  font-family: var(--wabi-display);
+  font-size: clamp(40px, 8.4cqi, 68px);
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: 0.025em;
+  overflow-wrap: anywhere;
+}
+
+.wabi-reading-craft-date {
+  position: relative;
+  z-index: 1;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid var(--wabi-stamp-edge);
+  color: var(--jy-heading);
+  font-family: var(--wabi-serif);
+  font-size: 13px;
+  line-height: 1.35;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-orientation: upright;
+  writing-mode: vertical-rl;
+}
+
+.wabi-reading-craft-rubbing {
+  position: absolute;
+  z-index: 0;
+  left: 5px;
+  bottom: 4px;
+  width: calc(100% - 10px);
+  height: 92px;
+  overflow: visible;
+  pointer-events: none;
+  /* Fixed-seed alpha noise breaks the imprint into porous, dry-brushed fragments. */
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='2' seed='65' result='noise'/%3E%3CfeColorMatrix in='noise' values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200' result='alpha'/%3E%3CfeComponentTransfer in='alpha'%3E%3CfeFuncA type='discrete' tableValues='0%20.16%20.48%20.82%201'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='72' height='72' fill='white' filter='url(%23grain)'/%3E%3C/svg%3E");
+  mask-size: 72px 72px;
+  mask-repeat: repeat;
+}
+
+.wabi-reading-craft-rubbing-body {
+  fill: var(--wabi-rub-body);
+  opacity: 0.36;
+}
+
+.wabi-reading-craft-rubbing-groove {
+  fill: none;
+  stroke: var(--wabi-rub-groove);
+  stroke-width: 2.4px;
+  stroke-linecap: round;
+  opacity: 0.66;
+}
+
+.wabi-reading-craft-rubbing-scratch {
+  fill: none;
+  stroke: var(--wabi-rub-scratch);
+  stroke-width: 1.35px;
+  stroke-linecap: round;
+  opacity: 0.82;
+}
+
+.wabi-reading-craft .juya-section > h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 16px 7px 10px;
+  border-inline-start: 3px double var(--wabi-stamp-edge);
+  border-bottom: 1px solid var(--wabi-slip-edge);
+  background: linear-gradient(90deg, var(--wabi-slip), transparent 88%);
+  color: var(--jy-heading);
+  font-family: var(--wabi-serif);
+  font-size: 21px;
+  letter-spacing: 0.16em;
+}
+
+.wabi-reading-craft .juya-section > h2::before {
+  width: 18px;
+  height: 1px;
+  border-radius: 0;
+  background: var(--wabi-stamp-edge);
+}
+
+.jywabi.wabi-reading-craft .juya-index {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25em;
+  height: 2.15em;
+  min-width: 2.25em;
+  padding: 0;
+  border: 1px solid var(--wabi-stamp-edge);
+  border-radius: 37% 55% 43% 58% / 46% 38% 59% 51%;
+  background-color: var(--wabi-stamp-wash);
+  box-shadow: inset 0 0 0 1px var(--wabi-stamp-inset);
+  color: var(--jy-index-text);
+  font-family: var(--wabi-serif);
+  font-size: 12px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+  .wabi-reading-craft > .juya-issue {
+    width: auto;
+    margin: 12px auto 42px;
+    padding: 24px 14px 50px;
+  }
+
+  .wabi-reading-craft-masthead {
+    grid-template-columns: minmax(0, 1fr) 28px;
+    gap: 10px;
+    min-height: 194px;
+    margin: 0 -6px 32px;
+    padding: 20px 12px 34px;
+  }
+
+  .jywabi.wabi-reading-craft .wabi-reading-craft-title {
+    font-size: clamp(36px, 8.6cqi, 52px);
+  }
+
+  .wabi-reading-craft-date {
+    padding-inline-start: 6px;
+    font-size: 12px;
+  }
+
+  .wabi-reading-craft-rubbing {
+    height: 76px;
+  }
+
+  .wabi-reading-craft .juya-section > h2 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .wabi-reading-craft-masthead {
+    grid-template-columns: minmax(0, 1fr) 24px;
+    gap: 8px;
+  }
+
+  .jywabi.wabi-reading-craft .wabi-reading-craft-title {
+    font-size: clamp(34px, 8.4cqi, 42px);
+    letter-spacing: 0;
+  }
+
+  .wabi-reading-craft-date {
+    padding-inline-start: 4px;
+    font-size: 11px;
+  }
+}
+
 /* 图片两列有机圆角网格 */
 .jywabi .juya-media-grid {
   grid-template-columns: repeat(2, 1fr);

@@ -5583,3 +5583,90 @@ describe('nocturne 订阅页头版极光带守卫（2026-10-24，#77：阅读页
     expect(layers[1]).toContain('0.12')
   })
 })
+
+describe('y2k 订阅页头版窗口标题栏守卫（2026-10-24，#76：真实 DOM 标题栏与三钮）', () => {
+  // #76 把订阅页头版升级成拟真系统窗口：顶部标题栏以真实订阅源名为窗口标题
+  // （`◆ <源名>.EXE — 运行中`，与阅读页伪标题栏同语法），右端 _ □ × 三钮。
+  // 与阅读页的本质差异：标题栏必须是**真实 DOM 元素**（伪元素 content 无法承载逐订阅源
+  // 动态源名），整体 aria-hidden 对辅助技术静默（aria 语义由 e2e 断言，本组锁 CSS 面）。
+  // 不变量：× 与阅读页关闭钮同款（18×16 / 1px 边 / 12px 700 / on-accent 底 accent 色），
+  // _ □ 呈 muted 未激活态；零新增字面色（全走既有 token）、零新增 animation/transition；
+  // 不加状态栏。V1 的铬字渐变 h1、2px 浮雕边、inset 高光、硬影、monospace domain 全部保留。
+
+  const barRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar')
+  const titleRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar-title')
+  const btnRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar-btn')
+  const closeRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar-btn-close')
+
+  it('① 标题栏为真实 DOM 容器（非伪元素）：absolute + 不截获交互，窗口标题单行 ellipsis', () => {
+    const bar = barRule()
+    expect(bar, '标题栏容器规则应存在').toBeTruthy()
+    expect(
+      bar,
+      '标题栏不得用 content 伪元素承载（逐订阅源动态源名必须走真实 DOM 文本）'
+    ).not.toMatch(/(?:^|[;{\s])content\s*:/)
+    expect(decl(bar, 'position'), '标题栏 absolute 定位在 plaque 顶部').toBe('absolute')
+    expect(decl(bar, 'pointer-events'), '装饰栏不截获点击').toBe('none')
+    const title = titleRule()
+    expect(title, '窗口标题规则应存在').toBeTruthy()
+    expect(decl(title, 'flex'), '标题为弹性主项，可被三钮压缩').toBe('1 1 auto')
+    expect(decl(title, 'min-width'), 'flex 子项收窄前提（缺它 ellipsis 失效）').toBe('0')
+    expect(decl(title, 'overflow')).toBe('hidden')
+    expect(decl(title, 'white-space')).toBe('nowrap')
+    expect(decl(title, 'text-overflow')).toBe('ellipsis')
+  })
+
+  it('② × 与阅读页关闭钮同款（18×16 / 1px 边 / 12px 700 / on-accent 底 accent 色），_ □ 未激活 muted', () => {
+    const btn = btnRule()
+    const close = closeRule()
+    expect(btn, '三钮基础规则应存在').toBeTruthy()
+    expect(decl(btn, 'width')).toBe('18px')
+    expect(decl(btn, 'height')).toBe('16px')
+    expect(decl(btn, 'font-size')).toBe('12px')
+    expect(decl(btn, 'color'), '未激活钮呈 muted 字色').toBe('var(--jy-muted)')
+    expect(decl(btn, 'background'), '未激活钮无底色（视觉静默）').toBe('')
+    expect(close, '× 钮覆盖规则应存在').toBeTruthy()
+    expect(decl(close, 'font-weight')).toBe('700')
+    expect(decl(close, 'color')).toBe('var(--jy-on-accent)')
+    expect(decl(close, 'background')).toBe('var(--jy-accent)')
+    expect(decl(close, 'border'), '× 与阅读页关闭钮同款 1px 边').toBe('1px solid var(--jy-border)')
+    expect(close, '× 钮零新增字面色（on-accent/accent/border 全走 token）').not.toMatch(
+      /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+    )
+  })
+
+  it('③ 静帧纪律：标题栏全部新规则零 animation/transition；标题 muted 对 plaque 两端 ≥4.5', () => {
+    for (const [name, rule] of [
+      ['容器', barRule()],
+      ['标题', titleRule()],
+      ['三钮', btnRule()],
+      ['×', closeRule()]
+    ] as const) {
+      expect(rule, `${name} 规则应存在（空转绿防护）`).toBeTruthy()
+      expect(rule, `${name} 不得新增动效（V2 静帧纪律）`).not.toMatch(
+        /(?:^|[;{\s])(?:animation|transition)\s*:/
+      )
+    }
+    // muted 窗口标题与 domain 行同 token 同口径：对 plaque 渐变两端（card / lead-bg）实算，
+    // 亮 5.28:1 / 4.87:1、暗 5.53:1 / 5.43:1（小文本 ≥4.5 过线；改 token 即撞红须复核）。
+    for (const variant of ['y2k-light', 'y2k-dark']) {
+      const block = variantBlock(variant)
+      const card = tokenHex(block, '--jy-card')
+      const leadBg = tokenHex(block, '--jy-lead-bg')
+      const muted = tokenHex(block, '--jy-muted')
+      expect(contrast(muted, card), `${variant} 标题 muted 对 card ≥4.5`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(muted, leadBg), `${variant} 标题 muted 对 lead-bg ≥4.5`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('④ 阅读页窗口化刊头不受影响：伪标题栏文案与 AT 静默语法原样保留', () => {
+    const pseudoTitle = y2kRule('\\.juya-masthead::before')
+    expect(pseudoTitle, '阅读页伪标题栏规则应存在').toBeTruthy()
+    expect(pseudoTitle, '阅读页伪标题栏静态文案与空 alt 语法不得改动').toContain(
+      "content: '◆ AI_DAILY.EXE — 运行中' / '';"
+    )
+    const pseudoClose = y2kRule('\\.juya-masthead::after')
+    expect(pseudoClose, '阅读页关闭钮伪元素应存在').toBeTruthy()
+    expect(pseudoClose).toContain("content: '×' / '';")
+  })
+})

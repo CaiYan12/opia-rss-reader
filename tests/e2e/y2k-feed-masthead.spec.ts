@@ -131,6 +131,25 @@ test('y2k 订阅页头版长源名在窄窗 120% 下自行换行不外溢', asyn
   const root = activeTab(page).locator('.juya-root')
   const masthead = root.locator('.jyy2k-feed-masthead')
   await expect(masthead.locator('h1')).toHaveText(longName)
+  // #76 窗口标题：长源名在标题栏单行 ellipsis 截断，不把 plaque / 三钮撑破
+  const barFacts = await masthead.evaluate((element) => {
+    const bar = element.querySelector('.jyy2k-feed-masthead-titlebar') as HTMLElement
+    const title = bar.querySelector('.jyy2k-feed-masthead-titlebar-title') as HTMLElement
+    const titleStyle = getComputedStyle(title)
+    return {
+      titleText: title.textContent ?? '',
+      truncating: title.scrollWidth > title.clientWidth,
+      whiteSpace: titleStyle.whiteSpace,
+      textOverflow: titleStyle.textOverflow,
+      barRight: bar.getBoundingClientRect().right,
+      plaqueRight: element.getBoundingClientRect().right
+    }
+  })
+  expect(barFacts.titleText).toBe(`◆ ${longName}.EXE — 运行中`)
+  expect(barFacts.whiteSpace).toBe('nowrap')
+  expect(barFacts.textOverflow).toBe('ellipsis')
+  expect(barFacts.truncating, '长源名触发单行截断').toBe(true)
+  expect(barFacts.barRight, '标题栏不把 plaque 撑破').toBeLessThanOrEqual(barFacts.plaqueRight + 1)
   const facts = await masthead.evaluate((element) => {
     const heading = element.querySelector('h1') as HTMLElement
     const scroller = element.closest('.view-scroll') as HTMLElement
@@ -147,6 +166,108 @@ test('y2k 订阅页头版长源名在窄窗 120% 下自行换行不外溢', asyn
   // 不在头版范围；只记录观察。
   console.log(`Y2K_LONG_NAME_CARDS_OVERFLOW ${facts.scrollerOverflow}`)
 })
+
+// ---- #76：订阅页头版窗口拟真标题栏与三钮（真实 DOM + aria-hidden 整体静默）----
+// 断言面：标题栏为真实 DOM 元素（承载逐订阅源动态源名）、整体 aria-hidden、无焦点元素；
+// 窗口标题 `◆ <源名>.EXE — 运行中`；× 与阅读页关闭钮同款（on-accent 底 accent 色、
+// 1px 边、12px 700、18×16 含边），_ □ muted 未激活态；不加状态栏；零动效。
+// CSS 原文纪律（token 化、零字面色）由 tests/unit/juyaCssGuard.test.ts 标题栏守卫组锁死，
+// 此处只断计算样式与结构（亮暗两变体各跑一遍）。
+for (const scheme of ['light', 'dark'] as const) {
+  test(`y2k 订阅页头版窗口标题栏与三钮成立 ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await loadY2k(page, '', scheme)
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root).toHaveAttribute('data-juya-variant', `y2k-${scheme}`)
+    const masthead = root.locator('.jyy2k-feed-masthead')
+    await expect(masthead).toBeVisible()
+
+    // 不加状态栏：头版直接子元素恰为 标题栏 / kicker / h1 / domain 四件
+    const children = await masthead.evaluate((element) =>
+      [...element.children].map((child) => child.className || child.tagName.toLowerCase())
+    )
+    expect(children).toEqual([
+      'jyy2k-feed-masthead-titlebar',
+      'jyy2k-feed-masthead-kicker',
+      'h1',
+      'jyy2k-feed-masthead-domain'
+    ])
+
+    const titlebar = masthead.locator('.jyy2k-feed-masthead-titlebar')
+    // 真实 DOM + 整体 AT 静默：aria-hidden 生效、无任何可聚焦元素（_ □ × 是装饰 span 非控件）
+    await expect(titlebar).toHaveAttribute('aria-hidden', 'true')
+    await expect(titlebar.locator('button, a, input, select, textarea, [tabindex]')).toHaveCount(0)
+    // 窗口标题含真实订阅源名（`◆ <源名>.EXE — 运行中`，与阅读页伪标题栏同语法）
+    const title = titlebar.locator('.jyy2k-feed-masthead-titlebar-title')
+    await expect(title).toHaveText(`◆ ${DEFAULT_SOURCE.name}.EXE — 运行中`)
+
+    const facts = await titlebar.evaluate((element) => {
+      const barStyle = getComputedStyle(element)
+      const titleEl = element.querySelector('.jyy2k-feed-masthead-titlebar-title') as HTMLElement
+      const titleStyle = getComputedStyle(titleEl)
+      const buttons = [...element.querySelectorAll<HTMLElement>('.jyy2k-feed-masthead-titlebar-btn')]
+      const close = element.querySelector('.jyy2k-feed-masthead-titlebar-btn-close') as HTMLElement
+      const closeStyle = getComputedStyle(close)
+      const plaque = element.closest('.jyy2k-feed-masthead') as HTMLElement
+      const domain = plaque.querySelector('.jyy2k-feed-masthead-domain') as HTMLElement
+      const barRect = element.getBoundingClientRect()
+      const plaqueRect = plaque.getBoundingClientRect()
+      return {
+        barPosition: barStyle.position,
+        barPointerEvents: barStyle.pointerEvents,
+        barAnimation: barStyle.animationName,
+        titleWhiteSpace: titleStyle.whiteSpace,
+        titleTextOverflow: titleStyle.textOverflow,
+        titleMinWidth: titleStyle.minWidth,
+        titleFontSize: titleStyle.fontSize,
+        titleColor: titleStyle.color,
+        domainColor: getComputedStyle(domain).color,
+        closeWidth: close.offsetWidth,
+        closeHeight: close.offsetHeight,
+        closeColor: closeStyle.color,
+        closeBackground: closeStyle.backgroundColor,
+        closeBorderWidth: closeStyle.borderTopWidth,
+        closeFontWeight: closeStyle.fontWeight,
+        inactiveColors: buttons.slice(0, 2).map((b) => getComputedStyle(b).color),
+        inactiveBackgrounds: buttons.slice(0, 2).map((b) => getComputedStyle(b).backgroundColor),
+        barLeft: barRect.left,
+        barRight: barRect.right,
+        plaqueLeft: plaqueRect.left,
+        plaqueRight: plaqueRect.right
+      }
+    })
+
+    expect(facts.barPosition).toBe('absolute')
+    expect(facts.barPointerEvents).toBe('none')
+    expect(facts.barAnimation).toBe('none')
+    // 单行 ellipsis 属性就绪（默认源名不触发截断，截断行为由长源名测试锁）
+    expect(facts.titleWhiteSpace).toBe('nowrap')
+    expect(facts.titleTextOverflow).toBe('ellipsis')
+    expect(Number.parseFloat(facts.titleMinWidth)).toBe(0)
+    expect(facts.titleFontSize).toBe('10px')
+    // 窗口标题与 domain 行同 muted token（对 plaque 两端 AA 由守卫组实算）
+    expect(facts.titleColor).toBe(facts.domainColor)
+    // × 与阅读页关闭钮同款：18×16（border-box 含 1px 边）、on-accent 底 accent 色、12px 700
+    expect(facts.closeWidth).toBe(18)
+    expect(facts.closeHeight).toBe(16)
+    expect(facts.closeBorderWidth).toBe('1px')
+    expect(facts.closeFontWeight).toBe('700')
+    if (scheme === 'light') {
+      expect(facts.closeColor).toBe('rgb(255, 255, 255)')
+      expect(facts.closeBackground).toBe('rgb(36, 86, 214)')
+    } else {
+      expect(facts.closeColor).toBe('rgb(6, 16, 36)')
+      expect(facts.closeBackground).toBe('rgb(91, 157, 255)')
+    }
+    // _ □ 未激活态：muted 字色、无底色
+    expect(facts.inactiveColors[0], '_ 未激活 muted').toBe(facts.domainColor)
+    expect(facts.inactiveColors[1], '□ 未激活 muted').toBe(facts.domainColor)
+    expect(facts.inactiveBackgrounds.every((bg) => bg === 'rgba(0, 0, 0, 0)')).toBe(true)
+    // 标题栏收在 plaque 盒内，不外溢
+    expect(facts.barLeft).toBeGreaterThanOrEqual(facts.plaqueLeft - 1)
+    expect(facts.barRight).toBeLessThanOrEqual(facts.plaqueRight + 1)
+  })
+}
 
 for (const sample of [
   { scheme: 'light', size: 'wide', width: 1280, height: 800, zoom: 1 },

@@ -964,14 +964,16 @@
   color: var(--jy-accent);
 }
 
-/* 订阅页头版（2026-10-24 #70）：像素浮雕 plaque 漂浮于根层星野之上——星光语言留在
-   根背景（订阅页不新增场景层），头版为纯排版区块：kicker + 铬字渐变源名 + 等宽 host，
-   只承载源身份，期号日期留在各自卡片；头版自身无动画。
+/* 订阅页头版（2026-10-24 #70 → #76 窗口拟真化）：像素浮雕 plaque 漂浮于根层星野之上——
+   星光语言留在根背景（订阅页不新增场景层），头版为纯排版区块：顶部窗口标题栏（#76，真实 DOM）
+   + kicker + 铬字渐变源名 + 等宽 host，只承载源身份，期号日期留在各自卡片；头版自身无动画。
    版心取 min(1120px, 100%)（wabi 先例）：与卡片网格预设（默认）的 .juya-feed.juya-feed-grid
    1120px 版心对齐；compact/magazine 预设下列表本身收窄为 760px，头版保持网格版心不跟随
    （三预设下头版均稳定成立，无横向溢出）。
-   plaque 两端底色为 --jy-card / --jy-lead-bg（渐变两端覆盖中段过渡）。 */
+   plaque 两端底色为 --jy-card / --jy-lead-bg（渐变两端覆盖中段过渡）。
+   position: relative 为 #76 的 absolute 窗口标题栏提供包含块。 */
 .jyy2k .jyy2k-feed-masthead {
+  position: relative;
   width: min(1120px, 100%);
   margin: 16px auto 0;
   padding: 38px 28px 26px;
@@ -1055,6 +1057,58 @@
   font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--jy-muted);
+}
+
+/* 窗口拟真标题栏（2026-10-24 #76）：真实 DOM 元素承载逐订阅源动态源名（伪元素 content
+   无法注入动态文本），整栏 aria-hidden（模板层）对辅助技术静默——源名只在 h1 朗读一次，
+   不重复朗读；订阅页不加状态栏。位置语汇与阅读页窗口化刊头一致：标题 top 5px / left 8px、
+   关闭钮 right 6px，等宽装饰件字族（Courier New）；装饰栏不截获交互。 */
+.jyy2k .jyy2k-feed-masthead-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px 0 8px;
+  pointer-events: none;
+}
+
+/* 窗口标题 `◆ <源名>.EXE — 运行中`：长源名单行 ellipsis 截断不破版（flex 子项须
+   min-width: 0 才能被三钮压缩收窄）；取 muted 色对 plaque 两端实算同 domain 行
+   （亮 5.28:1 / 4.87:1，暗 5.53:1 / 5.43:1，小文本 ≥4.5 过线），零新增色值 */
+.jyy2k .jyy2k-feed-masthead-titlebar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--jy-muted);
+}
+
+/* 右端 _ □ × 三钮：装饰 span 非控件（不进焦点顺序）。× 与阅读页关闭钮同款——
+   18×16（border-box 含边）、on-accent 底 accent 色、1px var(--jy-border) 边、12px 700；
+   _ □ 呈 muted 未激活态（无底色无边框，视觉静默即可），零新增色值 */
+.jyy2k .jyy2k-feed-masthead-titlebar-btn {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 16px;
+  line-height: 15px;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--jy-muted);
+}
+
+.jyy2k .jyy2k-feed-masthead-titlebar-btn-close {
+  font-weight: 700;
+  color: var(--jy-on-accent);
+  background: var(--jy-accent);
+  border: 1px solid var(--jy-border);
 }
 
 /* ---- 波普艺术式 ---- */

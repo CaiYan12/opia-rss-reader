@@ -3815,6 +3815,51 @@
   border-bottom: 1px solid var(--jy-border);
 }
 
+/* 订阅页头版（2026-10-24 打样）：杂志 nameplate——上缘双发丝线、衬线大字源名、
+   host 作大写信息行、下缘 3px double 收底；只承载源身份，期号日期留在卡片。
+   列宽与内衬对齐 .juya-feed 版心，色值全部走 token。 */
+.jyedit .jyedit-feed-masthead {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 44px 24px 18px;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 3px double var(--jy-border);
+  position: relative;
+}
+
+.jyedit .jyedit-feed-masthead::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--jy-border);
+}
+
+.jyedit .jyedit-feed-masthead-kicker {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--jy-accent);
+}
+
+.jyedit .jyedit-feed-masthead h1 {
+  font-family: var(--jy-font-heading);
+  font-size: clamp(40px, 7vw, 76px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--jy-heading);
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+
+.jyedit .jyedit-feed-masthead-domain {
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jy-muted);
+}
+
 /* ---- 侘寂日杂式（2026-09-24 重设计新增） ----
    和纸长纤维肌理（各向异性 feTurbulence）；不对称粗陶圆角；陶土/苔色大地双色 */
 [data-juya-variant='wabi-light'] {

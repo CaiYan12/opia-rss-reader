@@ -5931,3 +5931,146 @@ describe('newsprint90s 订阅页头版三栏报头守卫（2026-10-24，#79：�
     expect(bare, 'masthead 段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
   })
 })
+
+describe('folio 订阅页头版印章水印与朱丝栏守卫（2026-10-24，#80：阅读页印章与朱丝栏静帧搬入头版）', () => {
+  // #80 把阅读页两件语汇以「现值搬运」落进订阅页头版：印章水印（.juya-issue::after 72×72 SVG
+  // data URI 圆角方框+笔画块、rotate -8deg、opacity 0.12、mix-blend multiply）与朱丝栏
+  // （.juya-issue 两侧 linear-gradient 硬停靠 1px 绯色竖线）。落位裁决：
+  // - 印章走容器 ::after——::before 已被 V1 文武线 2px 朱线占用、::after 空闲，零 DOM 变更；
+  //   content '' 对辅助技术静默（不进朗读树、不进焦点顺序），pointer-events none 不改命中区域。
+  // - 头版是静帧：刻意不搬阅读页 hover 0.24 与 transition 300ms；暗变体取阅读页暗侧现值
+  //   （%23d0714f / opacity 0.1 / mix-blend screen，与亮侧 multiply 不同源）。
+  // - 朱丝栏走容器 background-image，内缩 10px 落在 24px 内衬带里，不与居中文字接触。
+  // 构成色只用阅读页既有值并带注释。不变量：V1 居中排法、文武线、朱菱花押、衬线 h1 不动；
+  // 阅读页印章（含 hover/transition）与朱丝栏原样保留。
+
+  /** 首条形如 `.jyfolio <rest> { … }` 的规则块（行首锚定，同 y2kRule / newsRule 口径） */
+  const folioRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jyfolio ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  /** 首条形如 `[data-juya-variant='folio-dark'].jyfolio <rest> { … }` 的复合变体规则
+   *  （正则本身强制复合形式：变体属性紧贴 .jyfolio，无空格后代） */
+  const folioDarkRule = (rest: string): string =>
+    css.match(
+      new RegExp(`(?:^|\\n)\\[data-juya-variant='folio-dark'\\]\\.jyfolio ${rest} \\{[^}]*\\}`)
+    )?.[0] ?? ''
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+
+  it('① 印章走容器 ::after 静帧搬入：72×72 / rotate -8deg / opacity 0.12 / multiply / pointer-events none，零 hover 零 transition', () => {
+    const seal = folioRule('\\.jyfolio-feed-masthead::after')
+    expect(seal, '印章 ::after 规则应存在（空转绿防护）').toBeTruthy()
+    expect(
+      decl(seal, 'content'),
+      '伪元素承载（::before 被 V1 文武线占用、::after 空闲），空内容对 AT 静默'
+    ).toBe("''")
+    expect(decl(seal, 'position')).toBe('absolute')
+    expect(decl(seal, 'top'), '阅读页现值 top 20px').toBe('20px')
+    expect(decl(seal, 'right'), '头版右侧落位，阅读页现值 right 20px').toBe('20px')
+    expect(decl(seal, 'width'), '阅读页现值 72×72').toBe('72px')
+    expect(decl(seal, 'height')).toBe('72px')
+    expect(decl(seal, 'rotate'), '阅读页现值 rotate -8deg').toBe('-8deg')
+    expect(decl(seal, 'opacity'), '头版静帧取 0.12').toBe('0.12')
+    expect(decl(seal, 'mix-blend-mode'), '亮侧 multiply（阅读页现值）').toBe('multiply')
+    expect(decl(seal, 'pointer-events'), '水印不拦截点击与选择').toBe('none')
+    expect(seal, '头版静帧：不搬阅读页 transition 300ms').not.toMatch(NO_EFFECT)
+    expect(seal, '印章为阅读页同款 SVG data URI（圆角方框+笔画块）').toContain('data:image/svg+xml')
+    expect(seal, '亮侧印章朱砂 #b3452e（阅读页现值）').toContain('%23b3452e')
+    expect(
+      css.match(/\.jyfolio \.jyfolio-feed-masthead:hover::after/),
+      '头版静帧：不搬阅读页 hover 0.24'
+    ).toBeNull()
+  })
+
+  it('② 暗变体印章为复合选择器覆盖：阅读页暗侧现值 %23d0714f / opacity 0.1 / screen', () => {
+    const sealDark = folioDarkRule('\\.jyfolio-feed-masthead::after')
+    expect(
+      sealDark,
+      '暗变体印章规则应存在，且必须复合形式（变体属性紧贴 .jyfolio，无空格后代）'
+    ).toBeTruthy()
+    expect(decl(sealDark, 'opacity'), '阅读页暗侧现值 0.1').toBe('0.1')
+    expect(decl(sealDark, 'mix-blend-mode'), '阅读页暗侧现值 screen').toBe('screen')
+    expect(sealDark, '暗侧印章暖赭 #d0714f（阅读页现值）').toContain('%23d0714f')
+    expect(sealDark, '暗变体零动效').not.toMatch(NO_EFFECT)
+  })
+
+  it('③ 朱丝栏竖线：容器 background-image hard-stop 1px 绯线，暗变体取阅读页暗侧色值', () => {
+    const masthead = folioRule('\\.jyfolio-feed-masthead')
+    expect(masthead, '头版容器规则应存在（空转绿防护）').toBeTruthy()
+    // 渐变按阅读页多行原格式书写，逐 token 断言（不假设单行）
+    const grad = decl(masthead, 'background-image')
+    expect(grad, '朱丝栏为 90deg hard-stop 渐变（阅读页 .juya-issue 技法）').toContain(
+      'linear-gradient('
+    )
+    expect(grad, '渐变沿水平轴（两侧竖线）').toContain('90deg')
+    expect(grad, '亮侧绯色 rgba(179, 69, 46, 0.28)（阅读页现值）').toContain(
+      'rgba(179, 69, 46, 0.28)'
+    )
+    expect(grad, '1px 线宽 = 10px 11px 硬停靠（阅读页现值）').toContain('10px 11px')
+    const mastheadDark = folioDarkRule('\\.jyfolio-feed-masthead')
+    expect(mastheadDark, '暗变体朱丝栏覆盖应存在（复合形式）').toBeTruthy()
+    const gradDark = decl(mastheadDark, 'background-image')
+    expect(gradDark, '暗侧 rgba(208, 113, 79, 0.3)（阅读页暗侧现值）').toContain(
+      'rgba(208, 113, 79, 0.3)'
+    )
+    expect(gradDark, '暗侧同为 1px 硬停靠').toContain('10px 11px')
+  })
+
+  it('④ V1 骨架不动：居中排法、文武线（细线 + ::before 2px 朱线 top 3px）、朱菱花押、衬线 h1、kicker/domain', () => {
+    const masthead = folioRule('\\.jyfolio-feed-masthead')
+    expect(decl(masthead, 'max-width')).toBe('1120px')
+    expect(decl(masthead, 'padding')).toBe('40px 24px 24px')
+    expect(decl(masthead, 'text-align')).toBe('center')
+    expect(decl(masthead, 'border-top')).toBe('1px solid var(--jy-border)')
+    expect(decl(masthead, 'border-bottom')).toBe('1px solid var(--jy-border)')
+    expect(decl(masthead, 'position')).toBe('relative')
+    const wenwu = folioRule('\\.jyfolio-feed-masthead::before')
+    expect(wenwu, '文武线粗线规则应存在').toBeTruthy()
+    expect(decl(wenwu, 'top')).toBe('3px')
+    expect(decl(wenwu, 'border-top')).toBe('2px solid var(--jy-accent)')
+    const h1 = folioRule('\\.jyfolio-feed-masthead h1')
+    expect(decl(h1, 'font-family'), '衬线标题族不动').toBe('var(--jy-font-heading)')
+    expect(decl(h1, 'font-size')).toBe('clamp(40px, 7vw, 76px)')
+    expect(decl(folioRule('\\.jyfolio-feed-masthead-kicker'), 'color')).toBe('var(--jy-accent)')
+    expect(decl(folioRule('\\.jyfolio-feed-masthead-domain'), 'color')).toBe('var(--jy-muted)')
+    expect(folioRule('\\.jyfolio-feed-masthead \\.jyfolio-divider'), '朱菱花押复用规则不动').toBeTruthy()
+  })
+
+  it('⑤ 头版段构成色只用阅读页既有值、零动效；≤520px 印章随阅读页同断点隐没；阅读页两件语汇原样保留', () => {
+    const from = css.indexOf('.jyfolio .jyfolio-feed-masthead')
+    const to = css.indexOf('千禧网页式')
+    expect(from, '头版段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    const bare = css.slice(from, to).replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, '头版段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 构成色白名单：印章 SVG 内 %23 编码 hex + 朱丝栏 rgba，全部为阅读页既有值
+    const found = [...bare.matchAll(/%23[0-9a-fA-F]{6}|rgba?\([^)]*\)/g)].map((m) => m[0])
+    const allowed = new Set([
+      '%23b3452e',
+      '%23d0714f',
+      'rgba(179, 69, 46, 0.28)',
+      'rgba(208, 113, 79, 0.3)'
+    ])
+    const stray = [...new Set(found)].filter((color) => !allowed.has(color))
+    expect(stray, `头版段出现白名单外色值：${stray.join(', ')}`).toEqual([])
+    // 窄窗让位：≤520px 与阅读页印章同断点隐没（复用既有媒体查询块）
+    const narrow = extractBlock(bare, /@media \(max-width: 520px\) \{/)
+    expect(narrow, '≤520px 媒体查询块应存在').toBeTruthy()
+    expect(
+      narrow.match(/\.jyfolio \.jyfolio-feed-masthead::after \{[^}]*\}/)?.[0] ?? '',
+      '头版印章窄窗隐没'
+    ).toContain('display: none')
+    // 反证：阅读页印章（transition 300ms + hover 0.24）与朱丝栏原样保留，未被头版改造波及
+    expect(decl(folioRule('\\.juya-issue::after'), 'transition'), '阅读页印章 transition 保留').toContain(
+      'opacity 300ms'
+    )
+    expect(
+      css.match(/\.jyfolio \.juya-issue:hover::after \{[^}]*\}/)?.[0] ?? '',
+      '阅读页 hover 0.24 保留'
+    ).toContain('0.24')
+    expect(
+      decl(folioRule('\\.juya-issue'), 'background-image'),
+      '阅读页朱丝栏保留'
+    ).toContain('rgba(179, 69, 46, 0.28)')
+  })
+})

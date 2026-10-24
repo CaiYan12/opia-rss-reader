@@ -7,6 +7,17 @@ import type { JuyaEntry, JuyaImage, JuyaLink, JuyaOverviewEntry } from '../parse
  *  原子层（SafeLink/EntryTitle/Lead/Paragraphs/ImageGrid/LinksBlock）供手写定制模板组合；
  *  组合层（OverviewItems/EntryBlocks）维持原行为，工厂与 newsprint90s 继续引用。 */
 
+/** 从订阅源 URL 派生 hostname（订阅页头版单一来源，#68 收敛 wabi/editorial 打样期两份本地副本）。
+ *  空串与解析失败都返回空串，调用方据空值决定是否渲染 host 行。 */
+export function sourceHostname(sourceUrl: string): string {
+  if (!sourceUrl) return ''
+  try {
+    return new URL(sourceUrl).hostname
+  } catch {
+    return ''
+  }
+}
+
 /** 唯一合法的链接出口：拦截默认跳转，统一走 onOpenLink（外链设置：系统浏览器/内置标签）。 */
 export function SafeLink({
   href,

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Article } from '../../../shared/types'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { EntryBlocks, OverviewItems } from './shared'
@@ -16,10 +17,14 @@ interface TemplateOptions {
   entryColumns?: boolean
   /** 报头附加行（如报刊日期线），入参为文章发布日期 */
   mastheadExtra?: (pubDate: string) => JSX.Element | null
+  /** 订阅页场景槽位（可选，#68 工厂透传）：FeedList 渲染期以当前活跃订阅源调用，
+   *  name/url 取不到时为空串（与 wabi/editorial 手写接线的取值一致）；
+   *  返回值原样透传给 FeedShell 既有 scene 槽位。不传时输出与现状逐字一致。 */
+  feedScene?: (source: { name: string; url: string }) => ReactNode
 }
 
 export function makeJuyaTemplate(opts: TemplateOptions): JuyaTemplate {
-  const { variantClass, entryColumns = false, mastheadExtra } = opts
+  const { variantClass, entryColumns = false, mastheadExtra, feedScene } = opts
 
   function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
     return (
@@ -68,7 +73,8 @@ export function makeJuyaTemplate(opts: TemplateOptions): JuyaTemplate {
   }
 
   function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
-    const { history, openArticle, sources } = useAppStore()
+    const { history, openArticle, sources, activeSourceId } = useAppStore()
+    const activeSource = sources.find((s) => s.id === activeSourceId)
 
     /** 期号条目（工厂默认卡片）：遵循「布局」显示字段（compact 精简为行式、magazine 首条加大）。 */
     function renderItem(
@@ -116,6 +122,7 @@ export function makeJuyaTemplate(opts: TemplateOptions): JuyaTemplate {
         variantId={variantId}
         variantClass={variantClass}
         layout={layout}
+        scene={feedScene?.({ name: activeSource?.name ?? '', url: activeSource?.url ?? '' })}
         renderItem={renderItem}
       />
     )

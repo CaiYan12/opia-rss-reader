@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { makeStubScript, type Scenario } from './helpers'
+import { getPlatformFontsForSelector } from './platform-fonts'
 import { activeTab } from './setup'
 import { DEFAULT_SOURCE } from '../../src/shared/types'
 
@@ -40,21 +41,6 @@ async function loadWabi(
   )
   await page.goto('/')
   await page.getByRole('banner').getByTitle('设置').waitFor({ state: 'visible' })
-}
-
-async function renderedFonts(
-  page: Page,
-  selector: string
-): Promise<Array<{ familyName: string; postScriptName: string; isCustomFont: boolean; glyphCount: number }>> {
-  const session = await page.context().newCDPSession(page)
-  await session.send('DOM.enable')
-  await session.send('CSS.enable')
-  const document = await session.send('DOM.getDocument')
-  const { nodeId } = await session.send('DOM.querySelector', { nodeId: document.root.nodeId, selector })
-  if (!nodeId) throw new Error(`No node found for rendered font probe: ${selector}`)
-  const { fonts } = await session.send('CSS.getPlatformFontsForNode', { nodeId })
-  await session.detach()
-  return fonts
 }
 
 test('wabi 普通网格先读日期和标题，再显示 16:9 封面', async ({ page }) => {
@@ -270,7 +256,7 @@ test('wabi 展示字实际命中字体且字体不可用时保留完整文字', 
   expect(fontStack).toContain('STXingkai')
   expect(fontStack).toContain('Noto Serif SC')
 
-  const displayFonts = await renderedFonts(page, '.wabi-feed-masthead h1')
+  const displayFonts = await getPlatformFontsForSelector(page, '.wabi-feed-masthead h1')
   expect(displayFonts.reduce((count, font) => count + font.glyphCount, 0)).toBeGreaterThan(0)
   const selectedText = await heading.evaluate((element) => {
     const range = document.createRange()
@@ -285,7 +271,7 @@ test('wabi 展示字实际命中字体且字体不可用时保留完整文字', 
   const fallbackStack = await heading.evaluate((element) => getComputedStyle(element).fontFamily)
   expect(fallbackStack).toContain('KaiTi')
   await expect(heading).toHaveText(DEFAULT_SOURCE.name)
-  const fallbackFonts = await renderedFonts(page, '.wabi-feed-masthead h1')
+  const fallbackFonts = await getPlatformFontsForSelector(page, '.wabi-feed-masthead h1')
   expect(fallbackFonts.reduce((count, font) => count + font.glyphCount, 0)).toBeGreaterThan(0)
   console.log(`WABI_DISPLAY_FONT_REPORT ${JSON.stringify({ displayFonts, fallbackFonts })}`)
 })

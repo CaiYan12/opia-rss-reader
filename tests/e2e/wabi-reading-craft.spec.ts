@@ -286,3 +286,77 @@ test('wabi reader wraps a long issue heading beside its vertical date at 120% zo
   expect(geometry.dateRight).toBeLessThanOrEqual(geometry.headerRight + 1)
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1)
 })
+
+for (const side of ['light', 'dark'] as const) {
+  test(`wabi ${side} page materials preserve keyboard link focus`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await loadWabiReader(page, side, 1)
+    const root = activeTab(page).locator('.juya-root')
+    const firstLink = root.locator('.juya-overview a').first()
+    await firstLink.focus()
+    await page.keyboard.press('Tab')
+
+    const expectedOutlineColor = side === 'light' ? 'rgb(165, 101, 74)' : 'rgb(201, 154, 125)'
+    const focusProbe = {
+      variant: `wabi-${side}`,
+      expectedColor: expectedOutlineColor
+    }
+    const focusState = await page.evaluate((variant) => {
+      const active = document.activeElement
+      const root = active?.closest('.juya-root')
+      const style = active ? getComputedStyle(active) : null
+      return {
+        variant: root?.getAttribute('data-juya-variant') ?? null,
+        activeTag: active?.tagName ?? null,
+        activeHref: active instanceof HTMLAnchorElement ? active.getAttribute('href') : null,
+        activeText: active?.textContent ?? null,
+        activeInsideRoot: Boolean(root && active && root.contains(active)),
+        focusVisible: Boolean(active?.matches(':focus-visible')),
+        focusToken: root ? getComputedStyle(root).getPropertyValue('--jy-focus').trim() : null,
+        outlineColor: style?.outlineColor ?? null,
+        outlineWidth: style?.outlineWidth ?? null,
+        outlineStyle: style?.outlineStyle ?? null
+      }
+    }, focusProbe.variant)
+    console.log(`[wabi keyboard focus state] ${JSON.stringify({ side, focusState })}`)
+    const resolvedFocusIsStable = ({ variant, expectedColor }: typeof focusProbe) => {
+      const active = document.activeElement
+      const root = active?.closest('.juya-root')
+      return Boolean(
+        root &&
+          root.getAttribute('data-juya-variant') === variant &&
+          root.classList.contains('wabi-reading-craft') &&
+        active &&
+          root.contains(active) &&
+          active instanceof HTMLAnchorElement &&
+          active.matches(':focus-visible') &&
+          getComputedStyle(active).outlineColor === expectedColor
+      )
+    }
+    await page.waitForFunction(resolvedFocusIsStable, focusProbe, { timeout: 5000 })
+    await page.waitForFunction(resolvedFocusIsStable, focusProbe, { timeout: 5000 })
+
+    const focusedLink = root.locator('.juya-overview a:focus-visible').first()
+    await expect(focusedLink).toBeVisible()
+    const focusFacts = await focusedLink.evaluate((element) => {
+      const rect = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+      return {
+        outlineStyle: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+        outlineOffset: style.outlineOffset,
+        outlineColor: style.outlineColor,
+        hitTargetIsLink: hit === element
+      }
+    })
+    console.log(`[wabi keyboard focus settled] ${JSON.stringify({ side, focusFacts })}`)
+    expect(focusFacts).toEqual({
+      outlineStyle: 'solid',
+      outlineWidth: '2px',
+      outlineOffset: '2px',
+      outlineColor: expectedOutlineColor,
+      hitTargetIsLink: true
+    })
+  })
+}

@@ -3,6 +3,7 @@ import { FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
 import { WabiReadingMasthead } from './wabi-reading-craft'
+import { WabiFeedMasthead } from './wabi-feed-craft'
 
 const VARIANT_CLASS = 'jywabi'
 
@@ -41,13 +42,20 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
 }
 
 function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
-  const { openArticle, history, sources } = useAppStore()
+  const { openArticle, history, sources, activeSourceId } = useAppStore()
+  const activeSource = sources.find((source) => source.id === activeSourceId)
   return (
     <FeedShell
       articles={articles}
       variantId={variantId}
       variantClass={VARIANT_CLASS}
       layout={layout}
+      scene={
+        <WabiFeedMasthead
+          sourceName={activeSource?.name ?? ''}
+          sourceUrl={activeSource?.url ?? ''}
+        />
+      }
       renderItem={(a, _i, mode, gates, delay) => {
         const read = history[a.guid]?.read ?? false
         const sourceName = sources.find((source) => source.id === a.sourceId)?.name ?? ''

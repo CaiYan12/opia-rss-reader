@@ -695,7 +695,9 @@
    与栏目条 .juya-section > h2 同构同序）、书眉式引导词、衬线大字源名、朱菱花押分隔、
    host 作书目信息行，下缘细线收底；居中信笺排法。
    块宽与内衬对齐 .juya-feed（grid 预设 max-width 1120）版心，色值全部走 token；
-   期号日期不进头版（留在卡片日期行）。 */
+   期号日期不进头版（留在卡片日期行）。
+   #80（2026-10-24 V2）增补：印章水印与朱丝栏自阅读页 .juya-issue 现值静帧搬入，
+   构成色为阅读页既有字面色（印章 #b3452e/#d0714f、朱丝栏 rgba 绯线），见各规则注释。 */
 .jyfolio .jyfolio-feed-masthead {
   max-width: 1120px;
   margin: 0 auto;
@@ -704,6 +706,28 @@
   border-bottom: 1px solid var(--jy-border);
   position: relative;
   text-align: center;
+  /* #80 朱丝栏：阅读页 .juya-issue 两侧 1px 绯色竖线现值（90deg 硬停靠）；内缩 10px
+     落在 24px 内衬带里，居中文字止于内衬缘、不与竖线接触 */
+  background-image: linear-gradient(
+    90deg,
+    transparent 0 10px,
+    rgba(179, 69, 46, 0.28) 10px 11px,
+    transparent 11px calc(100% - 11px),
+    rgba(179, 69, 46, 0.28) calc(100% - 11px) calc(100% - 10px),
+    transparent calc(100% - 10px)
+  );
+}
+
+/* #80 暗侧朱丝栏：阅读页暗侧现值 rgba(208, 113, 79, 0.3)，复合变体选择器 */
+[data-juya-variant='folio-dark'].jyfolio .jyfolio-feed-masthead {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0 10px,
+    rgba(208, 113, 79, 0.3) 10px 11px,
+    transparent 11px calc(100% - 11px),
+    rgba(208, 113, 79, 0.3) calc(100% - 11px) calc(100% - 10px),
+    transparent calc(100% - 10px)
+  );
 }
 
 /* 文武线粗线：2px 朱色全宽，压在细线下方 2px（细线 y 0..1、粗线 y 3..5，与 h2 栏目条同序） */
@@ -715,6 +739,34 @@
   right: 0;
   border-top: 2px solid var(--jy-accent);
   pointer-events: none;
+}
+
+/* #80 印章水印：阅读页 .juya-issue::after 现值静帧搬入（72×72 SVG 圆角方框+笔画块、
+   rotate -8deg、opacity 0.12、multiply），落头版右上（top/right 20px 与阅读页同值）。
+   容器 ::before 已被文武线占用、::after 空闲，故伪元素承载、零 DOM 变更；content ''
+   对辅助技术静默，pointer-events none 不改命中区域。头版是静帧：刻意不搬阅读页
+   hover 0.24 与 transition 300ms。 */
+.jyfolio .jyfolio-feed-masthead::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 72px;
+  height: 72px;
+  rotate: -8deg;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%23b3452e' stroke-width='6'/%3E%3Crect x='28' y='28' width='20' height='44' fill='%23b3452e'/%3E%3Crect x='56' y='28' width='16' height='16' fill='%23b3452e'/%3E%3Crect x='56' y='56' width='16' height='16' fill='%23b3452e'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* #80 暗侧印章：阅读页暗侧现值（暖赭 #d0714f、opacity 0.1、screen 混合），复合变体选择器 */
+[data-juya-variant='folio-dark'].jyfolio .jyfolio-feed-masthead::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='8' y='8' width='84' height='84' rx='14' fill='none' stroke='%23d0714f' stroke-width='6'/%3E%3Crect x='28' y='28' width='20' height='44' fill='%23d0714f'/%3E%3Crect x='56' y='28' width='16' height='16' fill='%23d0714f'/%3E%3Crect x='56' y='56' width='16' height='16' fill='%23d0714f'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+  opacity: 0.1;
+  mix-blend-mode: screen;
 }
 
 /* 书眉式引导词：朱砂小字拉开字距（accent 对 bg 亮 4.94 / 暗 5.38 ≥4.5）；
@@ -752,6 +804,10 @@
 
 @media (max-width: 520px) {
   .jyfolio .juya-issue::after {
+    display: none;
+  }
+  /* #80 头版印章与阅读页印章同断点隐没（窄窗让位；朱丝栏与阅读页口径一致全程保留） */
+  .jyfolio .jyfolio-feed-masthead::after {
     display: none;
   }
   .jyfolio .juya-overview {

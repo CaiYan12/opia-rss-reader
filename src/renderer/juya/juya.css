@@ -3867,10 +3867,7 @@
    解除范围仅限订阅页头版 = 本块 + 模板接线，其余亮侧规则零变化）。
    语汇延续本分节既有语言：发丝线（1px var(--jy-border)）、银灰渐变刊头字（端色走变体 token）、
    低饱和（accent 只做 11px kicker 小字）、等宽元信息（与 .juya-feed-meta 同一 JetBrains Mono 栈）。
-   **零字面色**：本块全部取色走 token（无 hex / rgba 字面值），不进「构成色登记表」；
    **零动效**：无 animation / transition（头版完全静态，RM 无需钉值）；
-   **零定位装饰层**：无 absolute 伪元素、无 z-index 声明 —— 分层硬约束由「不存在装饰层」满足
-   （kicker 的收尾发丝线是普通流内 flex 伪元素，不覆盖任何文字像素）；
    装饰可达性：伪元素 content 为空串、不入朗读树，组件本体无焦点无交互。
    版心：默认 760px 与 .juya-feed 基层同宽（compact / magazine 外层同为 760px）；
    grid 预设下列表是 .juya-feed.juya-feed-grid（1120px），用 :has(+ 兄弟) 同步升到 1120px，
@@ -3880,18 +3877,150 @@
      亮 kicker accent #4f5ed8 → 5.1735；h1 渐变两端 #17181d→#3a3b44 → 17.14 / 10.75；
        host muted #70717c → 4.6767；
      暗 kicker accent #6e7bff → 4.8450；h1 渐变两端 #f4f4f6→#8a8b94 → 15.59 / 5.058；
-       host muted #8a8b94 → 5.0580（纯底 #0a0a0c 上 5.8413）。 */
+       host muted #8a8b94 → 5.0580（纯底 #0a0a0c 上 5.8413）。
+   V2（2026-10-24，#77）：阅读页刊头极光带以**静帧**搬入本块 —— 容器双伪元素极光带、
+   底边由单色发丝线升级为渐变发丝线、h1 补双层冷辉光静帧（取值来源与分层论证见下方
+   各条专属注释；静态守卫见 juyaCssGuard「nocturne 订阅页头版极光带守卫」组）。
+   #74 的「零字面色 / 零定位装饰层」描述的是基层形态：#77 新增装饰按仓库标准逐条带
+   「取色来源 + 对比度」注释并进构成色登记表；「零动效」保持成立（不写关键帧，
+   静帧透明度取阅读页 reduced-motion 块的钉定值）。 */
 .jynoct .jynoct-feed-masthead {
   max-width: 760px;
   margin: 0 auto;
   padding: 40px 24px 16px;
   border-top: 1px solid var(--jy-border);
-  border-bottom: 1px solid var(--jy-border);
+  /* #77：底边由单色发丝线升级为「青白 → 靛蓝 → 透明」渐变发丝线 —— 阅读页栏目条 h2
+     （2026-10-20 #18 / SPEC 批次 B4）的同一技法：边框本体透明，颜色由背景层画进边框条
+     （background-size: 100% 1px + position left bottom + origin/clip border-box
+     ⇒ 渐变恰好落在下边框那 1px 内，不会在头版内容后面铺色；容器自身无
+     background-clip:text，已核）。上缘仍走 var(--jy-border) 单色发丝线不变。
+     取色来源（零新增色相，见下方极光注释的四色调色）：青白 rgba(214,236,255) = 阅读页
+     极光亮脊同色；靛蓝 rgba(110,123,255) = 暗变体 --jy-accent #6e7bff（极光底纹同源）。
+     起点 alpha 0.22 / 靛蓝中段 0.40 与栏目条逐值一致。
+     对比度（装饰性分隔件口径，同阅读页栏目条 §7.1 留档）：暗侧起点对 --jy-bg #0a0a0c
+     合成 (55,60,65) 实算 1.78:1、靛蓝中段合成 (50,55,109) 实算 1.82:1；亮侧中段对
+     --jy-bg #fbfbfc 合成 (195,200,253) 实算 1.52:1 —— 均 <3:1 的装饰线留档（头版的
+     上下界结构仍由边框几何承担，不靠颜色区分）。亮暗两变体共享同一取值。 */
+  border-bottom: 1px solid transparent;
+  background-image: linear-gradient(
+    to right,
+    rgba(214, 236, 255, 0.22) 0%,
+    rgba(110, 123, 255, 0.4) 42%,
+    transparent 100%
+  );
+  background-size: 100% 1px;
+  background-position: left bottom;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  background-clip: border-box;
+  /* #77：极光带是本盒的 absolute 伪元素，left/right: 0 必须以本盒为包含块，故补 relative；
+     同时 z-index: 0 自建堆叠上下文 —— 头版容器没有现成的堆叠上下文祖先（.juya-root 无
+     position / z-index），不建上下文则伪元素的 -1 会落到更外层上下文的第 2 步、被
+     .juya-root 的不透明 --jy-bg 背景（同上下文第 3 步）整个盖掉，极光不可见。建立后：
+     本盒背景（含发丝线）第 1 步、极光第 2 步、头版全部文字第 3/5 步 —— 极光恒在文字
+     之下（守卫②）、恒在 .juya-root 背景之上。这个 0 是负值的「地板」，不是极光自己的
+     层级（极光仍是 -1）。 */
+  position: relative;
+  z-index: 0;
 }
 
 /* grid 预设：与卡片列表同一 1120px 版心（FeedShell 的预设类名是单一来源，此处镜像其形态）。 */
 .jynoct .jynoct-feed-masthead:has(+ .juya-feed.juya-feed-grid) {
   max-width: 1120px;
+}
+
+/* ---- 头版极光带（2026-10-24，#77）：阅读页刊头极光带的静帧搬入 ----
+   搬运口径：几何（top/height/三层渐变形状/blur/mask）与阅读页 .juya-masthead::before/::after
+   逐值一致；动效按静帧纪律去掉 —— 透明度取阅读页 reduced-motion 块的显式钉定值
+   （前层 0.81 / 后层 0.76，即两层动画区间 0.62↔1 / 1↔0.52 的中间档），不写关键帧。
+   z-index **-1**（而不是 0）是这里的关键（与阅读页同一论证）：CSS 2.1 附录 E 中 z-index:0
+   的定位元素绘于第 6 步，而非定位的正文文本（kicker/h1/domain）在第 5 步 —— z-index:0
+   的极光会盖在标题文字之上，半透明 + blur 洗淡字形（仓库已踩过的坑）；-1 则整段落入
+   容器堆叠上下文（容器 z-index: 0，见容器规则注释）的第 2 步：容器背景之上、全部文字
+   之下，可读性由结构保证而非 alpha 调参。
+   亮暗两变体共享同一套取值（极光是风格级签名件；本组规则不带变体前缀，双变体同享）。
+   几何边界：前层占 [-26, 66]、后层占 [-40, 64]（相对头版盒顶）。头版是 .juya-root 的首个
+   块级子元素，负向顶部落在滚动容器原点以上、被视口裁掉 —— 裁切线处两层均已衰减到近透明
+   （青蓝幕帘 ~0.25 / 品红尾 ~0.15），不产生可辨硬边；可见主体（前层亮脊 y≈+11、幕帘垂落
+   至 y≈66）落在头版上内衬与 kicker/h1 一带，纵向不出头版盒、不与卡片列表相撞。
+   零横向溢出：left/right: 0 严格收在头版内容盒内（守卫⑥）。
+   取色来源（**零新增色相**，四色全部取自阅读页极光带既有色、逐字一致）：
+     · 冷白亮脊 rgba(214,236,255) = 阅读页极光亮脊（h1 顶档 #ffffff 向既有青蓝
+       rgba(90,160,255)（--jy-nebula-2）偏移所得的「被极光照亮的白」）；
+     · 青蓝 rgba(90,160,255) = 既有 --jy-nebula-2（暗变体）；
+     · 靛蓝 rgba(110,123,255) = 暗变体 --jy-accent #6e7bff（与 h1 辉光同源同色）；
+     · 品红 rgba(200,90,180) = 既有 --jy-nebula-3（暗变体）。
+   WCAG 对比度：纯装饰层，由 z-index: -1 结构性落在全部文字像素之下，文字 4.5 / UI 3
+   门槛不适用；参照值 —— 暗侧最亮合成（对 --jy-bg #0a0a0c 约 #26283f，与阅读页同一合成
+   结果）上 --jy-text #c4c5cc 仍 8.6:1；亮侧最亮（青蓝 0.42×0.81 对 #fbfbfc ≈ (196,220,253)）
+   上头版 h1 最暗端 #17181d 实算 12.66:1 —— 极光拉到最亮也不淹头版文字。 */
+.jynoct .jynoct-feed-masthead::before,
+.jynoct .jynoct-feed-masthead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* 两端渐隐（水平向），停靠点与阅读页逐值一致；black 为不透明停靠点的关键字写法，
+     本条不引入字面色值（不进构成色登记表） */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 16%, black 84%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, black 16%, black 84%, transparent 100%);
+}
+
+/* 前层：青白亮脊 + 垂落冷色幕帘 + 靛蓝底纹（三层分工见阅读页同段注释），静帧 = RM 钉定 0.81。
+   取色来源（本层三色，四色调色的其余两色见后层与容器发丝线）：青白亮脊 rgba(214,236,255) =
+   阅读页极光亮脊同色（「被极光照亮的白」）；青蓝 rgba(90,160,255) = 既有 --jy-nebula-2
+   （暗变体）；靛蓝 rgba(110,123,255) = 暗变体 --jy-accent #6e7bff。
+   WCAG 对比度：纯装饰层，由 z-index: -1 结构性落在全部文字像素之下，文字 4.5 / UI 3
+   门槛不适用（最亮合成参照值见上方共用规则的组注释）。 */
+.jynoct .jynoct-feed-masthead::before {
+  top: -26px;
+  height: 92px;
+  background-image:
+    radial-gradient(
+      178% 118% at 50% 146%,
+      transparent 86%,
+      rgba(214, 236, 255, 0.92) 90%,
+      transparent 97%
+    ),
+    radial-gradient(
+      196% 152% at 50% 168%,
+      transparent 74%,
+      rgba(90, 160, 255, 0.42) 86%,
+      rgba(110, 123, 255, 0.2) 94%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(110, 123, 255, 0.26) 0%,
+      rgba(110, 123, 255, 0.09) 38%,
+      transparent 72%
+    );
+  background-repeat: no-repeat;
+  filter: blur(4px);
+  opacity: 0.81;
+}
+
+/* 后层：偏心品红反相幕帘（弧心 at 38%，与前层 50% 错开制造不对称纵深），静帧 = RM 钉定 0.76。
+   取色来源（本层两色）：品红 rgba(200,90,180) = 既有 --jy-nebula-3（暗变体）；靛蓝
+   rgba(110,123,255) = 暗变体 --jy-accent #6e7bff。幕帘 alpha 写字面而不复用 token 雾记号
+   （--jy-nebula-3 自带 0.025 是三层雾的强度）的论证见阅读页同段（2026-10-20 #19 T8）。
+   WCAG 对比度：纯装饰层，由 z-index: -1 结构性落在全部文字像素之下，门槛不适用
+   （同前层口径）。 */
+.jynoct .jynoct-feed-masthead::after {
+  top: -40px;
+  height: 104px;
+  background-image: radial-gradient(
+    205% 140% at 38% 172%,
+    transparent 76%,
+    rgba(200, 90, 180, 0.5) 88%,
+    rgba(110, 123, 255, 0.18) 95%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  filter: blur(13px);
+  opacity: 0.76;
 }
 
 .jynoct .jynoct-feed-masthead-kicker {
@@ -3911,6 +4040,16 @@
   background: var(--jy-border);
 }
 
+/* #77：h1 双层冷辉光静帧（2026-10-24）—— 阅读页刊头 h1 呼吸微光（jy-noct-glow 9s）的静帧档：
+   近层 0.28 是阅读页呼吸区间 [0.22, 0.32] 的既有静态基准档、远层恒 0.12，去动画留辉光
+   （守卫③⑨）。亮暗两变体同值（规格单一来源；色相属极光四色集合，亮变体不因此新增色相）。
+   取色来源：rgba(110,123,255) = 暗变体 --jy-accent #6e7bff（与阅读页刊头辉光同源同值）。
+   辉光的唯一合法写法是 filter: drop-shadow：本元素是 background-clip:text 的渐变字，
+   text-shadow 按 Chromium 绘制顺序会盖住渐变填充（y2k / nocturne 已踩坑，仓库硬约束）。
+   WCAG 对比度：装饰性光晕、既非文本也非 UI 控件，门槛不适用（参照值：暗变体 accent 对
+   --jy-bg #0a0a0c 5.60:1、亮变体 kicker accent #4f5ed8 对 #fbfbfc 5.17:1，仅作取色溯源）；
+   drop-shadow 画在字形之后（字形 alpha 的模糊副本垫底），不改变字形本体填充，
+   头版文字对比度不受辉光影响。 */
 .jynoct .jynoct-feed-masthead h1 {
   margin-top: 10px;
   font-family: var(--jy-font-heading);
@@ -3918,6 +4057,8 @@
   line-height: 1.2;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
+  filter: drop-shadow(0 0 18px rgba(110, 123, 255, 0.28))
+    drop-shadow(0 0 40px rgba(110, 123, 255, 0.12));
 }
 
 /* 银灰渐变刊头字，端色按变体 token 取值：

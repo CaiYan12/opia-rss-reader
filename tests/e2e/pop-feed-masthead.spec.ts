@@ -68,6 +68,36 @@ test('pop 订阅页头版保留真实源身份，日期留在卡片，装饰不�
   const strip = masthead.locator('.jypop-feed-masthead-strip')
   await expect(strip).toHaveAttribute('aria-hidden', 'true')
   expect(await strip.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe('none')
+
+  // #82 印刷硬影：与阅读页刊头 h1 同值（3px 3px 0 rgba(0,0,0,.28)）
+  const heading = masthead.locator('h1')
+  const textShadow = await heading.evaluate((element) => getComputedStyle(element).textShadow)
+  expect(textShadow).toContain('3px 3px')
+  expect(textShadow).toContain('rgba(0, 0, 0, 0.28)')
+
+  // #82 爆炸星：h1::before 36px 白星 SVG，空 content 对辅助技术静默；
+  // 星形盒（left -40 + width 36 = -4px）整体收在 h1 文字盒外，不压字
+  const star = await heading.evaluate((element) => {
+    const style = getComputedStyle(element, '::before')
+    return {
+      content: style.content,
+      position: style.position,
+      left: style.left,
+      top: style.top,
+      width: style.width,
+      height: style.height,
+      backgroundImage: style.backgroundImage
+    }
+  })
+  expect(star.content, "空 content 对 AT 静默").toBe('""')
+  expect(star.position).toBe('absolute')
+  expect(star.left).toBe('-40px')
+  expect(star.top).toBe('-12px')
+  expect(star.width).toBe('36px')
+  expect(star.height).toBe('36px')
+  expect(star.backgroundImage, '阅读页同款白色星形 SVG').toContain('data:image/svg+xml')
+  expect(star.backgroundImage).toContain('%23ffffff')
+  expect(Number.parseFloat(star.left) + Number.parseFloat(star.width)).toBeLessThanOrEqual(0)
 })
 
 test('pop 订阅页头版在空列表下仍呈现源身份', async ({ page }) => {

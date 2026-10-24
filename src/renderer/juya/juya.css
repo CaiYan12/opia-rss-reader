@@ -1538,18 +1538,43 @@
 }
 
 /* 大字斜置：-1.5° 静态倾斜（波普海报语汇，非动画载体）；白字对品红面板两变体均过
-   大字门槛（亮 4.58 / 暗 3.56）；面板 padding ≥18px 吸收旋转外溢角 */
+   大字门槛（亮 4.58 / 暗 3.56）；面板 padding ≥18px 吸收旋转外溢角。
+   #82 印刷硬影：与阅读页刊头 h1 同值 3px 3px 0 rgba(0,0,0,.28)——h1 是白字实色
+   （var(--jy-on-accent)，非 background-clip:text），text-shadow 可用（仓库硬约束只禁
+   渐变字用 text-shadow，Chromium 绘制顺序会盖住渐变填充）。
+   #82 爆炸星留位（阅读页同技法）：position relative + 左缩进 16px，与面板内衬 24px
+   合计 40px 左留白 ≥ 36px 星形，星形整体收在文字盒外（阅读页为 28+16=44px 同构裕度）。 */
 .jypop .jypop-feed-masthead h1 {
+  position: relative;
   margin: 0;
+  margin-left: 16px;
   font-family: var(--jy-font-heading);
   font-size: clamp(40px, 6.5vw, 68px);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: var(--jy-on-accent);
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.28);
   text-transform: none;
   overflow-wrap: anywhere;
   transform: rotate(-1.5deg);
+}
+
+/* #82 爆炸星：阅读页刊头 h1::before 同款 36px 白色星形 SVG（data URI 逐字节同源）、
+   left -40px top -12px rotate(-8deg)，落在标题面板左上角留白处——星形右缘（-40+36=-4px）
+   收在 h1 文字盒外，不压字；顶缘贴 kicker 与 h1 间的 12px 沟槽起线，与贴纸 2° 斜置的
+   下沉角（在贴纸右端）不相交。空 content 对辅助技术静默（不进朗读树、不进焦点顺序）；
+   头版静帧，零 hover 零动画。 */
+.jypop .jypop-feed-masthead h1::before {
+  content: '';
+  position: absolute;
+  left: -40px;
+  top: -12px;
+  width: 36px;
+  height: 36px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 0 L58 30 L85 15 L70 42 L100 50 L70 58 L85 85 L58 70 L50 100 L42 70 L15 85 L30 58 L0 50 L30 42 L15 15 L42 30 Z' fill='%23ffffff'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+  transform: rotate(-8deg);
 }
 
 /* host 面板：奶油卡面（--jy-card）竖直居中放大写 host，与标题面板同边框/硬影语言 */

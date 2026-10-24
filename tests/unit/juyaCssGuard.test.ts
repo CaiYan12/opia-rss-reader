@@ -5670,3 +5670,139 @@ describe('y2k 订阅页头版窗口标题栏守卫（2026-10-24，#76：真实 D
     expect(pseudoClose).toContain("content: '×' / '';")
   })
 })
+
+describe('editorial 订阅页头版裁切角标与题注化守卫（2026-10-24，#78）', () => {
+  // #78 把阅读页 .juya-issue::before/::after 的 L 形裁切角标（24×24 / 内缩 8px / 1px 发丝）
+  // 以「现值搬运」落进订阅页头版容器，并把 host 行对齐阅读页题注语汇（uppercase + 0.08em，
+  // .juya-plate figcaption 同款）——前置 24px 发丝短线。刻意不搬阅读页栏目序号
+  // （counter(jysec, decimal-leading-zero)）：订阅源无真实序号语义，编号即造假信息，
+  // 本组与 e2e 双面锁「头版零序号」。与 #76 同理：容器 ::before 已被 V1 第二条上缘发丝线
+  // 占用，双角标只能落真实 DOM span（模板 aria-hidden；aria 语义由 e2e 断言，本组锁 CSS 面）。
+  // 不变量：V1 双发丝上缘（border-top 1px + ::before top 3px）与 3px double 收底、
+  // 衬线 h1、kicker accent 全部不动；零新增 animation/transition、零新增字面色
+  // （角标与短线全走 --jy-border 发丝 token，同 nocturne 头版 kicker 收尾线词汇）。
+
+  /** 首条形如 `.jyedit <rest> { … }` 的规则块（行首锚定，同 y2kRule / noctRule 口径） */
+  const editRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jyedit ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  const cornerRule = (): string => editRule('\\.jyedit-feed-masthead-corner')
+  const tlRule = (): string => editRule('\\.jyedit-feed-masthead-corner-tl')
+  const brRule = (): string => editRule('\\.jyedit-feed-masthead-corner-br')
+  const domainRule = (): string => editRule('\\.jyedit-feed-masthead-domain')
+  const domainBeforeRule = (): string => editRule('\\.jyedit-feed-masthead-domain::before')
+  const containerRule = (): string => editRule('\\.jyedit-feed-masthead')
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+  const LITERAL_COLOR = /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+
+  it('① 双角标为真实 DOM（非伪元素承载）：24×24 绝对定位、内缩 8px、L 边走发丝 token、pointer-events none', () => {
+    const corner = cornerRule()
+    expect(corner, '角标共用规则应存在（空转绿防护）').toBeTruthy()
+    expect(
+      corner,
+      '角标不得用 content 伪元素承载（容器 ::before 已被 V1 第二条上缘发丝线占用）'
+    ).not.toMatch(/(?:^|[;{\s])content\s*:/)
+    expect(decl(corner, 'position')).toBe('absolute')
+    expect(decl(corner, 'width')).toBe('24px')
+    expect(decl(corner, 'height')).toBe('24px')
+    expect(decl(corner, 'pointer-events'), '装饰角标不拦截点击与选择').toBe('none')
+    const tl = tlRule()
+    expect(tl, '左上角规则应存在').toBeTruthy()
+    expect(decl(tl, 'top')).toBe('8px')
+    expect(decl(tl, 'left')).toBe('8px')
+    expect(decl(tl, 'border-top'), 'L 上边（阅读页 .juya-issue::before 现值）').toBe(
+      '1px solid var(--jy-border)'
+    )
+    expect(decl(tl, 'border-left')).toBe('1px solid var(--jy-border)')
+    const br = brRule()
+    expect(br, '右下角规则应存在').toBeTruthy()
+    expect(decl(br, 'right')).toBe('8px')
+    expect(decl(br, 'bottom')).toBe('8px')
+    expect(decl(br, 'border-right'), 'L 右边（阅读页 .juya-issue::after 现值）').toBe(
+      '1px solid var(--jy-border)'
+    )
+    expect(decl(br, 'border-bottom')).toBe('1px solid var(--jy-border)')
+    for (const [name, rule] of [
+      ['共用', corner],
+      ['左上', tl],
+      ['右下', br]
+    ] as const) {
+      expect(rule, `${name}角标零新增字面色（全走 --jy-border token）`).not.toMatch(LITERAL_COLOR)
+      expect(rule, `${name}角标零新增动效（V2 静帧纪律）`).not.toMatch(NO_EFFECT)
+    }
+  })
+
+  it('② host 行题注化：24px 发丝短线前置 + 0.08em uppercase，muted 对 bg 两变体 ≥4.5', () => {
+    const domain = domainRule()
+    expect(domain, 'domain 规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(domain, 'display'), 'flex 承载前置短线').toBe('flex')
+    expect(decl(domain, 'align-items')).toBe('center')
+    expect(decl(domain, 'gap')).toBe('8px')
+    expect(decl(domain, 'font-size')).toBe('11px')
+    expect(decl(domain, 'letter-spacing'), '字距对齐阅读页题注语汇 0.08em').toBe('0.08em')
+    expect(decl(domain, 'text-transform')).toBe('uppercase')
+    expect(decl(domain, 'color')).toBe('var(--jy-muted)')
+    const before = domainBeforeRule()
+    expect(before, 'host 前置短线规则应存在').toBeTruthy()
+    expect(decl(before, 'width')).toBe('24px')
+    expect(decl(before, 'height')).toBe('1px')
+    expect(decl(before, 'background')).toBe('var(--jy-border)')
+    expect(decl(before, 'flex'), '短线不被压缩').toBe('none')
+    for (const [name, rule] of [
+      ['host 行', domain],
+      ['短线', before]
+    ] as const) {
+      expect(rule, `${name}零新增字面色`).not.toMatch(LITERAL_COLOR)
+      expect(rule, `${name}零新增动效`).not.toMatch(NO_EFFECT)
+    }
+    // muted 对 bg 实算（题注语义文字 ≥4.5；纸纹合成面口径由既有 editorial 审计组覆盖）
+    for (const variant of ['editorial-light', 'editorial-dark']) {
+      const block = variantBlock(variant)
+      expect(
+        contrast(tokenHex(block, '--jy-muted'), tokenHex(block, '--jy-bg')),
+        `${variant} host muted 对 bg ≥4.5`
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('③ V1 骨架不动：双发丝上缘（含 ::before 第二条 top 3px）与 3px double 收底、衬线 h1、kicker accent', () => {
+    const container = containerRule()
+    expect(container, '头版容器规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(container, 'max-width')).toBe('1040px')
+    expect(decl(container, 'padding')).toBe('44px 24px 18px')
+    expect(decl(container, 'border-top'), '上缘第一条发丝线').toBe('1px solid var(--jy-border)')
+    expect(decl(container, 'border-bottom'), '3px double 收底').toBe('3px double var(--jy-border)')
+    expect(decl(container, 'position')).toBe('relative')
+    const secondHairline = editRule('\\.jyedit-feed-masthead::before')
+    expect(secondHairline, '第二条上缘发丝线规则应存在').toBeTruthy()
+    expect(decl(secondHairline, 'top')).toBe('3px')
+    expect(decl(secondHairline, 'border-top')).toBe('1px solid var(--jy-border)')
+    const h1 = editRule('\\.jyedit-feed-masthead h1')
+    expect(h1, 'h1 规则应存在').toBeTruthy()
+    expect(decl(h1, 'font-family'), '衬线标题族不动').toBe('var(--jy-font-heading)')
+    expect(decl(h1, 'letter-spacing')).toBe('-0.02em')
+    const kicker = editRule('\\.jyedit-feed-masthead-kicker')
+    expect(kicker, 'kicker 规则应存在').toBeTruthy()
+    expect(decl(kicker, 'font-size')).toBe('11px')
+    expect(decl(kicker, 'letter-spacing')).toBe('0.3em')
+    expect(decl(kicker, 'color')).toBe('var(--jy-accent)')
+  })
+
+  it('④ 头版零序号、整段零动效：masthead 段无 counter 体系；阅读页栏目序号原样保留', () => {
+    // masthead 分节（容器规则起点 → 「侘寂日杂式」段头；剥注释保持扫描面干净）
+    const from = css.indexOf('.jyedit .jyedit-feed-masthead')
+    const to = css.indexOf('侘寂日杂式')
+    expect(from, 'masthead 段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    const bare = css.slice(from, to).replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(
+      bare,
+      'masthead 段不得引入 counter 体系（刻意不搬阅读页栏目序号：订阅源无真实序号语义）'
+    ).not.toMatch(/counter(?:-reset|-increment|-set)?\s*:/)
+    expect(bare, 'masthead 段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 反证：阅读页栏目序号（counter jysec）仍在阅读页段，未被本票波及
+    const readingSection = css.slice(css.indexOf('杂志编辑式'), css.indexOf('侘寂日杂式'))
+    expect(readingSection).toContain('decimal-leading-zero')
+  })
+})

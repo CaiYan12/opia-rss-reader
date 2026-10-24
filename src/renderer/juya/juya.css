@@ -1367,6 +1367,130 @@
     center / 100% 100% no-repeat;
 }
 
+/* 订阅页头版（2026-10-24，#71）：波普印刷拼贴 nameplate——柔蓝沟槽底板（--jy-lead-bg，呼应阅读页
+   蓝色沟槽）+ 品红标题面板（kicker 反白贴纸 + 斜置大字源名）+ 奶油 host 面板 + 底缘 Ben-Day
+   反转色带。只承载源身份（语义顺序 kicker → 源名 → host），期号日期留在卡片（阅读页期号面板
+   的日期语义不搬入）。版心：max-width 随预设对齐 .juya-feed（grid 1120 / 其余 760，同为
+   content-box + 24px 横向内衬，外缘逐像素对齐）；色值全部走 token（新规则零字面色，亮暗变体
+   由 token 自动切换、无需变体覆盖）；头版零动画零 hover，倾斜均为静态 transform；
+   色带纯装饰 aria-hidden + pointer-events:none。对比度实算（WCAG，token 对实际底色）：
+   h1 白字/品红面板 亮 4.58、暗 3.56（大字门槛 ≥3，同阅读页标题面板白字/品红对）；
+   kicker 贴纸 亮 14.95、暗 16.30；host 米灰/卡面 亮 6.75、暗 5.86（普通文字 ≥4.5）；
+   装饰可辨性：色带网点 14.95/14.89、面板蓝硬影对沟槽底板 5.69/4.70（纯装饰无门槛）。 */
+.jypop .jypop-feed-masthead {
+  max-width: 760px;
+  margin: 24px auto 0;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'panel side'
+    'strip strip';
+  gap: 12px;
+  background: var(--jy-lead-bg);
+}
+
+/* grid 预设（任意列数）下 .juya-feed 内容盒 1120px，头版同步放大保持同一版心；
+   magazine 预设的内嵌子网格同名类在 .juya-feed 内部（非直接子级），不命中本选择器 */
+.jypop:has(> .juya-feed-grid) .jypop-feed-masthead {
+  max-width: 1120px;
+}
+
+/* 标题面板：品红底（--jy-accent，亮 #e0245e / 暗 #ff2e74）+ 黑边（亮）/黄边（暗）+
+   蓝色硬位移影（--jy-link，阅读页蓝沟槽的套印错位迁移）；min-width:0 防长源名撑破 */
+.jypop .jypop-feed-masthead-panel {
+  grid-area: panel;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--jy-accent);
+  border: 3px solid var(--jy-border);
+  box-shadow: 6px 6px 0 var(--jy-link);
+  padding: 18px 20px 20px 24px;
+}
+
+/* kicker 反白贴纸：heading 底 + bg 字（亮黑底黄字 / 暗米白底深字），与日期贴纸同「贴纸」语汇；
+   +2° 静态斜置与 h1 -1.5° 反向，印刷拼贴的错版感 */
+.jypop .jypop-feed-masthead-kicker {
+  margin: 0;
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--jy-heading);
+  color: var(--jy-bg);
+  font-family: var(--jy-font-heading, inherit);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  transform: rotate(2deg);
+}
+
+/* 大字斜置：-1.5° 静态倾斜（波普海报语汇，非动画载体）；白字对品红面板两变体均过
+   大字门槛（亮 4.58 / 暗 3.56）；面板 padding ≥18px 吸收旋转外溢角 */
+.jypop .jypop-feed-masthead h1 {
+  margin: 0;
+  font-family: var(--jy-font-heading);
+  font-size: clamp(40px, 6.5vw, 68px);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--jy-on-accent);
+  text-transform: none;
+  overflow-wrap: anywhere;
+  transform: rotate(-1.5deg);
+}
+
+/* host 面板：奶油卡面（--jy-card）竖直居中放大写 host，与标题面板同边框/硬影语言 */
+.jypop .jypop-feed-masthead-side {
+  grid-area: side;
+  display: flex;
+  align-items: center;
+  background: var(--jy-card);
+  border: 3px solid var(--jy-border);
+  box-shadow: 6px 6px 0 var(--jy-link);
+  padding: 12px 20px;
+}
+
+.jypop .jypop-feed-masthead-domain {
+  margin: 0;
+  font-family: var(--jy-font-heading, inherit);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jy-muted);
+  overflow-wrap: anywhere;
+}
+
+/* 底缘 Ben-Day 反转色带：border 底 + bg 网点（亮黑带黄点 / 暗黄带黑点，与页面网点互为反转）；
+   纯装饰（DOM aria-hidden + CSS pointer-events:none 双保险），不进朗读树与焦点路径 */
+.jypop .jypop-feed-masthead-strip {
+  grid-area: strip;
+  height: 22px;
+  background-color: var(--jy-border);
+  background-image: radial-gradient(var(--jy-bg) 1.6px, transparent 1.7px);
+  background-size: 14px 14px;
+  pointer-events: none;
+}
+
+/* 窄窗回落：≤520px 单列纵排（标题 → host → 色带），大字缩档防溢出 */
+@media (max-width: 520px) {
+  .jypop .jypop-feed-masthead {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'panel'
+      'side'
+      'strip';
+    padding: 16px 20px;
+  }
+
+  .jypop .jypop-feed-masthead h1 {
+    font-size: clamp(32px, 9vw, 44px);
+  }
+}
+
 /* ---- 90 年代报刊式 ---- */
 /* 纸面（#27）：中度泛黄的旧新闻纸。纹理全部是 .juya-root 的背景层——
    极轻暗角（四角）+ 两道错位纤维噪点（7px / 11px 平铺）+ 3px 横纹；

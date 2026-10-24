@@ -3467,6 +3467,101 @@
   animation-play-state: paused;
 }
 
+/* ---- 订阅页头版（2026-10-24，#74）：暗夜精修语言的名字牌 ----
+   挂载：templates/nocturne-feed-craft.tsx 经 FeedShell 的 scene 槽位渲染在 .juya-root 内、
+   .juya-feed 之前；**亮暗两变体都接线**（#67 解除「nocturne-light 一律不动」冻结，
+   解除范围仅限订阅页头版 = 本块 + 模板接线，其余亮侧规则零变化）。
+   语汇延续本分节既有语言：发丝线（1px var(--jy-border)）、银灰渐变刊头字（端色走变体 token）、
+   低饱和（accent 只做 11px kicker 小字）、等宽元信息（与 .juya-feed-meta 同一 JetBrains Mono 栈）。
+   **零字面色**：本块全部取色走 token（无 hex / rgba 字面值），不进「构成色登记表」；
+   **零动效**：无 animation / transition（头版完全静态，RM 无需钉值）；
+   **零定位装饰层**：无 absolute 伪元素、无 z-index 声明 —— 分层硬约束由「不存在装饰层」满足
+   （kicker 的收尾发丝线是普通流内 flex 伪元素，不覆盖任何文字像素）；
+   装饰可达性：伪元素 content 为空串、不入朗读树，组件本体无焦点无交互。
+   版心：默认 760px 与 .juya-feed 基层同宽（compact / magazine 外层同为 760px）；
+   grid 预设下列表是 .juya-feed.juya-feed-grid（1120px），用 :has(+ 兄弟) 同步升到 1120px，
+   三种预设下头版盒缘与卡片列表盒缘都精确对齐。不支持 :has 时回落 760px（安全默认）。
+   对比度实算（WCAG，普通文字 4.5 / 大字 3；亮侧对 --jy-bg #fbfbfc，暗侧对**最坏合成面**
+   —— 暗侧 .juya-root 顶部自带 rgba(110,123,255,0.14) 极光洗，峰值合成 #181a2e）：
+     亮 kicker accent #4f5ed8 → 5.1735；h1 渐变两端 #17181d→#3a3b44 → 17.14 / 10.75；
+       host muted #70717c → 4.6767；
+     暗 kicker accent #6e7bff → 4.8450；h1 渐变两端 #f4f4f6→#8a8b94 → 15.59 / 5.058；
+       host muted #8a8b94 → 5.0580（纯底 #0a0a0c 上 5.8413）。 */
+.jynoct .jynoct-feed-masthead {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 24px 16px;
+  border-top: 1px solid var(--jy-border);
+  border-bottom: 1px solid var(--jy-border);
+}
+
+/* grid 预设：与卡片列表同一 1120px 版心（FeedShell 的预设类名是单一来源，此处镜像其形态）。 */
+.jynoct .jynoct-feed-masthead:has(+ .juya-feed.juya-feed-grid) {
+  max-width: 1120px;
+}
+
+.jynoct .jynoct-feed-masthead-kicker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--jy-accent);
+}
+
+/* kicker 引导词右侧的发丝线：流内 flex 收尾线（非定位装饰），与上下边框同一 token。 */
+.jynoct .jynoct-feed-masthead-kicker::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--jy-border);
+}
+
+.jynoct .jynoct-feed-masthead h1 {
+  margin-top: 10px;
+  font-family: var(--jy-font-heading);
+  font-size: clamp(36px, 5vw, 56px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+/* 银灰渐变刊头字，端色按变体 token 取值：
+   亮侧 = --jy-heading→--jy-text（与既有亮侧阅读页刊头字 linear-gradient(#17181d,#3a3b44) 同一端点对）；
+   暗侧 = --jy-heading→--jy-muted（ token 表达的银灰收暗档；大字门槛 3:1，最暗端 5.058 足够）。 */
+[data-juya-variant='nocturne-light'].jynoct .jynoct-feed-masthead h1 {
+  background: linear-gradient(180deg, var(--jy-heading), var(--jy-text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-juya-variant='nocturne-dark'].jynoct .jynoct-feed-masthead h1 {
+  background: linear-gradient(180deg, var(--jy-heading), var(--jy-muted));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 渐变字降级（与阅读页刊头字同一结构）：不支持 background-clip: text 时回实色标题 token。 */
+@supports not (background-clip: text) {
+  .jynoct .jynoct-feed-masthead h1 {
+    background: none;
+    color: var(--jy-heading);
+  }
+}
+
+/* host 行：与 .juya-feed-meta 同一元信息等宽栈（JetBrains Mono 首选），大写 + 宽字距。 */
+.jynoct .jynoct-feed-masthead-domain {
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Noto Sans SC', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jy-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- 杂志编辑式（2026-09-24 重设计新增） ----
    与 newsprint90s 的市井报刊对照的高端杂志：纯平留白，刊物感靠排版 */
 [data-juya-variant='editorial-light'] {

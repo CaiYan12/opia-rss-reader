@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { EntryTitle, Lead, LinksBlock, OverviewItems, Paragraphs, SafeLink } from './shared'
 import { DefaultFeedItem, FeedShell, Scene } from './parts'
+import { NocturneFeedMasthead } from './nocturne-feed-craft'
 import type { JuyaEntry, JuyaImage } from '../parseJuyaIssue'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
@@ -238,13 +239,22 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
 }
 
 function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
-  const { openArticle } = useAppStore()
+  const { openArticle, sources, activeSourceId } = useAppStore()
+  const activeSource = sources.find((source) => source.id === activeSourceId)
   return (
     <FeedShell
       articles={articles}
       variantId={variantId}
       variantClass={VARIANT_CLASS}
       layout={layout}
+      scene={
+        /* 订阅页头版（#74）：亮暗两变体都挂载（#67 明确解除亮侧冻结，范围仅限头版）；
+           期号日期留在卡片上，头版只承载源身份。 */
+        <NocturneFeedMasthead
+          sourceName={activeSource?.name ?? ''}
+          sourceUrl={activeSource?.url ?? ''}
+        />
+      }
       renderItem={(a, _i, mode, gates, delay) => (
         <DefaultFeedItem a={a} mode={mode} gates={gates} delay={delay} onOpen={() => void openArticle(a)} />
       )}

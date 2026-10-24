@@ -223,3 +223,112 @@ for (const sample of [
     )
   })
 }
+
+// ---- #77：阅读页刊头极光带以静帧搬入头版（亮暗两变体共享同一套取值）----
+// 断言面：双伪元素装饰层（z-index -1 绘制在文字之下）、RM 钉定静帧透明度（0.81/0.76）、
+// 两端 mask 渐隐、零动效、底边渐变发丝线、h1 双层冷辉光静帧、零横向溢出。
+// black 关键字停靠等 CSS 原文纪律由 tests/unit/juyaCssGuard.test.ts 头版极光带守卫组锁死；
+// 此处只断计算样式（Chromium 会把 mask 停靠点 black 序列化成 rgb(0,0,0)，故只认百分比）。
+for (const scheme of ['light', 'dark'] as const) {
+  test(`nocturne 订阅页头版极光带静帧成立 ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await loadNocturne(page, 'wabi', '', scheme)
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root).toHaveAttribute('data-juya-variant', `nocturne-${scheme}`)
+    const masthead = root.locator('.jynoct-feed-masthead')
+    await expect(masthead).toBeVisible()
+    await expect(masthead.locator('h1')).toHaveText(DEFAULT_SOURCE.name)
+
+    const facts = await masthead.evaluate((element) => {
+      const cs = getComputedStyle(element)
+      const pseudo = (name: '::before' | '::after') => {
+        const p = getComputedStyle(element, name)
+        return {
+          content: p.content,
+          position: p.position,
+          zIndex: p.zIndex,
+          opacity: p.opacity,
+          webkitMaskImage: p.webkitMaskImage,
+          filter: p.filter,
+          backgroundImage: p.backgroundImage,
+          animationName: p.animationName,
+          pointerEvents: p.pointerEvents,
+          top: p.top
+        }
+      }
+      const heading = element.querySelector('h1') as HTMLElement
+      const h1cs = getComputedStyle(heading)
+      const scroller = element.closest('.view-scroll') as HTMLElement
+      return {
+        containerPosition: cs.position,
+        containerZ: cs.zIndex,
+        borderBottomColor: cs.borderBottomColor,
+        borderBottomWidth: cs.borderBottomWidth,
+        containerBgImage: cs.backgroundImage,
+        containerBgSize: cs.backgroundSize,
+        before: pseudo('::before'),
+        after: pseudo('::after'),
+        h1Filter: h1cs.filter,
+        h1Anim: h1cs.animationName,
+        scrollerOverflow: scroller.scrollWidth - scroller.clientWidth
+      }
+    })
+
+    // 容器：relative 包含块 + z-index 0 自建堆叠上下文（极光 -1 的地板）
+    expect(facts.containerPosition).toBe('relative')
+    expect(facts.containerZ, '容器建立堆叠上下文（极光 -1 的地板）').toBe('0')
+
+    // 双伪元素极光带：独立装饰层、绘制在文字之下、静帧、两端渐隐
+    for (const [name, layer, opacity, blur, hues] of [
+      [
+        '前层',
+        facts.before,
+        '0.81',
+        'blur(4px)',
+        ['rgba(214, 236, 255, 0.92)', 'rgba(90, 160, 255, 0.42)', 'rgba(110, 123, 255']
+      ],
+      [
+        '后层',
+        facts.after,
+        '0.76',
+        'blur(13px)',
+        ['rgba(200, 90, 180, 0.5)', 'rgba(110, 123, 255, 0.18)']
+      ]
+    ] as const) {
+      expect(layer.content, `${name} content 为空串（AT 静默）`).toBe('""')
+      expect(layer.position).toBe('absolute')
+      expect(layer.zIndex, `${name} 绘制在文字之下（z-index -1，字形不被洗淡）`).toBe('-1')
+      expect(layer.opacity, `${name} RM 钉定静帧透明度`).toBe(opacity)
+      expect(layer.webkitMaskImage, `${name} 两端渐隐 mask（水平向）`).toContain(
+        'linear-gradient(90deg'
+      )
+      expect(layer.webkitMaskImage).toContain('16%')
+      expect(layer.webkitMaskImage).toContain('84%')
+      expect(layer.filter, `${name} blur 纵深`).toBe(blur)
+      for (const hue of hues) {
+        expect(layer.backgroundImage, `${name} 取色 ${hue}`).toContain(hue)
+      }
+      expect(layer.animationName, `${name} 静帧（无动画）`).toBe('none')
+      expect(layer.pointerEvents, `${name} 不截获点击`).toBe('none')
+    }
+    expect(facts.before.top).toBe('-26px')
+    expect(facts.after.top).toBe('-40px')
+
+    // 底边渐变发丝线：边框本体透明，颜色画进 1px 边框条
+    expect(facts.borderBottomWidth).toBe('1px')
+    expect(facts.borderBottomColor, '底边框本体透明').toBe('rgba(0, 0, 0, 0)')
+    expect(facts.containerBgImage, '渐变发丝线（青白 → 靛蓝 → 透明）').toContain('linear-gradient')
+    expect(facts.containerBgImage).toContain('rgba(214, 236, 255, 0.22)')
+    expect(facts.containerBgImage).toContain('rgba(110, 123, 255, 0.4)')
+    expect(facts.containerBgSize).toBe('100% 1px')
+
+    // h1 双层冷辉光静帧（18px/.28 定轮廓 + 40px/.12 铺晕，accent 靛蓝）
+    expect(facts.h1Filter, '双层 drop-shadow').toMatch(/drop-shadow[\s\S]*drop-shadow/)
+    expect(facts.h1Filter).toContain('rgba(110, 123, 255, 0.28)')
+    expect(facts.h1Filter).toContain('rgba(110, 123, 255, 0.12)')
+    expect(facts.h1Anim).toBe('none')
+
+    // 零横向溢出（极光 left/right:0 收在盒内）
+    expect(facts.scrollerOverflow).toBeLessThanOrEqual(0)
+  })
+}

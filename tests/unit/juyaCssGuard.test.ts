@@ -3365,6 +3365,12 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     //  · ::backdrop = 暗色半透明遮罩 rgba(10,10,12,0.82)（--jy-bg 的 82% alpha 字面）；
     //    同批的 `.jynoct-lightbox`（面板底 var(--jy-bg)/描边 var(--jy-border)）与
     //    `.jynoct-lightbox img`（filter/object-fit/几何）全走 token 或无字面色值，不入表。
+    // #77 头版极光带静帧（2026-10-24）再新增四条，故 20 → 24 条：
+    //  · .jynoct .jynoct-feed-masthead = 底边渐变发丝线（青白 .22 → 靛蓝 .40 → transparent）；
+    //  · ::before / ::after = 极光带静帧两层（青白亮脊 / 青蓝幕帘 / 靛蓝底纹 / 品红反相幕帘）；
+    //  · .jynoct .jynoct-feed-masthead h1 = 双层冷辉光静帧（accent 靛蓝 .28/.12）。
+    //    同批新增的共用定位/mask 规则不在表内（mask 停靠点用 black 关键字，无字面色）；
+    //    全部为无变体前缀的共享形态（签名件亮暗两变体同值），故亮侧反证清单不变。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
@@ -3385,7 +3391,11 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
-      "[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop"
+      "[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop",
+      '.jynoct .jynoct-feed-masthead',
+      '.jynoct .jynoct-feed-masthead::before',
+      '.jynoct .jynoct-feed-masthead::after',
+      '.jynoct .jynoct-feed-masthead h1'
     ])
 
     // 反证（范围闸门）：段内亮侧作用域的字面色规则恰好是既有两条；新增亮侧规则会撞红本断言
@@ -5356,5 +5366,220 @@ describe('synthwave 暗侧调色板守卫（2026-10-22，#34 review）', () => {
         4.5
       )
     }
+  })
+})
+
+describe('nocturne 订阅页头版极光带守卫（2026-10-24，#77：阅读页签名件极光带静帧搬入）', () => {
+  // #77 把阅读页刊头极光带以「静帧」搬进订阅页头版：容器双伪元素 + RM 钉定透明度
+  // （前层 0.81 / 后层 0.76）、底边升级为渐变发丝线、h1 补双层冷辉光静帧。
+  // 本组锁**结构与静帧纪律**（观感由 tests/e2e/nocturne-feed-masthead.spec.ts 截图人眼判定）。
+  // 核心不变量与阅读页极光组同源：极光 z-index 必须 **-1** —— CSS 2.1 附录 E 中
+  // z-index:0 的定位元素绘于第 6 步，而非定位的正文文本（kicker/h1/domain）在第 5 步，
+  // z-index:0 的极光会盖在文字之上、半透明 + blur 洗淡字形（仓库已踩过的坑）。
+  // 头版与阅读页的结构差异：头版容器没有现成的堆叠上下文祖先（.juya-root 无 position /
+  // z-index），故容器自身 position: relative + z-index: 0 建立上下文给 -1 当「地板」——
+  // 否则 -1 落到更外层上下文的第 2 步，被 .juya-root 的不透明 --jy-bg 背景（同上下文
+  // 第 3 步）整个盖掉，极光不可见。上下文建立后：容器自身背景（含发丝线）第 1 步、
+  // 极光第 2 步、头版文字第 3/5 步，可读性由结构保证。
+  // 亮暗两变体共享：全部新规则都是无变体前缀的 `.jynoct …` 形态（签名件双变体同值）。
+
+  const PREFIX = '.jynoct .jynoct-feed-masthead'
+  const beforeSel = `${PREFIX}::before`
+  const afterSel = `${PREFIX}::after`
+
+  /** 精确选择器取规则（剥注释保持位号）：分组头按 ',' 拆开精确匹配，不能用「行首锚定 +
+   *  首次匹配」——共用规则的分组头第二行正是 `… ::after {`，会误取（阅读页极光组同款教训）。 */
+  const rules = (): { selectors: string[]; body: string }[] => {
+    const masked = css.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    const out: { selectors: string[]; body: string }[] = []
+    for (let i = 0; i < masked.length; i++) {
+      if (masked[i] !== '{') continue
+      let j = i
+      while (j > 0 && !'{};'.includes(masked[j - 1])) j--
+      const head = masked.slice(j, i).trim()
+      let depth = 0
+      let end = i
+      for (let k = i; k < masked.length; k++) {
+        if (masked[k] === '{') depth++
+        else if (masked[k] === '}') {
+          depth--
+          if (depth === 0) {
+            end = k
+            break
+          }
+        }
+      }
+      out.push({
+        selectors: head.split(',').map((s) => s.trim()).filter(Boolean),
+        body: css.slice(i, end + 1)
+      })
+    }
+    return out
+  }
+  /** 精确匹配「无 @ 前缀的规则、选择器列表恰为 sels」的那条（顺序无关，避免误取分组规则） */
+  const ruleBy = (...sels: string[]): string => {
+    const want = [...sels].sort().join(' || ')
+    const hit = rules().find(
+      (r) =>
+        r.selectors.length === sels.length &&
+        !r.selectors.some((s) => s.startsWith('@')) &&
+        [...r.selectors].sort().join(' || ') === want
+    )
+    return hit?.body ?? ''
+  }
+  const beforeRule = (): string => ruleBy(beforeSel)
+  const afterRule = (): string => ruleBy(afterSel)
+  /** 两条伪元素共用的定位/mask 规则（分组选择器：::before + ::after） */
+  const sharedRule = (): string => ruleBy(beforeSel, afterSel)
+  const containerRule = (): string => ruleBy(PREFIX)
+  const h1Rule = (): string => ruleBy(`${PREFIX} h1`)
+  /** 规则体剥注释：判定「是否真的声明了某属性 / 某字面色」必须剥注释，
+   *  否则注释里**提到**的色值会被误判成声明里的色值（阅读页极光组 ⑨ 同款教训）。 */
+  const bare = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, ' ')
+
+  it('① 极光带存在且为独立装饰层：双伪元素 + 共用定位/mask 规则 + 容器建立堆叠上下文', () => {
+    expect(beforeRule(), '极光前层规则应存在').toBeTruthy()
+    expect(afterRule(), '极光后层规则应存在').toBeTruthy()
+    const shared = sharedRule()
+    expect(shared, '双伪元素应有共用的定位/mask 规则').toBeTruthy()
+    expect(shared, '装饰层须显式声明 content').toContain("content: ''")
+    expect(shared, '装饰层须 absolute 定位').toMatch(/position:\s*absolute/)
+    expect(shared, '装饰层绝不可截获点击').toMatch(/pointer-events:\s*none/)
+    const container = containerRule()
+    expect(container, '头版容器规则应存在').toBeTruthy()
+    expect(container, '容器须为极光提供包含块（position: relative）').toMatch(
+      /position:\s*relative/
+    )
+    expect(
+      bare(container),
+      '容器须自建堆叠上下文（z-index: 0 是极光 -1 的地板；没有它 -1 落回外层、被 --jy-bg 背景盖没）'
+    ).toMatch(/(?:^|[;{\s])z-index:\s*0\s*[;}]/)
+  })
+
+  it('② 分层不变量：极光 z-index 显式 -1（绝不为 0/正数），各层不得覆写', () => {
+    // 核心断言（论证见组头注释）：0 或正数都会把极光画到文字之上、洗淡字形。
+    const z = decl(bare(sharedRule()), 'z-index')
+    expect(z, '极光必须显式声明 z-index').toBe('-1')
+    for (const [name, rule] of [
+      ['前层', beforeRule()],
+      ['后层', afterRule()]
+    ] as const) {
+      expect(rule, `${name}不得覆写共用规则的 z-index`).not.toMatch(/z-index\s*:/)
+    }
+  })
+
+  it('③ 静帧纪律：全部新规则零 animation/transition，且 nocturne 段关键帧集合不增', () => {
+    for (const [name, rule] of [
+      ['共用', sharedRule()],
+      ['前层', beforeRule()],
+      ['后层', afterRule()],
+      ['容器', containerRule()],
+      ['h1', h1Rule()]
+    ] as const) {
+      expect(rule, `${name} 规则应存在（空转绿防护）`).toBeTruthy()
+      expect(
+        bare(rule),
+        `${name} 不得新增动效（V2 静帧纪律：签名件取阅读页动画的静帧值，不搬动画）`
+      ).not.toMatch(/(?:^|[;{\s])(?:animation|transition)\s*:/)
+    }
+    const kfs = [...noctSection().matchAll(/@keyframes ([\w-]+) \{/g)].map((m) => m[1]).sort()
+    expect(kfs, 'nocturne 段关键帧集合（头版静帧不得新增关键帧）').toEqual([
+      'jy-noct-aurora-far',
+      'jy-noct-aurora-near',
+      'jy-noct-glow',
+      'jy-noct-lightbox-in'
+    ])
+  })
+
+  it('④ 静帧透明度 = 阅读页 RM 钉定值（前 0.81 / 后 0.76），取值单一来源不得漂移', () => {
+    // 阅读页两层动画区间（0.62↔1 / 1↔0.52）在 reduced-motion 下显式钉定的中间档，
+    // 静帧直接取这两个值（票面口径），不写关键帧。
+    expect(Number.parseFloat(decl(bare(beforeRule()), 'opacity')), '前层静帧 opacity').toBe(0.81)
+    expect(Number.parseFloat(decl(bare(afterRule()), 'opacity')), '后层静帧 opacity').toBe(0.76)
+  })
+
+  it('⑤ 色相集合（零新增色相）：极光两层 + 底边发丝线恰好四色，h1 辉光单色 accent 靛蓝', () => {
+    const channels = [...(bare(beforeRule()) + bare(afterRule()) + bare(containerRule())).matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map(
+      (m) => `${m[1]},${m[2]},${m[3]}`
+    )
+    expect(
+      [...new Set(channels)].sort(),
+      '头版签名件的色相集合必须恰好是既有极光四色（新增色相即撞红）'
+    ).toEqual(['110,123,255', '200,90,180', '214,236,255', '90,160,255'].sort())
+    const glow = [...bare(h1Rule()).matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map(
+      (m) => `${m[1]},${m[2]},${m[3]}`
+    )
+    expect([...new Set(glow)], 'h1 辉光须是单色 accent 靛蓝（不得混入青蓝/品红等极光色相）').toEqual(
+      ['110,123,255']
+    )
+  })
+
+  it('⑥ 两端渐隐 mask + 零横向溢出：mask 双写、black 关键字停靠，left/right 严格 0', () => {
+    const shared = sharedRule()
+    expect(shared, '须有 -webkit- 前缀 mask（Chromium 前缀写法并存）').toMatch(
+      /-webkit-mask-image:\s*linear-gradient\(90deg,\s*transparent 0%,\s*black 16%,\s*black 84%,\s*transparent 100%\)/
+    )
+    expect(shared, '须有标准 mask-image').toMatch(
+      /[^-]mask-image:\s*linear-gradient\(90deg,\s*transparent 0%,\s*black 16%,\s*black 84%,\s*transparent 100%\)/
+    )
+    // black 关键字写法 ⇒ 共用规则无字面色（不进收口组②的构成色登记表，同阅读页口径）
+    expect(bare(shared), '共用规则不得用字面色值').not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/)
+    for (const [name, rule] of [
+      ['前层', beforeRule()],
+      ['后层', afterRule()]
+    ] as const) {
+      expect(decl(bare(rule), 'left'), `${name} 不得覆写 left（由共用规则给 0）`).toBe('')
+      expect(decl(bare(rule), 'right'), `${name} 不得覆写 right（由共用规则给 0）`).toBe('')
+      expect(rule, `${name}不得引入 transform: translateX 之类的横向位移`).not.toMatch(
+        /translate[XY]?\(/
+      )
+    }
+    expect(decl(bare(shared), 'left'), '共用 left 应为 0（收在头版内容盒内，零横向溢出）').toBe('0')
+    expect(decl(bare(shared), 'right'), '共用 right 应为 0').toBe('0')
+  })
+
+  it('⑦ 底边渐变发丝线：边框本体透明 + 背景层画进 1px 边框条（阅读页栏目条 h2 同一技法）', () => {
+    const container = bare(containerRule())
+    expect(decl(container, 'border-bottom'), '底边框本体透明').toBe('1px solid transparent')
+    expect(decl(container, 'background-size'), '渐变只画 1px 高（不会在内容后铺色）').toBe('100% 1px')
+    expect(decl(container, 'background-position')).toBe('left bottom')
+    expect(decl(container, 'background-origin')).toBe('border-box')
+    expect(decl(container, 'background-clip')).toBe('border-box')
+    const grad = decl(container, 'background-image').replace(/\s+/g, ' ')
+    expect(grad, '青白起点 0.22（与阅读页栏目条逐值一致）').toContain('rgba(214, 236, 255, 0.22) 0%')
+    expect(grad, '靛蓝中段 0.40').toContain('rgba(110, 123, 255, 0.4) 42%')
+    expect(grad, '右端淡出').toContain('transparent 100%')
+  })
+
+  it('⑧ 纵深与不对称照搬阅读页：前层 blur 4 < 后层 blur 13，前层弧心居中、后层偏心', () => {
+    const blurOf = (rule: string): number =>
+      Number.parseFloat(rule.match(/blur\(([\d.]+)px\)/)?.[1] ?? 'NaN')
+    const near = blurOf(beforeRule())
+    const far = blurOf(afterRule())
+    expect(near, '前层 blur 可读').not.toBeNaN()
+    expect(far, '后层 blur 可读').not.toBeNaN()
+    expect(far, '后层应比前层更模糊（更远）').toBeGreaterThan(near)
+    const at = (rule: string): string =>
+      rule.match(/radial-gradient\(\s*[\d.]+%\s+[\d.]+%\s+at\s+([\d.]+%)\s+([\d.]+%)/)?.[0] ?? ''
+    expect(at(beforeRule()), '前层弧心应水平居中（50%）').toContain('at 50%')
+    expect(at(afterRule()), '后层弧心应偏心（非 50%），制造不对称纵深').toBeTruthy()
+    expect(at(afterRule()), '后层弧心不得也是居中（会让两层读作同心圆环）').not.toContain('at 50%')
+  })
+
+  it('⑨ h1 双层冷辉光静帧：filter: drop-shadow 双层（18px/.28 + 40px/.12），零 text-shadow', () => {
+    const h1 = bare(h1Rule())
+    expect(h1, '头版 h1 规则应存在').toBeTruthy()
+    expect(h1, '辉光只能写成 filter: drop-shadow（background-clip:text 陷阱）').toMatch(
+      /filter:\s*drop-shadow\(/
+    )
+    expect(h1, '渐变字不得叠 text-shadow（Chromium 绘制顺序会盖住填充）').not.toMatch(
+      /text-shadow\s*:/
+    )
+    const layers = [...h1.matchAll(/drop-shadow\(([^)]+)\)/g)].map((m) => m[1])
+    expect(layers.length, '双层辉光（近层定轮廓 + 远层铺晕）').toBe(2)
+    expect(layers[0], '近层 18px / 0.28（阅读页呼吸的既有静态基准档）').toContain('18px')
+    expect(layers[0]).toContain('0.28')
+    expect(layers[1], '远层 40px / 0.12').toContain('40px')
+    expect(layers[1]).toContain('0.12')
   })
 })

@@ -115,6 +115,49 @@ test('newsprint90s 订阅页报头长源名在窄窗 120% 下自行换行不外�
   console.log(`NEWSPRINT_LONG_NAME_CARDS_OVERFLOW ${facts.scrollerOverflow}`)
 })
 
+test('newsprint90s 三栏报头下长源名在中栏自然折行，两侧引导词与 host 各归其位不破格', async ({
+  page
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.setViewportSize({ width: 1280, height: 800 })
+  const longName = '城市早报与人工智能观察'.repeat(5)
+  await loadNewsprint(
+    page,
+    `window.__stubData.sources = window.__stubData.sources.map((source) => ({
+       ...source,
+       name: ${JSON.stringify(longName)}
+     }));`
+  )
+  const root = activeTab(page).locator('.juya-root')
+  const masthead = root.locator('.jynews-feed-masthead')
+  await expect(masthead.locator('h1')).toHaveText(longName)
+  const facts = await masthead.evaluate((element) => {
+    const kicker = element.querySelector<HTMLElement>('.jynews-feed-masthead-kicker')!
+    const heading = element.querySelector('h1') as HTMLElement
+    const domain = element.querySelector<HTMLElement>('.jynews-feed-masthead-domain')!
+    const scroller = element.closest('.view-scroll') as HTMLElement
+    const kickerRect = kicker.getBoundingClientRect()
+    const headingRect = heading.getBoundingClientRect()
+    const domainRect = domain.getBoundingClientRect()
+    return {
+      headingLines: headingRect.height / Number.parseFloat(getComputedStyle(heading).fontSize),
+      kickerHeight: kickerRect.height,
+      domainHeight: domainRect.height,
+      kickerRightVsHeadingLeft: kickerRect.right - headingRect.left,
+      domainLeftVsHeadingRight: domainRect.left - headingRect.right,
+      scrollerOverflow: scroller.scrollWidth - scroller.clientWidth
+    }
+  })
+  // 长源名在中栏折成多行（单行高 ≈ 1.3 × 字号），页面无横向溢出
+  expect(facts.headingLines, '长源名自然折行为多行').toBeGreaterThan(1.6)
+  expect(facts.scrollerOverflow).toBeLessThanOrEqual(0)
+  // 两侧信息项保持正常形态、盒子不与中栏标题相交（三栏 grid 底对齐下这是破格判据）
+  expect(facts.kickerHeight, '引导词不被压成竖排单字栈').toBeLessThanOrEqual(20)
+  expect(facts.domainHeight, 'host 在自己轨道内折行不失控').toBeLessThanOrEqual(50)
+  expect(facts.kickerRightVsHeadingLeft, 'kicker 盒不与标题盒相交').toBeLessThanOrEqual(1)
+  expect(facts.domainLeftVsHeadingRight, 'host 盒不与标题盒相交').toBeGreaterThanOrEqual(-1)
+})
+
 for (const preset of ['compact', 'magazine'] as const) {
   test(`newsprint90s 订阅页报头在 ${preset} 预设下与卡片列表同版心`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -178,16 +221,17 @@ for (const sample of [
       const feedRect = feed ? feed.getBoundingClientRect() : null
       const rect = element.getBoundingClientRect()
       return {
-        kickerBottom: kicker.getBoundingClientRect().bottom,
-        headingTop: heading.getBoundingClientRect().top,
-        headingBottom: heading.getBoundingClientRect().bottom,
-        domainTop: domain.getBoundingClientRect().top,
+        display: getComputedStyle(element).display,
+        kickerRect: kicker.getBoundingClientRect(),
+        headingRect: heading.getBoundingClientRect(),
+        domainRect: domain.getBoundingClientRect(),
         mastheadLeft: rect.left,
         mastheadRight: rect.right,
         mastheadWidth: rect.width,
         feedLeft: feedRect ? feedRect.left : Number.NaN,
         feedRight: feedRect ? feedRect.right : Number.NaN,
         headingFontSize: Number.parseFloat(getComputedStyle(heading).fontSize),
+        headingLetterSpacing: Number.parseFloat(getComputedStyle(heading).letterSpacing),
         headingScrollWidth: heading.scrollWidth,
         headingClientWidth: heading.clientWidth,
         borderTopWidth: getComputedStyle(element).borderTopWidth,
@@ -200,10 +244,14 @@ for (const sample of [
         clientWidth: scroller.clientWidth
       }
     })
-    // 语义顺序：引导词 → 源名 → host，自上而下不重叠
-    expect(facts.kickerBottom).toBeLessThanOrEqual(facts.headingTop)
-    expect(facts.headingBottom).toBeLessThanOrEqual(facts.domainTop)
+    // V2（#79）：宽窗三栏报头（左引导词 / 中楷体源名 / 右 host，底对齐）；≤899 回落单列居中堆叠
+    expect(facts.display).toBe('grid')
     expect(facts.headingFontSize).toBeGreaterThanOrEqual(sample.size === 'wide' ? 44 : 32)
+    expect(
+      facts.headingLetterSpacing,
+      '楷体源名字距向阅读页报头 6px 量级看齐（随字号收放，V1 为 2px）'
+    ).toBeGreaterThanOrEqual(4)
+    expect(facts.headingLetterSpacing).toBeLessThanOrEqual(7)
     expect(facts.headingScrollWidth).toBeLessThanOrEqual(facts.headingClientWidth + 1)
     // CSS zoom 下 computed border 宽度按 1/zoom 报值（1px→0.833px），只断言框线存在且下沿是 double
     expect(Number.parseFloat(facts.borderTopWidth), '上沿细线存在').toBeGreaterThan(0)
@@ -213,12 +261,42 @@ for (const sample of [
     expect(facts.scrollWidth).toBeLessThanOrEqual(facts.clientWidth)
     expect(facts.mastheadLeft, '报头与卡片列表同一版心左缘').toBeCloseTo(facts.feedLeft, 0)
     expect(facts.mastheadRight, '报头与卡片列表同一版心右缘').toBeCloseTo(facts.feedRight, 0)
+    const mastheadCenter = (facts.mastheadLeft + facts.mastheadRight) / 2
+    if (sample.size === 'wide') {
+      // 三栏底对齐：引导词 / host 与源名行底齐平（字体下降部差异留 8px 容差；zoom 1.2 放大后 10px）
+      const bottomTolerance = sample.zoom > 1 ? 10 : 8
+      expect(
+        Math.abs(facts.kickerRect.bottom - facts.headingRect.bottom),
+        'kicker 与源名底对齐'
+      ).toBeLessThanOrEqual(bottomTolerance)
+      expect(
+        Math.abs(facts.domainRect.bottom - facts.headingRect.bottom),
+        'host 与源名底对齐'
+      ).toBeLessThanOrEqual(bottomTolerance)
+      // 左栏贴左、右栏贴右（24px 内衬容差），且都不越过中栏标题的盒子
+      expect(facts.kickerRect.left).toBeLessThanOrEqual(facts.mastheadLeft + 25)
+      expect(facts.kickerRect.right).toBeLessThanOrEqual(facts.headingRect.left + 1)
+      expect(facts.domainRect.right).toBeGreaterThanOrEqual(facts.mastheadRight - 25)
+      expect(facts.domainRect.left).toBeGreaterThanOrEqual(facts.headingRect.right - 1)
+      // 中栏楷体源名居版心中线
+      const headingCenter = (facts.headingRect.left + facts.headingRect.right) / 2
+      expect(Math.abs(headingCenter - mastheadCenter), '源名居版心中线').toBeLessThanOrEqual(4)
+    } else {
+      // 窄窗回落单列堆叠：语义顺序引导词 → 源名 → host，自上而下不重叠，三段都居中
+      expect(facts.kickerRect.bottom).toBeLessThanOrEqual(facts.headingRect.top)
+      expect(facts.headingRect.bottom).toBeLessThanOrEqual(facts.domainRect.top)
+      for (const itemRect of [facts.kickerRect, facts.headingRect, facts.domainRect]) {
+        const itemCenter = (itemRect.left + itemRect.right) / 2
+        expect(Math.abs(itemCenter - mastheadCenter), '回落堆叠逐项居中').toBeLessThanOrEqual(4)
+      }
+    }
     console.log(
       `NEWSPRINT_MASTHEAD_REPORT ${sample.scheme}-${sample.size} ${JSON.stringify({
         kickerColor: facts.kickerColor,
         headingColor: facts.headingColor,
         domainColor: facts.domainColor,
         headingFontSize: facts.headingFontSize,
+        headingLetterSpacing: facts.headingLetterSpacing,
         mastheadWidth: facts.mastheadWidth
       })}`
     )

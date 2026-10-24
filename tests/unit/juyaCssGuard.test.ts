@@ -5806,3 +5806,128 @@ describe('editorial 订阅页头版裁切角标与题注化守卫（2026-10-24�
     expect(readingSection).toContain('decimal-leading-zero')
   })
 })
+
+describe('newsprint90s 订阅页头版三栏报头守卫（2026-10-24，#79：阅读页三栏报头语汇搬入头版）', () => {
+  // #79 把头版从 V1 居中堆叠改为阅读页同构的三栏报头：左「订阅源」引导词 / 中楷体源名 /
+  // 右 host，align-items end 底对齐；上沿 1px 细线与 4px double 收底保留，无日期入头版。
+  // 设计裁定偏差记录（相对裁定原文 `minmax(0,1fr) auto minmax(0,1fr)`）：阅读页中栏 auto
+  // 依靠期号标题短；头版源名任意长，auto 中栏的 max-content 会把两侧 minmax(0,1fr) 轨道
+  // 挤到 ~0（浏览器原型实测：55 字源名下引导词被压成竖排单字栈、host 与标题末行争位），
+  // 违背票内「长源名在中栏自然折行不破格」。故中栏取 fit-content(66%)——短名时与 auto
+  // 同值（fit-content = min(max-content, 66%)，两侧 1fr 等分，中栏仍正中），长名时给两侧
+  // 各留 ≥17% 轨道，host 在自己轨道内 overflow-wrap 折行，三格框内互不侵犯。
+  // 楷体字距向阅读页报头 38px/6px（≈0.158em）量级看齐：clamp(4px, 0.15em, 6px) 随
+  // clamp(32px,5vw,48px) 实际字号收放，48px 上限钳到与阅读页同量的 6px、32px 下限 4.8px。
+  // 窄窗回落与阅读页刊头同一断点 ≤899px：单列居中堆叠。零新增 animation/transition、
+  // 零新增字面色；三栏化后 V1 的堆叠 margin-top 失去语义，随布局一并移除（margin: 0）。
+
+  /** 首条形如 `.jynews <rest> { … }` 的规则块（行首锚定，同 #28 组内同名局部助手） */
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jynews ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  const containerRule = (): string => newsRule('\\.jynews-feed-masthead')
+  const kickerRule = (): string => newsRule('\\.jynews-feed-masthead-kicker')
+  const h1Rule = (): string => newsRule('\\.jynews-feed-masthead h1')
+  const domainRule = (): string => newsRule('\\.jynews-feed-masthead-domain')
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+  const LITERAL_COLOR = /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+
+  it('① 容器三栏底对齐：minmax(0,1fr) fit-content(66%) minmax(0,1fr) + align-items end；V1 框线与版心两档不动', () => {
+    const container = containerRule()
+    expect(container, '头版容器规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(container, 'display')).toBe('grid')
+    expect(decl(container, 'grid-template-columns'), '中栏 fit-content 上限防两侧轨道被长名挤瘪').toBe(
+      'minmax(0, 1fr) fit-content(66%) minmax(0, 1fr)'
+    )
+    expect(decl(container, 'align-items'), '三信息项底对齐').toBe('end')
+    expect(decl(container, 'column-gap')).toBe('12px')
+    expect(decl(container, 'text-align')).toBe('center')
+    expect(decl(container, 'max-width')).toBe('760px')
+    expect(decl(container, 'padding')).toBe('32px 24px 20px')
+    expect(decl(container, 'border-top'), '上沿 1px 细线（V1 保留）').toBe('1px solid var(--jy-border)')
+    expect(decl(container, 'border-bottom'), '下沿 4px double（V1 保留）').toBe('4px double var(--jy-border)')
+    const wideRule =
+      css.match(/(?:^|\n)\.jynews \.jynews-feed-masthead:has\(\+ \.juya-feed-grid\) \{[^}]*\}/)?.[0] ?? ''
+    expect(wideRule, 'grid 预设加宽规则应存在').toBeTruthy()
+    expect(decl(wideRule, 'max-width')).toBe('1120px')
+    expect(container, '容器零新增字面色').not.toMatch(LITERAL_COLOR)
+    expect(container, '容器零新增动效（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+  })
+
+  it('② 左栏 kicker 靠左、右栏 host 靠右各归其位；host 超出侧轨时在自己轨道内折行', () => {
+    const kicker = kickerRule()
+    expect(kicker, 'kicker 规则应存在').toBeTruthy()
+    expect(decl(kicker, 'justify-self')).toBe('start')
+    expect(decl(kicker, 'text-align')).toBe('left')
+    expect(decl(kicker, 'font-family'), '引导词沿用宋体家具字（同阅读页日期/星期行）').toBe('var(--jy-font-body)')
+    expect(decl(kicker, 'font-size')).toBe('11px')
+    expect(decl(kicker, 'letter-spacing')).toBe('1px')
+    expect(decl(kicker, 'color')).toBe('var(--jy-muted)')
+    const domain = domainRule()
+    expect(domain, 'domain 规则应存在').toBeTruthy()
+    expect(decl(domain, 'justify-self')).toBe('end')
+    expect(decl(domain, 'text-align')).toBe('right')
+    expect(decl(domain, 'overflow-wrap'), 'host 长时在自己轨道内折行，不与标题争位').toBe('anywhere')
+    expect(decl(domain, 'font-family')).toBe('var(--jy-font-body)')
+    expect(decl(domain, 'font-size')).toBe('11px')
+    expect(decl(domain, 'letter-spacing')).toBe('1px')
+    expect(decl(domain, 'color')).toBe('var(--jy-muted)')
+    for (const [name, rule] of [
+      ['kicker', kicker],
+      ['domain', domain]
+    ] as const) {
+      expect(rule, `${name} 零新增字面色`).not.toMatch(LITERAL_COLOR)
+      expect(rule, `${name} 零新增动效`).not.toMatch(NO_EFFECT)
+    }
+    // muted 对 bg 实算（引导词/host 语义文字 ≥4.5；纸纹合成面口径由 #27 旧纸面组覆盖）
+    for (const variant of ['newsprint90s-light', 'newsprint90s-dark']) {
+      const block = variantBlock(variant)
+      expect(
+        contrast(tokenHex(block, '--jy-muted'), tokenHex(block, '--jy-bg')),
+        `${variant} kicker/host muted 对 bg ≥4.5`
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('③ 中栏楷体源名：刊头 token 字族、clamp 字号、字距向阅读页报头 6px 量级看齐、堆叠 margin 移除', () => {
+    const h1 = h1Rule()
+    expect(h1, 'h1 规则应存在').toBeTruthy()
+    expect(decl(h1, 'font-family'), '楷体刊头 token 不动').toBe('var(--jy-font-masthead)')
+    expect(decl(h1, 'font-size')).toBe('clamp(32px, 5vw, 48px)')
+    expect(decl(h1, 'letter-spacing'), '随字号收放（0.15em≈阅读页 38px/6px），上限钳 6px 同量级').toBe(
+      'clamp(4px, 0.15em, 6px)'
+    )
+    expect(decl(h1, 'overflow-wrap'), '长源名自然折行').toBe('anywhere')
+    expect(decl(h1, 'margin'), '三栏化后 V1 堆叠 margin-top 失去语义').toBe('0')
+    expect(decl(h1, 'font-weight')).toBe('700')
+    expect(decl(h1, 'color')).toBe('var(--jy-heading)')
+    expect(decl(h1, 'line-height')).toBe('1.3')
+    expect(h1, 'h1 零新增字面色').not.toMatch(LITERAL_COLOR)
+    expect(h1, 'h1 零新增动效').not.toMatch(NO_EFFECT)
+  })
+
+  it('④ ≤899px 与阅读页刊头同断点回落单列居中堆叠；阅读页三栏报头与段级零动效不被波及', () => {
+    const media = extractBlocks(css, /@media \(max-width: 899px\)/).find((block) =>
+      block.includes('.jynews .jynews-feed-masthead')
+    )
+    expect(media, '头版窄窗回落媒体查询规则应存在').toBeTruthy()
+    expect(decl(media!, 'grid-template-columns'), '回落单列').toBe('minmax(0, 1fr)')
+    expect(decl(media!, 'row-gap')).toBe('4px')
+    const centeredRule = media!.match(/\.jynews \.jynews-feed-masthead-kicker,[\s\S]*?\{[^}]*\}/)?.[0] ?? ''
+    expect(centeredRule, 'kicker/domain 回落居中规则应存在').toBeTruthy()
+    expect(decl(centeredRule, 'justify-self')).toBe('center')
+    expect(decl(centeredRule, 'text-align')).toBe('center')
+    // 反证一：阅读页三栏报头仍是 auto 中栏，未被头版改造波及
+    expect(decl(newsRule('\\.juya-masthead'), 'grid-template-columns')).toBe(
+      'minmax(0, 1fr) auto minmax(0, 1fr)'
+    )
+    // 反证二：头版 masthead 分节（容器规则起点 → 「蒸汽梦核式」段头）零 animation/transition
+    const from = css.indexOf('.jynews .jynews-feed-masthead')
+    const to = css.indexOf('蒸汽梦核式')
+    expect(from, 'masthead 段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    const bare = css.slice(from, to).replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, 'masthead 段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+  })
+})

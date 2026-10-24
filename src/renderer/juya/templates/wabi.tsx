@@ -2,6 +2,7 @@ import { EntryTitle, Lead, LinksBlock, OverviewItems } from './shared'
 import { FeedShell } from './parts'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import { useAppStore } from '../../stores/useAppStore'
+import { WabiReadingMasthead } from './wabi-reading-craft'
 import { WabiFeedMasthead } from './wabi-feed-craft'
 
 const VARIANT_CLASS = 'jywabi'
@@ -9,11 +10,9 @@ const VARIANT_CLASS = 'jywabi'
 /** 侘寂日杂式：用原文内容块维持段落与图版的连续阅读顺序。 */
 function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): JSX.Element {
   return (
-    <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
+    <div className={`juya-root ${VARIANT_CLASS} wabi-reading-craft`} data-juya-variant={variantId}>
       <div className="juya-issue">
-        <header className="juya-masthead">
-          <h1>{issue.heading || article.title}</h1>
-        </header>
+        <WabiReadingMasthead heading={issue.heading || article.title} pubDate={article.pubDate} />
         {issue.overview && <OverviewItems overview={issue.overview} onOpenLink={onOpenLink} />}
         {issue.sections.map((section) => (
           <section className="juya-section" key={section.heading}>

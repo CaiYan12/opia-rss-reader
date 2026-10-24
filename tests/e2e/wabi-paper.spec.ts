@@ -239,6 +239,8 @@ for (const side of ['light', 'dark'] as const) {
     }
 
     const title = root.locator('.juya-masthead h1')
+    const mastheadTitle = root.locator('.wabi-reading-craft-title')
+    const mastheadDate = root.locator('.wabi-reading-craft-date')
     const paragraph = root.locator('.juya-entry p:not(.juya-links-label)').first()
     const lead = entries.nth(0).locator('.juya-lead')
     const index = entries.nth(0).locator('.juya-index')
@@ -261,6 +263,7 @@ for (const side of ['light', 'dark'] as const) {
     expect(metrics.marginBottom).toBeGreaterThan(0)
 
     await expect(lead).toContainText('导语仍保留全文。')
+    await expect(mastheadDate).toHaveText('2026年8月28日')
     await expect(entries.nth(1).locator('.juya-lead'), 'missing lead has no empty decoration').toHaveCount(0)
     const leadStyle = await lead.evaluate((element) => {
       const style = getComputedStyle(element)
@@ -271,6 +274,8 @@ for (const side of ['light', 'dark'] as const) {
     await expect(link).toHaveAttribute('href', 'https://example.test/related')
 
     const measured = {
+      mastheadTitle: await sampleBackgroundContrast(page, mastheadTitle, { left: 0, top: 0, right: 0, bottom: 0 }),
+      mastheadDate: await sampleBackgroundContrast(page, mastheadDate, { left: 0, top: 0, right: 0, bottom: 0 }),
       body: await sampleBackgroundContrast(page, paragraph, { left: 0, top: 0, right: 0, bottom: 0 }),
       lead: await sampleBackgroundContrast(page, lead, { left: 0, top: 0, right: 0, bottom: 0 }),
       index: await sampleBackgroundContrast(page, index, { left: 0, top: 0, right: 0, bottom: 0 }),

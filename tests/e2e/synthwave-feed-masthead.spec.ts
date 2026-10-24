@@ -64,6 +64,74 @@ test('synthwave 订阅页头版保留真实源身份，日期留在卡片，刊�
   expect(await masthead.evaluate((element) => getComputedStyle(element).animationName)).toBe('none')
 })
 
+for (const scheme of ['light', 'dark'] as const) {
+  test(`synthwave 订阅页头版卡内 CRT 质感：扫描线静纹可见 + 霓虹辉光细线静帧（${scheme}）`, async ({
+    page
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await loadSynth(page, '', scheme)
+    const root = activeTab(page).locator('.juya-root')
+    await expect(root).toHaveAttribute('data-juya-variant', `synthwave-${scheme}`)
+    const masthead = root.locator('.jysynth-feed-masthead')
+    await expect(masthead).toBeVisible()
+
+    const screenshotPath = join(process.cwd(), SCREENSHOT_DIR, `feed-crt-texture-${scheme}.png`)
+    mkdirSync(dirname(screenshotPath), { recursive: true })
+    await masthead.screenshot({ path: screenshotPath })
+
+    const facts = await masthead.evaluate((element) => {
+      const cs = getComputedStyle(element)
+      const line = getComputedStyle(element, '::after')
+      return {
+        backgroundImage: cs.backgroundImage,
+        backgroundColor: cs.backgroundColor,
+        backdropFilter: cs.backdropFilter,
+        cardAnimation: cs.animationName,
+        cardTransitionDuration: cs.transitionDuration,
+        lineContent: line.content,
+        lineHeight: line.height,
+        lineBackgroundColor: line.backgroundColor,
+        lineBoxShadow: line.boxShadow,
+        lineAnimation: line.animationName,
+        lineTransitionDuration: line.transitionDuration
+      }
+    })
+    // 扫描线静纹：卡面 image 首层为 1px/4px repeating 渐变（alpha 与场景层同值，暗 0.10 / 亮 0.06），
+    // 卡底色仍是 0.62 毛玻璃底，backdrop-filter 不被自身背景层破坏。
+    // Chromium 计算样式会省略缺省 180deg 并展开硬停靠（0px/1px/4px），按序列化形态断言。
+    const scanAlpha = scheme === 'dark' ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+    expect(facts.backgroundImage, '卡内扫描线静纹（repeating 渐变）').toContain(
+      'repeating-linear-gradient'
+    )
+    expect(facts.backgroundImage, '扫描线 alpha 与场景层同值').toContain(`${scanAlpha} 0px`)
+    expect(facts.backgroundImage, '1px 线 / 4px 周期（硬停靠展开态）').toContain('4px)')
+    expect(facts.backgroundColor, '卡底色仍走 --jy-card').toBe(
+      scheme === 'dark' ? 'rgba(20, 8, 38, 0.62)' : 'rgba(255, 255, 255, 0.62)'
+    )
+    expect(facts.backdropFilter, '毛玻璃照旧').toBe('blur(18px) saturate(1.15)')
+    expect(facts.cardAnimation, '卡面零动画').toBe('none')
+    // RM 下全局垫片会把 transition-duration 压到 1e-05s（0.01ms）：断言不超过垫片量级，
+    // 若卡面新增真实过渡（如 300ms）则此处失败；「零 transition 声明」的静态面由守卫⑤锁定
+    expect(
+      Number.parseFloat(facts.cardTransitionDuration),
+      '卡面无真实过渡（RM 垫片量级以内）'
+    ).toBeLessThanOrEqual(0.001)
+    // 霓虹辉光细线：::after 静帧，2px 高、场景地平线既有色、18px/4px 辉光量级
+    expect(facts.lineContent, "content '' 对 AT 静默").toBe('""')
+    expect(facts.lineHeight, '场景地平线同值 2px').toBe('2px')
+    expect(facts.lineBackgroundColor, '场景地平线既有色 --jy-scene-horizon').toBe(
+      'rgba(255, 120, 60, 0.85)'
+    )
+    expect(facts.lineBoxShadow, '辉光量级照搬场景（0 0 18px 4px）').toContain('18px')
+    expect(facts.lineBoxShadow).toContain('4px')
+    expect(facts.lineAnimation, '细线零动画').toBe('none')
+    expect(
+      Number.parseFloat(facts.lineTransitionDuration),
+      '细线无真实过渡（RM 垫片量级以内）'
+    ).toBeLessThanOrEqual(0.001)
+  })
+}
+
 test('synthwave 订阅页头版在空列表下仍呈现源身份', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await loadSynth(page, 'window.__stubData.articles = [];')

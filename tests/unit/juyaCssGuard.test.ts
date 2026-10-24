@@ -6074,3 +6074,175 @@ describe('folio 订阅页头版印章水印与朱丝栏守卫（2026-10-24，#80
     ).toContain('rgba(179, 69, 46, 0.28)')
   })
 })
+
+describe('synthwave 订阅页头版卡内 CRT 质感守卫（2026-10-24，#81：扫描线静纹 + 霓虹辉光细线）', () => {
+  // #81 把两件阅读页 CRT 语汇以静帧搬进毛玻璃卡面：扫描线静纹（场景层 .juya-scene 首层
+  // 1px/4px repeating 技法，alpha 同值：暗 0.10 / 亮 0.06，#41 同一裁决）与霓虹辉光细线
+  // （场景地平线 .juya-scene-grid-persp::before 的 2px + 0 0 18px 4px + --jy-scene-horizon，
+  // 量级照搬）。落位裁决：
+  // - 扫描线走卡面 background-image 首层（多背景首层绘制在最上层），卡底色拆成
+  //   background-color：backdrop-filter 作用于元素背后的内容，与自身背景层互不干扰，
+  //   18px 毛玻璃照旧，卡内文字可读性以②的真实对比度实算兜底。
+  // - 辉光细线走卡面 ::after 常规流收尾：有 host 时即紧随 domain（host 行之下）；
+  //   空 URL 派生不出 hostname 时细线随卡片照常收尾 —— 它是卡面的地平线，不依附 host
+  //   行存在。content '' 对 AT 静默。静帧：零 animation / 零 transition。
+  // - 共享场景层零改动：太阳/网格/场景扫描线/场景地平线辉光原值原位，卡内纹理不要求
+  //   场景层任何配合（④负证）。
+
+  /** 头版段（synthwave 段内 #73 段头注释（从注释开标记起切，供⑤剥注释）→ 下一道 ===== 场景层分隔线）：
+   *  本票全部改动必须落在此区间 */
+  const feedSection = (): string => {
+    const synthStart = css.indexOf('蒸汽梦核式')
+    const from = css.indexOf('/* ---- 订阅页头版 nameplate', synthStart)
+    const to = css.indexOf('/* ==========================================================================', from)
+    return css.slice(from, to)
+  }
+
+  /** 段内首条匹配 opener 的规则块（与 #39 组同一写法） */
+  const feedRule = (opener: RegExp): string => extractBlock(feedSection(), opener)
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+
+  it('① 卡内扫描线静纹：卡面 background 拆层（image 首层 + color 底），分变体同场景 alpha（暗 0.10 / 亮 0.06），毛玻璃与既有卡面声明不被改写', () => {
+    const base = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead \{/)
+    expect(base, '头版卡面基础规则应存在（空转绿防护）').not.toBe('')
+    expect(decl(base, 'background-color'), '卡底色仍走 --jy-card（拆层不换值）').toBe(
+      'var(--jy-card)'
+    )
+    expect(decl(base, 'background-image'), '基础规则不带扫描线，分变体声明').toBe('')
+    expect(decl(base, 'backdrop-filter'), '毛玻璃照旧（扫描线在自身背景层，不碰 backdrop）').toBe(
+      'blur(18px) saturate(1.15)'
+    )
+    expect(decl(base, 'box-shadow'), '既有品红外发光不动').toBe('0 0 18px var(--jy-lead-bg)')
+    const dark = feedRule(
+      /(?:^|\n)\[data-juya-variant='synthwave-dark'\]\.jysynth \.jysynth-feed-masthead \{/
+    )
+    expect(dark, '暗侧扫描线规则应存在，且为复合选择器形式（变体属性紧贴 .jysynth）').not.toBe('')
+    // 渐变允许多行书写（与 folio 朱丝栏同一口径）：归一空白与括号邻接空白后逐 token 断言
+    const flat = (value: string): string =>
+      value
+        .replace(/\(\s+/g, '(')
+        .replace(/\s+\)/g, ')')
+        .replace(/\s+/g, ' ')
+    const darkImage = flat(decl(dark, 'background-image'))
+    expect(darkImage, '1px/4px repeating（场景层同技法）').toContain('repeating-linear-gradient(180deg')
+    expect(darkImage, '暗侧 alpha 与场景扫描线同值 0.10').toContain('rgba(0, 0, 0, 0.1) 0 1px')
+    expect(darkImage, '1px 线 / 4px 周期').toContain('transparent 1px 4px')
+    const light = feedRule(
+      /(?:^|\n)\[data-juya-variant='synthwave-light'\]\.jysynth \.jysynth-feed-masthead \{/
+    )
+    expect(light, '亮侧扫描线规则应存在，且为复合选择器形式').not.toBe('')
+    const lightImage = flat(decl(light, 'background-image'))
+    expect(lightImage, '亮侧 alpha 与场景扫描线同值 0.06（白天压暗减半）').toContain(
+      'rgba(0, 0, 0, 0.06) 0 1px'
+    )
+    expect(lightImage).toContain('transparent 1px 4px')
+  })
+
+  it('② 真实对比度取证：扫描线最暗行上 kicker/h1/domain 仍过 AA（亮侧新最不利 = 扫描线行；暗侧最不利仍是透明行）', () => {
+    // 亮侧：暗字对「更暗的底」对比度更低，扫描线行是新最不利 ——
+    // 0.62 白卡压 sun-2 #ff2d95（#73 既有最不利口径，合成 #ffafd7，既有实测 8.99/9.67）
+    // 再叠 rgba(0,0,0,0.06)（实测约 7.9/8.5，仍过 AA 4.5 且余量充足）。
+    const lightBase = overRgba({ rgb: 0xffffff, alpha: 0.62 }, 0xff2d95)
+    const lightScanRow = alphaOver(0x000000, 0.06, lightBase)
+    expect(lightScanRow, '扫描线行确实比透明行更暗（纹理方向正确）').toBeLessThan(lightBase)
+    const lightBlock = variantBlock('synthwave-light')
+    expect(
+      contrast(tokenHex(lightBlock, '--jy-heading'), lightScanRow),
+      'h1（实色 --jy-heading）/ 扫描线最暗行 ≥ AA'
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrast(tokenHex(lightBlock, '--jy-text'), lightScanRow),
+      'kicker/domain（--jy-text）/ 扫描线最暗行 ≥ AA'
+    ).toBeGreaterThanOrEqual(4.5)
+    // 暗侧：亮字对「更暗的底」对比度更高，扫描线只帮忙；最不利仍是透明行
+    // （#73 口径：0.62 卡压 sun-1 #ffe14d = #6d5a35，既有 5.69 / 5.18）。
+    const darkBase = overRgba({ rgb: 0x140826, alpha: 0.62 }, 0xffe14d)
+    const darkBlock = variantBlock('synthwave-dark')
+    expect(
+      contrast(tokenHex(darkBlock, '--jy-heading'), darkBase),
+      'h1 / 暗侧最不利透明行 ≥ AA（扫描线不改写该口径）'
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrast(tokenHex(darkBlock, '--jy-text'), darkBase),
+      'kicker/domain / 暗侧最不利透明行 ≥ AA'
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      alphaOver(0x000000, 0.1, darkBase),
+      '暗侧扫描线行比透明行更暗 → 对亮字对比度只增不减'
+    ).toBeLessThan(darkBase)
+  })
+
+  it('③ 霓虹辉光细线：卡面 ::after 静帧 echo 场景地平线（2px + 0 0 18px 4px + --jy-scene-horizon），AT 静默、零动效', () => {
+    const line = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead::after \{/)
+    expect(line, '辉光细线规则应存在（空转绿防护）').not.toBe('')
+    expect(decl(line, 'content'), "伪元素承载，content '' 对 AT 静默").toBe("''")
+    expect(decl(line, 'display'), '常规流收尾（有 host 时紧随 host 行，无 host 时随卡收尾）').toBe(
+      'block'
+    )
+    expect(decl(line, 'height'), '场景地平线同值 2px').toBe('2px')
+    expect(decl(line, 'background'), '色取既有场景 token，不新增字面色').toBe(
+      'var(--jy-scene-horizon)'
+    )
+    expect(decl(line, 'box-shadow'), '辉光量级照搬场景地平线 0 0 18px 4px').toBe(
+      '0 0 18px 4px var(--jy-scene-horizon)'
+    )
+    expect(line, '静帧：零 animation / 零 transition').not.toMatch(NO_EFFECT)
+  })
+
+  it('④ 共享场景层零改动：地平线辉光源规则、场景扫描线（暗 0.10 / 亮 0.06）与订阅页网格补偿原值原位', () => {
+    const horizon = extractBlock(css, /(?:^|\n)\.juya-scene-grid-persp::before \{/)
+    expect(horizon, '场景地平线规则应存在').not.toBe('')
+    expect(decl(horizon, 'height'), 'echo 源未被顺手改写').toBe('2px')
+    expect(decl(horizon, 'background')).toBe('var(--jy-scene-horizon)')
+    expect(decl(horizon, 'box-shadow')).toBe('0 0 18px 4px var(--jy-scene-horizon)')
+    const sceneDark = extractBlock(
+      css,
+      /(?:^|\n)\[data-juya-variant='synthwave-dark'\]\.jysynth \.juya-scene \{/
+    )
+    expect(decl(sceneDark, 'background-image'), '场景暗侧扫描线原样').toContain(
+      'rgba(0, 0, 0, 0.1) 0 1px'
+    )
+    const sceneLight = extractBlock(
+      css,
+      /(?:^|\n)\[data-juya-variant='synthwave-light'\]\.jysynth \.juya-scene \{/
+    )
+    expect(decl(sceneLight, 'background-image'), '场景亮侧扫描线原样').toContain(
+      'rgba(0, 0, 0, 0.06) 0 1px'
+    )
+    expect(
+      decl(
+        extractBlock(css, /(?:^|\n)\.jysynth:has\(> \.juya-feed\) \.juya-scene-grid-persp \{/),
+        'bottom'
+      ),
+      '订阅页网格补偿（#40）原样'
+    ).toBe('88px')
+  })
+
+  it('⑤ 头版段构成色只用既有值；全段零动画零过渡；V1 骨架（kicker/h1/domain 排法与字体）不动', () => {
+    const bare = feedSection().replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, '头版段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 构成色白名单：本票只引入场景扫描线既有 alpha，其余为 V1 既有值
+    const found = [...bare.matchAll(/%23[0-9a-fA-F]{6}|rgba?\([^)]*\)/g)].map((m) => m[0])
+    const allowed = new Set([
+      'rgba(0, 0, 0, 0.1)', // 场景暗侧扫描线既有值（#36）
+      'rgba(0, 0, 0, 0.06)', // 场景亮侧扫描线既有值（#41）
+      'rgba(255, 230, 255, 0.45)', // V1 h1 暗侧描边（既有）
+      'rgba(74, 7, 54, 0.28)' // V1 h1 亮侧描边（既有）
+    ])
+    const stray = [...new Set(found)].filter((color) => !allowed.has(color))
+    expect(stray, `头版段出现白名单外色值：${stray.join(', ')}`).toEqual([])
+    const base = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead \{/)
+    expect(decl(base, 'padding'), 'V1 卡面内衬不动').toBe('40px 24px 28px')
+    expect(decl(base, 'border'), '1px 边不动（毛玻璃卡面轮廓照旧）').toBe('1px solid var(--jy-border)')
+    const kicker = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead-kicker \{/)
+    expect(decl(kicker, 'font-size')).toBe('11px')
+    expect(decl(kicker, 'color')).toBe('var(--jy-text)')
+    const h1 = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead h1 \{/)
+    expect(decl(h1, 'font-size')).toBe('clamp(40px, 7vw, 72px)')
+    expect(decl(h1, 'color')).toBe('var(--jy-heading)')
+    const domain = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead-domain \{/)
+    expect(decl(domain, 'font-size')).toBe('11px')
+    expect(decl(domain, 'color')).toBe('var(--jy-text)')
+  })
+})

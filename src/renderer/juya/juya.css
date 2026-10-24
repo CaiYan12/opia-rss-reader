@@ -2478,11 +2478,34 @@
   max-width: 760px;
   margin: 0 auto;
   padding: 40px 24px 28px;
-  background: var(--jy-card);
+  /* #81 卡内扫描线静纹：background 拆层 —— 扫描线走 background-image 首层（多背景首层
+     绘制在最上层），卡底色走 background-color；backdrop-filter 作用于元素背后的内容，
+     与自身背景层互不干扰，18px 毛玻璃照旧。扫描线 alpha 分变体声明（见下两条复合规则）。 */
+  background-color: var(--jy-card);
   border: 1px solid var(--jy-border);
   border-radius: var(--jy-radius);
   backdrop-filter: blur(18px) saturate(1.15);
   box-shadow: 0 0 18px var(--jy-lead-bg);
+}
+
+/* #81 扫描线静纹（分变体）：场景层 .juya-scene 同技法（1px 线 / 4px 周期 repeating），
+   alpha 与场景同值（暗 0.10 见 #36 / 亮 0.06 见 #41 —— 白天压暗减半，否则把字压灰）。
+   复合选择器形式（变体属性紧贴 .jysynth），只作用于头版卡面；场景扫描线原样不动（守卫④）。
+   静帧零动画；亮/暗最暗行文字对比度实算过 AA（守卫②真实取证）。 */
+[data-juya-variant='synthwave-dark'].jysynth .jysynth-feed-masthead {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.1) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+[data-juya-variant='synthwave-light'].jysynth .jysynth-feed-masthead {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.06) 0 1px,
+    transparent 1px 4px
+  );
 }
 
 /* 版心随预设对齐列表：grid 预设的列表是 1120px 版心（基类 .juya-feed.juya-feed-grid），
@@ -2525,6 +2548,20 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--jy-text);
+}
+
+/* #81 霓虹辉光细线：卡面 ::after 常规流收尾，echo 共享场景层地平线辉光
+   （.juya-scene-grid-persp::before 的 2px 高 + 0 0 18px 4px + --jy-scene-horizon，
+   量级与色照搬既有 token，不新增字面色）。有 host 时即紧随 domain（host 行之下）；
+   空 URL 派生不出 hostname 时细线随卡片照常收尾 —— 它是卡面的地平线，不依附 host 行存在。
+   静帧：零动画零过渡；content '' 对辅助技术静默（不进朗读树、不进焦点顺序）。 */
+.jysynth .jysynth-feed-masthead::after {
+  content: '';
+  display: block;
+  margin-top: 12px;
+  height: 2px;
+  background: var(--jy-scene-horizon);
+  box-shadow: 0 0 18px 4px var(--jy-scene-horizon);
 }
 
 /* ==========================================================================

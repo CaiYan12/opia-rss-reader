@@ -192,6 +192,16 @@
 - 加粗后已重新实跑 `npm run verify` exit 0：23 个单测文件／574 项、158 项 E2E；既有 nocturne 归档先写入再验证，五张全部逐字节一致。原始日志、样本与截图在本机 `out/editorial-dropcap-bold-2026-10-23/`；封版文档更新不重复运行相同验证。
 - 本地封版提交包含该字重与记录，不执行 push、PR、合并 main、tag 或发行；不删除历史分支和证据。
 
+## wabi（侘寂日杂式）
+
+需求：[SPEC #63](https://github.com/CaiYan12/opia-rss-reader/issues/63)（38 条用户故事）；实施票据 #64（阅读页工艺封面与完整视觉形象）、#65（订阅页）、#66（统一验收），均 CLOSED。候选指纹、52 状态矩阵、字体／对比度／隐藏 native 记录与逐条故事映射见[验收报告](WABI-ART-ACCEPTANCE-2026-10-24.md)；本机证据根 `out/wabi-art-implementation-2026-10-24/`（gitignored）。
+
+**范围**：产品修改集中在 wabi 专用 CSS（`juya.css` wabi 段）与 wabi 模板（`wabi.tsx`、`wabi-feed-craft.tsx`、`wabi-reading-craft.tsx`）；共享解析器、通用主题、依赖、IPC 契约与 Mini 未动。订阅页新增订阅页头版（源名称大字 + host + 拓印装饰，头版本身无日期，日期留在卡片）。
+
+**验证（2026-10-24）**：最终 `npm run verify` exit 0——574 Vitest / 190 E2E / Nocturne 对比度 70 文字 + 14 UI / 5 张归档逐字节一致；52 状态几何合成口径全部通过（28 reader 终版重跑 + 24 feed 稳定样本复用）。边界：滚动条 thumb 2 项像素未直接证明（实际滚动槽计算对比亮 3.825、暗 4.749，达标）；隐藏窗口运行不证明 OS 前台焦点。
+
+**封版（2026-10-24）**：用户确认「当前wabi可判定封版」，视觉认可成立；已接受的亮暗阅读／订阅版式作为本轮定稿，后续需求另行立项。（本节先记于 pilot 分支 `1228a9d`，2026-10-25 收尾时随本轮 PR 一并合入 main。）
+
 ## 订阅页头版推广（八风格，2026-10-24，SPEC #67）
 
 wabi 引入的订阅页头版（GLOSSARY 已收录该术语，与阅读页「刊头」区分）推广到其余七风格；editorial 以打样（`627c846`）为基线，批量票覆盖 folio/y2k/pop/newsprint90s/synthwave/nocturne。完整 30 条故事映射、逐风格对比度与边界见[验收报告](FEED-MASTHEAD-ACCEPTANCE-2026-10-24.md)；本机证据根 `out/feed-masthead-implementation-2026-10-24/`（ledger、evidence 代表帧、verify 日志）。

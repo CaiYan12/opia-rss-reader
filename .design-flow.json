@@ -243,7 +243,7 @@
     "wabiArtIntegrationBranch": "codex/wabi-art-integration-20261024",
     "wabiArtFinalCandidate": "c26118432ea9ef9ed9562832ff3170e49e3c558b",
     "mastheadV2Spec": "docs/SPEC-2026-10-24-feed-masthead-v2.md",
-    "mastheadV2Tickets": "docs/TICKETS-2026-10-24-feed-masthead-v2.md",
+    "mastheadV2Tickets": "已清理（正本为 issues #76–#83）",
     "mastheadV2TicketIssues": "#76–#83（全部已关闭）",
     "mastheadV2IntegrationTip": "d9db708 (codex/feed-masthead-v2-int-20261024)",
     "mastheadV2AcceptanceReport": "docs/FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md",

@@ -208,9 +208,11 @@ test('wabi display title remains readable when both handwritten font names are u
   // 命名回退族是否在本机可解析——CI 的 Windows runner 不带中文补充字体（KaiTi/楷体等随语言包分发），
   // 回退链会落到系统 CJK 字体（如 Microsoft YaHei）。只有本机确有命名族时才断言命中命名族；
   // 任何环境下都必须成立的是「字形仍渲染」（可读性不因手写字体缺席而丢）。
+  // check 必须带 CJK 样本字——缺省按空格判定时任何家族（含回退）恒真，探测无意义。
   const namedResolvable = await page.evaluate(() =>
     ['KaiTi', '楷体', 'Kai Ti', 'Noto Serif SC'].some(
-      (family) => document.fonts.check(`12px "${family}"`) || document.fonts.check(`12px ${family}`)
+      (family) =>
+        document.fonts.check(`12px "${family}"`, '永') || document.fonts.check(`12px ${family}`, '永')
     )
   )
   const evidenceDir = join(process.cwd(), 'out', 'wabi-art-implementation-2026-10-24', '64', 'verify')
@@ -226,7 +228,10 @@ test('wabi display title remains readable when both handwritten font names are u
 
   expect(renderedFonts.some((font) => font.glyphCount > 0)).toBe(true)
   if (namedResolvable) {
-    expect(renderedFonts.some((font) => /KaiTi|楷体|Noto Serif SC/i.test(font.familyName))).toBe(true)
+    // 「Kai Ti」（带空格，繁体楷体，基础 Windows 自带）与「KaiTi」（简体，随中文语言包）都算命中
+    expect(renderedFonts.some((font) => /Kai\s?Ti|楷体|Noto Serif SC/i.test(font.familyName))).toBe(
+      true
+    )
   }
 })
 

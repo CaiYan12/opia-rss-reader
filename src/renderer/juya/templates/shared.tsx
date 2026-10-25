@@ -122,7 +122,7 @@ export function ImageGrid({
 }
 
 /** 「相关链接」块。
- *  icon：外链箭头改用 ArrowUpRight 图标（12px，装饰性故 aria-hidden），并给链接挂
+ *  icon：外链箭头改用方框外链图标（用户提供的 12px 素材，装饰性故 aria-hidden），并给链接挂
  *  `.juya-link-icon` 供变体样式接管；基础层 `.juya-links a::after` 的文本 ↗ 由变体 CSS 关闭。
  *  不传时 DOM 与观感与改造前完全一致。 */
 export function LinksBlock({
@@ -147,7 +147,7 @@ export function LinksBlock({
               onOpenLink={onOpenLink}
             >
               {l.text}
-              {icon && <ArrowUpRight size={12} aria-hidden />}
+              {icon && <ExternalLinkIcon />}
             </SafeLink>
           </li>
         ))}
@@ -156,11 +156,18 @@ export function LinksBlock({
   )
 }
 
-/** 外链图标（用户提供的 1024 视图框素材；填充改 currentColor，随各主题链接色）。
+/** 方框外链图标（用户提供的 1024 视图框素材；填充改 currentColor，随各主题链接色）。
+ *  现用于「相关链接」的 SVG 图标分支（synthwave）；概览项的原文外链图标改用裸 ArrowUpRight。
  *  装饰性图形：可访问名由外层链接的 aria-label 提供。 */
 function ExternalLinkIcon(): JSX.Element {
   return (
-    <svg className="juya-overview-ext-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 1024 1024"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path
         d="M384 128v85.333H170.667v597.334h682.666v-384h85.334v426.666A42.667 42.667 0 0 1 896 896H128a42.667 42.667 0 0 1-42.667-42.667V170.667A42.667 42.667 0 0 1 128 128h256z m298.667 85.333V42.667l298.666 256h-384A85.333 85.333 0 0 0 512 384v256h-85.333V384a170.667 170.667 0 0 1 170.666-170.667h85.334z"
         fill="currentColor"
@@ -211,7 +218,7 @@ export function OverviewItems({
                   ariaLabel={`打开原文外链：${o.title}`}
                   onOpenLink={onOpenLink}
                 >
-                  <ExternalLinkIcon />
+                  <ArrowUpRight size={12} aria-hidden className="juya-overview-ext-icon" />
                 </SafeLink>
               )}
             </span>

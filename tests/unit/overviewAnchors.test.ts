@@ -6,7 +6,7 @@ import {
   normalizeEntryTitle
 } from '../../src/renderer/juya/overviewAnchors'
 
-/** 概览→条目匹配契约：编号优先、规范化标题次之、概览外链等于条目标题外链再次之；
+/** 概览→条目匹配契约：编号优先、规范化标题次之、概览项 href 等于条目标题外链再次之；
  *  每一级都只接受**唯一**命中，歧义逐级下探，全部歧义/无命中返回 null。 */
 
 function entry(overrides: Partial<JuyaEntry> = {}): JuyaEntry {
@@ -76,7 +76,7 @@ describe('matchOverviewEntries — 标题与链接兜底', () => {
     expect(matches[0]?.entry).toBe(sections[0].entries[0])
   })
 
-  it('标题重复时按概览外链 = 条目标题外链唯一命中', () => {
+  it('标题重复时按概览项 href = 条目标题外链唯一命中', () => {
     const sections = [
       section('甲', [
         entry({ title: '同名', titleLink: 'https://example.com/a' }),

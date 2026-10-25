@@ -527,7 +527,7 @@ test('editorial T2：上午日期、文章标题回退及缺省摘要概览', as
   await expect(root.locator('.juya-overview')).toHaveCount(0)
 })
 
-test('editorial T2：32项概览宽屏双列、窄屏单列，标题跳页内条目、图标仍走键盘外链', async ({ page }) => {
+test('editorial T2：32项概览宽屏双列、窄屏单列，标题跳页内条目、图标仍以键盘打开原文外链', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await loadApp(page, 'editorialT2')
   await openFirstArticle(page)
@@ -1412,7 +1412,7 @@ test('90 年代报刊式框线导读（#29）：真实「导读」小标、上�
     window.__stubCalls.filter(([kind]) => kind === 'openExternal')
   )
   expect(calls).toEqual([['openExternal', 'https://example.com/news/1']])
-  expect(page.url(), '概览外链不得导致原地导航').toBe(urlBefore)
+  expect(page.url(), '概览项的原文外链图标不得导致原地导航').toBe(urlBefore)
 })
 
 test('90 年代报刊式框线导读（#29）：560 宽度无横向溢出', async ({ page }) => {

@@ -101,12 +101,14 @@ test('概览标题跳页内条目：24px 落点、缩放、焦点与 reduced-mot
     const svgBox = svg.getBoundingClientRect()
     const path = svg.querySelector('path') as SVGPathElement
     const title = el.closest('li')?.querySelector('.juya-overview-jump') as HTMLAnchorElement
+    const fill = getComputedStyle(path).fill
     return {
       width: box.width,
       height: box.height,
       iconWidth: svgBox.width,
       iconHeight: svgBox.height,
-      fill: getComputedStyle(path).fill,
+      // 概览改裸 ArrowUpRight（描边）；用可见着色统一取 fill 或 stroke
+      paint: fill !== 'none' ? fill : getComputedStyle(path).stroke,
       color: getComputedStyle(el).color,
       linkColor: getComputedStyle(title).color,
       decoration: getComputedStyle(el).textDecorationLine,
@@ -120,9 +122,9 @@ test('概览标题跳页内条目：24px 落点、缩放、焦点与 reduced-mot
   expect(icon.height, '外链图标命中区高').toBeGreaterThanOrEqual(24)
   expect(icon.iconWidth, '图标视觉宽 12px').toBeCloseTo(12, 0)
   expect(icon.iconHeight, '图标视觉高 12px').toBeCloseTo(12, 0)
-  expect(icon.fill, '图标取标题链接同色（currentColor）').toBe(icon.linkColor)
+  expect(icon.paint, '图标取标题链接同色（fill 或 stroke）').toBe(icon.linkColor)
   expect(icon.color, '图标链接本身继承链接色').toBe(icon.linkColor)
-  expect(icon.decoration, '图标链接不继承概览链接下划线').toBe('none')
+  expect(icon.decoration, '图标链接不继承概览标题链接下划线').toBe('none')
   expect(icon.afterTitle, '图标在标题链接之后').toBe(true)
   expect(icon.iconLeft, '图标排在标题文字末尾').toBeGreaterThanOrEqual(icon.titleRight - 1)
   expect(icon.label).toBe('打开原文外链：跳转条目一')
@@ -254,12 +256,13 @@ test('八种风格：概览标题跳转与末尾外链图标的分工/命中区�
           | null
         const jump = title?.getAttribute('href') ?? null
         const readingRoot = el.closest('.juya-root')
+        const fill = getComputedStyle(path).fill
         return {
           width: box.width,
           height: box.height,
           iconWidth: svgBox.width,
           iconHeight: svgBox.height,
-          fill: getComputedStyle(path).fill,
+          paint: fill !== 'none' ? fill : getComputedStyle(path).stroke,
           color: getComputedStyle(el).color,
           linkColor: title ? getComputedStyle(title).color : null,
           decoration: getComputedStyle(el).textDecorationLine,
@@ -272,9 +275,9 @@ test('八种风格：概览标题跳转与末尾外链图标的分工/命中区�
       expect(facts.iconWidth, `${scenario} 图标宽`).toBeCloseTo(12, 0)
       expect(facts.iconHeight, `${scenario} 图标高`).toBeCloseTo(12, 0)
       expect(facts.linkColor, `${scenario} 标题链接色可读`).not.toBeNull()
-      expect(facts.fill, `${scenario} 图标取链接色`).toBe(facts.linkColor)
+      expect(facts.paint, `${scenario} 图标取链接色`).toBe(facts.linkColor)
       expect(facts.color, `${scenario} 图标链接继承链接色`).toBe(facts.linkColor)
-      expect(facts.decoration, `${scenario} 图标不继承概览链接下划线`).toBe('none')
+      expect(facts.decoration, `${scenario} 图标不继承概览标题链接下划线`).toBe('none')
       expect(facts.jump, `${scenario} 同项标题跳转锚点`).toMatch(/-entry-0$/)
       expect(facts.targetInsideRoot, `${scenario} 锚点命中本风格条目标题`).toBe(true)
 

@@ -1,7 +1,7 @@
 {
-  "stage": "polish",
+  "stage": "acceptance",
   "track": "code-first",
-  "updated": "2026-10-11",
+  "updated": "2026-10-24",
   "history": [
     {
       "stage": "brief",
@@ -48,11 +48,209 @@
         "start.bat 语义收敛（2026-10-12 用户指令）：pause 由无条件改为仅在退出码非 0 时触发 —— 关窗（app.quit ⇒ 退出码 0，electron-vite 经 ps.on('close', process.exit) 透传）时 cmd 自行结束、不再残留「按任意键继续」；失败时保留暂停以便看报错。两条路径均实测（关窗后承载批处理的 cmd 自行退出 / 假 npm exit 37 正确进入暂停分支且退出码透传）",
         "用户明确表示不再追究 --no-sandbox 来源问题（2026-10-12「不管 sandbox 了」），该悬案就此关闭，不再主动跟进"
       ]
+    },
+    {
+      "stage": "audit",
+      "outputs": [
+        "wabi 独立完整体检：out/wabi-audit-2026-10-23/REPORT.md",
+        "亮暗阅读/订阅40个基本状态、内容与交互边界、实际字形背景对比、隐藏真实main/preload/IPC；保留原图补采超时边界"
+      ],
+      "date": "2026-10-23"
+    },
+    {
+      "stage": "spec",
+      "date": "2026-10-23",
+      "outputs": [
+        "docs/SPEC-2026-10-23-wabi.md：本地规格；Q1–Q13 与测试边界均已确认"
+      ]
+    },
+    {
+      "stage": "spec",
+      "date": "2026-10-23",
+      "outputs": [
+        "https://github.com/CaiYan12/opia-rss-reader/issues/57：用户独立授权发布，正文与 ready-for-agent 已回读核对"
+      ]
+    },
+    {
+      "stage": "tickets",
+      "date": "2026-10-23",
+      "outputs": [
+        "docs/TICKETS-2026-10-23-wabi.md：5 票草稿与阻断边，待用户确认粒度；未发布子 issue"
+      ]
+    },
+    {
+      "stage": "tickets",
+      "date": "2026-10-23",
+      "outputs": [
+        "https://github.com/CaiYan12/opia-rss-reader/issues/58",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/59",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/60",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/61",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/62"
+      ]
+    },
+    {
+      "stage": "implement",
+      "date": "2026-10-23",
+      "outputs": [
+        "用户授权 implement-spec；GPT-6 Luna xhigh 逐票独立 worktree 并行，集成分支 codex/wabi-integration-20261023；22:00 关门前保存检查点。"
+      ]
+    },
+    {
+      "stage": "implement",
+      "date": "2026-10-23",
+      "outputs": [
+        "docs/WABI-ACCEPTANCE-2026-10-23.md",
+        "#57–#62 CLOSED；574 单测、176 E2E、5 归档、页面矩阵／隐藏 Electron 验收与双轴评审通过；本地 HEAD 1c7dcfb887e66f6e411e06d4f0f2ddf320730562"
+      ]
+    },
+    {
+      "stage": "spec",
+      "date": "2026-10-23",
+      "outputs": [
+        "docs/SPEC-2026-10-23-wabi-art-direction.md：本轮视觉 Q1–Q4 已确认；本地补充规格，未发布或实施"
+      ]
+    },
+    {
+      "stage": "tickets",
+      "date": "2026-10-23",
+      "outputs": [
+        "docs/TICKETS-2026-10-23-wabi-art-direction.md：两个完整页面切片与一个集成验收票；待确认粒度，未发布或实施"
+      ]
+    },
+    {
+      "stage": "tickets",
+      "date": "2026-10-23",
+      "outputs": [
+        "docs/TICKETS-2026-10-23-wabi-art-direction.md：三票粒度与依赖已确认，补充 SPEC 与子票待独立发布，尚未实施"
+      ]
+    },
+    {
+      "stage": "tickets",
+      "date": "2026-10-24",
+      "outputs": [
+        "https://github.com/CaiYan12/opia-rss-reader/issues/63",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/64",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/65",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/66"
+      ]
+    },
+    {
+      "stage": "implement",
+      "date": "2026-10-24",
+      "outputs": [
+        "#63",
+        "#64",
+        "#65",
+        "#66",
+        "codex/wabi-art-integration-20261024"
+      ]
+    },
+    {
+      "stage": "acceptance",
+      "date": "2026-10-24",
+      "outputs": [
+        "docs/WABI-ART-ACCEPTANCE-2026-10-24.md",
+        "c26118432ea9ef9ed9562832ff3170e49e3c558b",
+        "#63–#66 CLOSED"
+      ]
+    },
+    {
+      "stage": "brief",
+      "date": "2026-10-24",
+      "outputs": [
+        "八风格订阅页头版 V2 设计清单（grill 两轮确认；未立 SPEC/未开票/未实施）"
+      ]
+    },
+    {
+      "stage": "spec",
+      "date": "2026-10-24",
+      "outputs": [
+        "docs/SPEC-2026-10-24-feed-masthead-v2.md：本地成稿未发布；工票与实施阶段门未开"
+      ]
+    },
+    {
+      "stage": "tickets",
+      "date": "2026-10-24",
+      "outputs": [
+        "docs/TICKETS-2026-10-24-feed-masthead-v2.md 草稿经用户确认并指令发布",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/76",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/77",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/78",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/79",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/80",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/81",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/82",
+        "https://github.com/CaiYan12/opia-rss-reader/issues/83"
+      ]
+    },
+    {
+      "stage": "implement",
+      "date": "2026-10-24",
+      "outputs": [
+        "#76–#82 SDD 串行流水线（并发实测上限 1）：TDD 红→绿 + 守卫/E2E 三面证据 + 控制者逐票合并",
+        "双轴评审 Spec/Standards 双 PASS 零 P0/P1；修复 87d87df + lightbox 端口 6300eb8 + RM 归档协议 ddc2b94",
+        "全量 verify exit 0：typecheck/单测 612/E2E 263/verify:nocturne（RM 档有界像素等价回退 9px/Δ9）",
+        "#76–#83 全部关闭（#67 待用户视觉认可）；集成 tip d9db708",
+        "worktree 清理二次穿透 node_modules 事故：w47 孤儿 junction 拆引信 + npm ci + electron 缓存解压提权 + GUI 启动探针 4 进程恢复；教训回写 implementer-brief"
+      ]
+    },
+    {
+      "stage": "acceptance",
+      "date": "2026-10-24",
+      "outputs": [
+        "docs/FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md（四栏分述；用户视觉认可待确认）",
+        "八风格亮暗截图 34 张：out/feed-masthead-v2-implementation-2026-10-24/evidence/",
+        "ledger：out/feed-masthead-v2-implementation-2026-10-24/ledger.md"
+      ]
+    },
+    {
+      "stage": "polish",
+      "date": "2026-10-25",
+      "outputs": [
+        "用户真机观察追加：概览目录全风格统一两列（773d06b，全量 verify exit 0）",
+        "nocturne 封版例外（发丝线挂行界条目）已入 ledger；newsprint 单列守卫翻转为两列不变量"
+      ]
+    },
+    {
+      "stage": "acceptance",
+      "date": "2026-10-25",
+      "outputs": [
+        "用户「全认可」（真机复看，覆盖 V1 推广 + V2 丰富化 + 概览两列统一）",
+        "SPEC #67 CLOSED；认可记录落 FEED-MASTHEAD-V2-ACCEPTANCE + STYLE-WORKLOG"
+      ]
     }
   ],
   "outputs": {
     "brief": "AGENTS.md",
-    "polish": "src/renderer/juya/juya.css"
+    "polish": "src/renderer/juya/juya.css",
+    "wabiAudit": "out/wabi-audit-2026-10-23/REPORT.md",
+    "wabiSpec": "docs/SPEC-2026-10-23-wabi.md",
+    "wabiSpecIssue": "https://github.com/CaiYan12/opia-rss-reader/issues/57",
+    "wabiTickets": "docs/TICKETS-2026-10-23-wabi.md",
+    "wabiImplementation": "out/wabi-implementation-2026-10-23/execution.json",
+    "wabiImplementationHandoff": "out/wabi-implementation-2026-10-23/HANDOFF.md",
+    "wabiAcceptance": "docs/WABI-ACCEPTANCE-2026-10-23.md",
+    "wabiReview": "out/wabi-implementation-2026-10-23/reviews/REVIEW.md",
+    "wabiArtDirectionSpec": "docs/SPEC-2026-10-23-wabi-art-direction.md",
+    "wabiArtDirectionTickets": "docs/TICKETS-2026-10-23-wabi-art-direction.md",
+    "wabiArtDirectionSpecIssue": "https://github.com/CaiYan12/opia-rss-reader/issues/63",
+    "wabiArtDirectionV01": "https://github.com/CaiYan12/opia-rss-reader/issues/64",
+    "wabiArtDirectionV02": "https://github.com/CaiYan12/opia-rss-reader/issues/65",
+    "wabiArtDirectionV03": "https://github.com/CaiYan12/opia-rss-reader/issues/66",
+    "wabiArtAcceptanceReport": "docs/WABI-ART-ACCEPTANCE-2026-10-24.md",
+    "wabiArtReview": "out/wabi-art-implementation-2026-10-24/reviews/REVIEW.md",
+    "wabiArtIntegrationBranch": "codex/wabi-art-integration-20261024",
+    "wabiArtFinalCandidate": "c26118432ea9ef9ed9562832ff3170e49e3c558b",
+    "mastheadV2Spec": "docs/SPEC-2026-10-24-feed-masthead-v2.md",
+    "mastheadV2Tickets": "docs/TICKETS-2026-10-24-feed-masthead-v2.md",
+    "mastheadV2TicketIssues": "#76–#83（全部已关闭）",
+    "mastheadV2IntegrationTip": "d9db708 (codex/feed-masthead-v2-int-20261024)",
+    "mastheadV2AcceptanceReport": "docs/FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md",
+    "mastheadV2Ledger": "out/feed-masthead-v2-implementation-2026-10-24/ledger.md",
+    "mastheadV2Evidence": "out/feed-masthead-v2-implementation-2026-10-24/evidence/",
+    "mastheadV2FinalTip": "773d06b (含概览两列统一)",
+    "spec67Closed": "2026-10-25 用户全认可后关闭"
   },
   "decisions": [
     "用户点名 /design-flow + /frontend-design（2026-10-11，橘鸦风格修复阶段）",
@@ -80,11 +278,25 @@
     "pop 刊头拼贴裁定（2026-10-11）：期号影改品红 #e0e045e→#e0245e（黄面板上原 border 黄影同色隐形/亮侧黑字黑影融字，对黄底 3.72:1）；暗侧沟槽 #141414（靠黄描边分隔，刻意低对比）；期号黑/黄为波普经典对",
     "滚动条方案裁定（2026-10-11）：滚动容器是 .juya-root 祖先读不到 --jy-*（变量只向下继承）→ `.view-scroll:has([data-juya-variant])::-webkit-scrollbar-thumb` 每变体字面色；view-scroll 挂类沿用 view-nav 先例；全局滚动条块一字节不动并进守卫字节锁；thumb 圆角仅直角/锐角风格覆写，圆润风格继承 4px（文档化决策）",
     "editorial #50–#55 实施与验收已全部合入本地 codex/editorial；独立双轴评审已完成且无阻断。验收与评审指针：out/editorial-implementation-2026-10-22/55-report.md。",
-    "editorial 封版（用户明确确认，2026-10-23）：保留当前亮暗阅读／订阅版式，最后将栏目首条导语的下沉首字加粗至700，其余文字与应用范围不变。加粗后的全量verify exit0：574单测、158E2E、5张既有归档一致；后续需求另行立项。本地封版不等同push、main合并或发行。"
+    "editorial 封版（用户明确确认，2026-10-23）：保留当前亮暗阅读／订阅版式，最后将栏目首条导语的下沉首字加粗至700，其余文字与应用范围不变。加粗后的全量verify exit0：574单测、158E2E、5张既有归档一致；后续需求另行立项。本地封版不等同push、main合并或发行。",
+    "2026-10-23 用户点名 design-flow 后完整体检 wabi，再 grill-with-docs；本轮未改产品。editorial 已通过 PR #56 合并 main，现以实际 Git 为准。",
+    "2026-10-23 用户调用 to-spec；wabi 三轮共 Q1–Q13 均已采纳推荐，决定集中记录于 wabi SPEC。当前仅本地成稿，测试边界已获用户明确确认；issue 发布遵循独立阶段门。",
+    "2026-10-23 用户明确指令发布；wabi SPEC 已发布为 #57，使用既有 ready-for-agent 标签。未拆票或实施。",
+    "2026-10-23 用户调用 to-tickets；wabi 拟拆为四个独立功能切片和一个依赖四票的集成验收票，不引入无必要的前置重构。粒度与依赖待用户确认，父 issue #57 未修改，尚未发布子票或实施。",
+    "2026-10-23 用户按此发布；wabi 五票已发布为 #58–#62，全部 ready-for-agent，均为 #57 原生子票；#62 原生依赖 #58–#61。已回读核对，父规格正文/状态/标签未修改，未开始实施。",
+    "2026-10-23 用户授权 implement-spec，#58–#61 并行实现，#62 待四票完成后统一验收；采用 GPT-6 Luna xhigh 子代理。保留既有文档改动，不包含 push、PR 或发行。",
+    "2026-10-23 用户指出 wabi 字样、刊头和背景不够风格化；上一轮功能／可读性通过不代表视觉满意或封版。本轮 Q1 确认强风格、正文克制，Q2–Q4 采纳手写墨字＋宋体题签＋陶印编号、不对称封面刊头、亮和纸／暗炭纸的区域化材质。",
+    "2026-10-23 用户继续固化 wabi 视觉补充 SPEC；使用 design-flow、redesign-skill、frontend-design、grill-with-docs／grilling／domain-modeling 与 to-spec。沿用已确认的渲染 E2E／对比度／截图／隐藏 Electron 测试入口，增加独立视觉评审记录；当前不发布工单、不修改产品。",
+    "2026-10-23 用户调用 to-tickets；wabi 视觉补强拟按阅读页完整形象、订阅页完整形象、跨页统一验收拆为三票。前两票无功能阻断，第三依赖两票；不把字样／刊头／背景拆成水平补丁。补充 SPEC 未发布，未来发布应新建父工单并保留旧 #57–#62 的关闭历史。",
+    "2026-10-23 用户确认 wabi 视觉补强三票拆分与阻断：V01／V02 无功能阻断，V03 依赖两票。确认对象为粒度与依赖；按项目阶段门，发布新的补充 SPEC 父工单和三张子票仍待明确发布指令。",
+    "2026-10-24 用户在明确“新补充 SPEC 父工单＋三张子票”的发布范围后指令继续，已发布 #63、#64、#65、#66，均 ready-for-agent；第三票原生依赖前两票，正文与原生关系已回读核对。尚未实施，旧 #57–#62 保持。",
+    "用户再次明确调用 implement-spec，沿用 GPT-6 Luna xhigh 逐票并行；64/65 前沿，66 收口；强风格、正文克制，用户视觉认可仍待实际确认。",
+    "wabi 视觉补强已按 GPT-6 Luna xhigh 逐票并行完成并收口；最终候选 c26118432ea9ef9ed9562832ff3170e49e3c558b，574 单测／190 E2E／5 归档一致，52 状态与隐藏真实 Electron 通过；双轴评审无待修项。用户视觉认可仍待确认，未封版、推送或发行。",
+    "2026-10-24 用户视觉反馈：V1 头版过于简陋干练、不足以体现风格（点名 y2k 缺窗口标题/关闭钮，参考其阅读页头图）；经两轮 grill 确认八风格头版 V2 清单。Round1 边界：分层施力（y2k/nocturne/editorial/newsprint90s 大补、folio/synthwave 适度、pop 两小件、wabi 不动）；参照系=各风格阅读页刊头词汇库（头版=刊头语言的订阅源版）；信息结构（源名+订阅源+host，无日期）与 V1 主材质不动；高度软规则（允许增高、首屏仍瞥见第一张卡）；动效一律静帧（最严解释「克制」，共享场景层照旧）。Round2 清单：y2k=系统窗口标题栏（真实源名 .EXE — 运行中，DOM+aria-hidden、长名 ellipsis）+_ □ × 三钮（× 同阅读页 on-accent）不加状态栏；nocturne=极光带静帧（z-index -1、两端 mask、零新增色相、取 RM 钉定 opacity 0.81/0.76）+底边渐变发丝线+h1 冷辉光静帧；editorial=L 形裁切角标+host 题注化（刻意不搬栏目序号——订阅源无真实序号语义，编号即造假信息）；newsprint90s=三栏报头 grid 1fr auto 1fr 底对齐（左 kicker/中楷体源名 6px 字距量级/右 host）+窄窗回落居中堆叠；folio=印章水印（72×72 rotate -8deg opacity .12 multiply）+左右朱丝栏竖线；synthwave=卡内扫描线静纹+domain 下霓虹辉光细线；pop=h1 印刷硬影 3px 3px 0（同阅读页）+爆炸星 SVG 点缀；wabi=不动（V1 已是工艺封面基准，动它风险大于收益）。共享层零改动；GLOSSARY 无新增词；验证=逐风格定向 E2E+守卫更新+全量 verify+headless 截图。流程裁定：主代理直接实施、轻量管线不发布 issue；用户明确指令——未经允许不立 SPEC/TICKET、不开工 implement，三者为独立阶段门。"
   ],
   "blocked": [
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
     "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
   ],
-  "next": "editorial 已封版；远端交付与发行等待用户单独授权。wabi 独立全面体检尚未启动（#55 的 headless 负对照不替代全项体检）。"
+  "next": "SPEC #67 已收口（用户全认可 2026-10-25）。待用户指令：push / PR / 合并 main / 发行均未授权；wabi 封版 worklog 段仍在 pilot 分支待合并时机。"
 }

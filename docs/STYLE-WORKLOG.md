@@ -208,3 +208,11 @@ wabi 引入的订阅页头版（GLOSSARY 已收录该术语，与阅读页「刊
 - nocturne（#74 `5c9f7b5`）：亮侧冻结解除**仅限头版**（diff 三处均在头版块，4 张阅读页归档逐字节一致佐证零漂移）；无装饰层故分层硬约束由结构满足；暗侧订阅页归档按设计重生成（写入模式，`--verify` exit 0）。
 
 **验证**：每票定向 E2E 全绿（46–48 过/次，含亮暗×宽窄 120% 几何、空态、长源名换行、版心对齐、装饰 aria 语义）；每票合并后集成态抽检（typecheck + build + 头版/feed 定向套件）全绿。最终全量门与双轴评审见验收报告。
+
+### 八风格头版 V2 丰富化 + 概览两列统一（2026-10-25 用户认可，SPEC #67 收口）
+
+- 用户对 V1 头版反馈「过于简陋干练、不足以体现风格」（点名 y2k 缺窗口标题/关闭钮，参考其阅读页头图）；经两轮 grilling 定 V2 清单（分层施力：y2k/nocturne/editorial/newsprint90s 大补、folio/synthwave 适度、pop 两小件、wabi 不动；参照系=各风格阅读页刊头词汇；信息结构与动效静帧纪律不变）。工票 #76–#83（SDD 串行流水线，并发上限实测 1）。
+- 逐风格签名件：y2k 系统窗口标题栏（真实源名 `.EXE — 运行中` + `_ □ ×` 三钮，`214b065`）；nocturne 极光带静帧（RM 钉定 0.81/0.76、z-index -1、零新增色相，`dc00fdf`）；editorial L 形裁切角标 + host 题注化（`0ece7fc`）；newsprint90s 三栏报头（中栏 `fit-content(66%)` 原型实证裁定，`293482e`）；folio 印章水印 + 朱丝栏（`38997e6`）；synthwave 卡内扫描线 + 霓虹辉光细线（`5a6762f`）；pop 印刷硬影 + 爆炸星（`b3ab889`）；wabi 零改动（本批评审基准）。全部零 animation/transition、共享层零改动。
+- 双轴评审 Spec/Standards 双 PASS 零 P0/P1；最终门 verify exit 0（612 单测 / 263 E2E / 归档一致——RM 档新增有界像素等价回退容光栅噪声，实测 9px/Δ9）。验收报告：[FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md](FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md)；证据根 `out/feed-masthead-v2-implementation-2026-10-24/`。
+- 追加固：用户真机观察「wabi/folio 概览一行两个、其他一行一个」→ 基类 `.juya-overview` 统一 grid 两列 + ≤640 单列回落（`773d06b`，verify exit 0）；nocturne 封版例外唯一授权改动 = 暗侧发丝线挂行界条目 `nth-child(2n+3)`（单列回落恢复原语义，线值零变化）；newsprint「保持单列」守卫翻转为两列不变量。
+- 用户于 2026-10-25 真机复看后明确「全认可」（覆盖 V1 推广、V2 丰富化与概览两列统一），SPEC #67 关闭。本地收口不含 push / PR / 合并 main / tag / 发行；后续需求另行立项。

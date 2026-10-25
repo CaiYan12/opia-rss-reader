@@ -24,6 +24,9 @@ Thumbs.db
 # Trae agent workspace data (plans etc.)
 .trae/
 
+# Local personal notes (never committed; see HANDOFF 2026-10-24)
+.learnings/
+
 # Local-only reference screenshots (UI design samples, not source)
 testfiles/
 
@@ -55,3 +58,6 @@ playwright-report/
 
 # DSH 文件工具的更新锁（写盘时生成的 0 字节锁文件，非项目产物）
 .dsh-ops-update-*.lock
+
+# 图标生成过程的预览件（非构建输入；icon.ico / icon.png 仍入库）
+resources/_icon_preview_*

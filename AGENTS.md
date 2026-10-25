@@ -26,6 +26,7 @@ Windows 桌面 RSS 阅读器，使用 Electron + React + TypeScript。主进程�
 
 | 任务 | 必须读取 |
 | --- | --- |
+| 选择技能、判断该走哪条流程、阶段交界 | [技能路由](docs/agents/skills.md)；阶段产物与外部写操作门见 [工作流阶段门](docs/agents/workflow.md) |
 | 开始或继续一个工作阶段、外部写操作 | [工作流阶段门](docs/agents/workflow.md) |
 | 依赖、Windows 启动、打包、GPU、原生窗口 | [Windows 运行与构建参考](docs/agents/windows-runtime.md)；具体命令查 [README](README.md) 与 `package.json` |
 | 标签、主题、缩放、Mini、橘鸦模板与 CSS | [UI 与橘鸦阅读参考](docs/agents/ui-reference.md)的相关小节 |
@@ -49,3 +50,21 @@ Windows 桌面 RSS 阅读器，使用 Electron + React + TypeScript。主进程�
 - 命令以配置和 README 为准，术语以 GLOSSARY 为准；历史数字、施工过程与版本考古分别放施工记录和发行记录，避免维护多份状态缓存。
 - 项目经验默认沉淀到对应项目文档。长期个人记忆遵循当前环境的授权要求；不能仅因犯错便自行写入个人记忆或改动全局代理规则。
 - 已作废的历史计划／交接稿与已关轮次的本地 SPEC／TICKETS 已于 2026-10-25 清理（正本为 GitHub issue 或 git 历史），不再回补；现行执行约定以本文件指向的当前参考为准。
+
+## Agent skills
+
+### Workflow
+
+主流程与入口路由见 `docs/agents/skills.md`；阶段产物与外部写操作门见 `docs/agents/workflow.md`。默认路径：`/grill-with-docs` → `/to-spec` → `/to-tickets` → 逐票 `/implement`（`/tdd` 驱动、`/code-review` 收口）。
+
+### Issue tracker
+
+GitHub issues（`CaiYan12/opia-rss-reader`，用 `gh` CLI）。见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+五个 canonical triage 角色与仓库标签字符串一一相同（`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`）。见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文：根目录 `GLOSSARY.md` + `docs/adr/`（按需创建）。见 `docs/agents/domain.md`。

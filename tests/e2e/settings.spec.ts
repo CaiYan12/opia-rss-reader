@@ -30,7 +30,8 @@ test('添加订阅源先验证链接：验证期间显示 SVG 加载状态，成
   await page.evaluate(() => {
     window.opia.feedSourceValidate = async (source) => {
       window.__stubCalls.push(['feedSourceValidate', source])
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      // 500ms：全量并发跑时断言调度可能超过短窗口，按钮翻转过快会误报加载态缺失。
+      await new Promise((resolve) => setTimeout(resolve, 500))
     }
   })
 

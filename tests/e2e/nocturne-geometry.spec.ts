@@ -8,7 +8,9 @@ import { loadApp, openFirstArticle, activeTab } from './setup'
  *
  *  三处必须收在同一内容栏边界上：
  *    ① 栏目 h2 发丝线（基准）；
- *    ② 概览条目分隔线（`li + li::after`，绝对定位的伪元素）；
+ *    ② 概览条目分隔线（绝对定位伪元素。2026-10-25 概览统一两列后：>640 视口挂行首条目
+ *       `li:nth-child(2n+3)::after`、线覆本格半幅；≤640 单列回落 `li:nth-child(n+2)::after`
+ *       逐条上线、线覆满幅——两套语义按视口分支断言）；
  *    ③ 阅读页图片：宽屏右列图版 + 窄窗单列图 + 通栏回流带。
  *
  *  断言一律用**相对值**（两个元素边缘的差值），不锁绝对坐标 —— 绝对坐标随视口、滚动条宽度、
@@ -22,7 +24,7 @@ import { loadApp, openFirstArticle, activeTab } from './setup'
 
 const VIEWPORTS = [560, 800, 1320] as const
 
-type Box = { left: number; right: number; width: number }
+type Box = { left: number; right: number; width: number; top: number }
 
 for (const width of VIEWPORTS) {
   test(`nocturne 右边缘三处对齐内容栏边界（${width} 视口）`, async ({ page }) => {
@@ -33,19 +35,22 @@ for (const width of VIEWPORTS) {
     const root = activeTab(page).locator('.juya-root')
     await expect(root).toBeVisible()
 
-    const geo = await root.evaluate((el) => {
+    const geo = await root.evaluate((el, vw) => {
       const box = (n: Element | null): Box | null => {
         if (!n) return null
         const r = n.getBoundingClientRect()
-        return { left: r.left, right: r.right, width: r.width }
+        return { left: r.left, right: r.right, width: r.width, top: r.top }
       }
       const h2 = el.querySelector('.juya-section > h2')
       const plateImg = el.querySelector('.juya-entry-figure img')
       const overflowImgs = [...el.querySelectorAll('.jynoct-overflow-media img')]
       const lis = [...el.querySelectorAll('.juya-overview li')]
-      const sepLi = lis[1] ?? null
+      // 两列统一后分隔线挂在「第 2 行起的行首条目」（DOM 3、5、7…）；单列回落后是 lis[1]
+      const sepLi = (vw > 640 ? lis[2] : lis[1]) ?? null
       const sep = sepLi ? getComputedStyle(sepLi, '::after') : null
       const liBox = box(sepLi)
+      const ul = el.querySelector('.juya-overview')
+      const ulBox = box(ul)
       // 分隔线左右内缩的**使用值**（定位元素的 CSSOM resolved value 为 px）
       const insetLeft = sep ? Number.parseFloat(sep.left) : Number.NaN
       const insetRight = sep ? Number.parseFloat(sep.right) : Number.NaN
@@ -57,13 +62,17 @@ for (const width of VIEWPORTS) {
         overflowLast: box(overflowImgs.at(-1) ?? null),
         overflowCount: overflowImgs.length,
         sepLi: liBox,
+        ul: ulBox,
+        li0: box(lis[0] ?? null),
+        li1: box(lis[1] ?? null),
+        li2: box(lis[2] ?? null),
         sepInsetLeft: insetLeft,
         sepInsetRight: insetRight,
         // 分隔线的真实边缘 = li padding-box 边缘 ∓ 内缩量
         sepLeft: liBox && Number.isFinite(insetLeft) ? liBox.left + insetLeft : Number.NaN,
         sepRight: liBox && Number.isFinite(insetRight) ? liBox.right - insetRight : Number.NaN
       }
-    })
+    }, width)
 
     // 基准本身必须存在：栏目线是 1px 实线，否则「对齐基准」无从谈起
     expect(geo.h2, '栏目 h2 应可取到').toBeTruthy()
@@ -81,9 +90,19 @@ for (const width of VIEWPORTS) {
         `偏差(plate/sep 右)=${(geo.plate!.right - geo.h2!.right).toFixed(2)}/${(geo.sepRight - geo.h2!.right).toFixed(2)}`
     )
 
-    // ① 概览分隔线 == 栏目线（左右缘同式）
-    expect(Math.abs(geo.sepLeft - geo.h2!.left), `概览分隔线左缘应贴内容栏左边界`).toBeLessThanOrEqual(1)
-    expect(Math.abs(geo.sepRight - geo.h2!.right), `概览分隔线右缘应贴内容栏右边界`).toBeLessThanOrEqual(1)
+    // ① 概览分隔线（两列统一后按视口分支：≤640 单列满幅贴内容栏两缘；>640 两列覆行首格）
+    if (width <= 640) {
+      expect(Math.abs(geo.sepLeft - geo.h2!.left), `概览分隔线左缘应贴内容栏左边界`).toBeLessThanOrEqual(1)
+      expect(Math.abs(geo.sepRight - geo.h2!.right), `概览分隔线右缘应贴内容栏右边界`).toBeLessThanOrEqual(1)
+    } else {
+      // 两列在场：首两项同行、第三项起第二行
+      expect(Math.abs(geo.li1!.top - geo.li0!.top), '概览两列：前两项应同行').toBeLessThanOrEqual(1)
+      expect(geo.li2!.top, '概览两列：第三项应在第二行').toBeGreaterThan(geo.li1!.top)
+      // 行首格左缘即内容栏左缘；线右缘应覆到本格轨道右缘（列间距 32 之外是右格）
+      const track = (geo.ul!.width - 32) / 2
+      expect(Math.abs(geo.sepLeft - geo.ul!.left), '分隔线左缘应贴内容栏左边界').toBeLessThanOrEqual(1)
+      expect(Math.abs(geo.sepRight - (geo.ul!.left + track)), '分隔线右缘应覆满本格轨道').toBeLessThanOrEqual(1)
+    }
 
     // ② 图片（右列图版）右缘 == 栏目线右缘。宽屏右列是 200px 图列（左缘是正文/图列分界，
     // 不是内容栏边界），故左缘只在 ≤640px 单列回落、图铺满内容列时才成立 —— 条件断言，不硬套。
@@ -100,12 +119,20 @@ for (const width of VIEWPORTS) {
     expect(Math.abs(geo.overflowFirst!.left - geo.h2!.left), '回流带左缘应贴内容栏左边界').toBeLessThanOrEqual(1)
     expect(Math.abs(geo.overflowLast!.right - geo.h2!.right), '回流带右缘应贴内容栏右边界').toBeLessThanOrEqual(1)
 
-    // ④ 悬停底色仍允许外溢：li 自身（hover 背景盒）必须比内容栏宽 —— 这是交互反馈，不是漂移。
-    // 「底色比线宽」的形态由此结构保证：li 盒 = 内容栏 ± 同一记号，而分隔线已内缩回内容栏。
+    // ④ 悬停底色仍允许外溢：li 自身（hover 背景盒）必须比其所在列轨道宽 —— 这是交互反馈，
+    // 不是漂移。「底色比线宽」的形态由此结构保证：li 盒 = 轨道 ± 同一记号，而分隔线已内缩回轨道。
     expect(geo.sepLi, '概览条目 li 应可取到').toBeTruthy()
-    expect(
-      geo.sepLi!.width - geo.h2!.width,
-      'hover 背景盒应比内容栏宽（底色外溢、分隔线内缩）'
-    ).toBeGreaterThan(4)
+    if (width <= 640) {
+      expect(
+        geo.sepLi!.width - geo.h2!.width,
+        'hover 背景盒应比内容栏宽（底色外溢、分隔线内缩）'
+      ).toBeGreaterThan(4)
+    } else {
+      const track = (geo.ul!.width - 32) / 2
+      expect(
+        geo.sepLi!.width - track,
+        'hover 背景盒应比本格轨道宽（底色外溢、分隔线内缩）'
+      ).toBeGreaterThan(4)
+    }
   })
 }

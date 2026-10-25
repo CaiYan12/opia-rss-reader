@@ -62,6 +62,8 @@
  * 端口：静态服务固定 **4196**（避开 playwright.config.ts 的 4173，二者可同时存在、互不抢）。
  * 退出码：0 = 5 张图已生成且 RM 证据全部成立；1 = 有断言不成立或（--verify 下）与磁盘不一致；
  *         2 = 环境/前置条件缺失。
+ * 归档比对口径：4 张非 RM 档逐字节；RM 档字节不等时回退「有界像素等价」（RM_NOISE 容差，
+ * 见常量注释——2026-10-24 事件：图版 1px 装饰边 AA 存在环境级双变体翻转）。
  */
 
 import { createServer } from 'node:http'
@@ -424,19 +426,32 @@ if (VERIFY_ONLY) console.log('（--verify：不写盘，只与 docs/ 现有归�
 
 const rows = []
 let allMatch = true
+// RM 档光栅噪声容差（2026-10-24 事件）：RM 阅读页归档在两次启动间出现 9px/最大通道差 9 的
+// 双变体翻转，全部落在图版 plate-1/plate-2 的 1px 装饰边右缘 3px 竖条内（x963-965）；
+// 同批次非 RM 含图版归档逐字节一致、守卫锁死阅读页规则零改动 ⇒ 判定为 GPU 光栅化噪声
+// 而非规则变化。字节比对失败时回退有界像素等价：差异必须给数，超容差仍判不一致。
+const RM_NOISE = { maxPixels: 64, maxChannel: 16 }
 for (const shot of SHOTS) {
   const fresh = results.get(shot.file)
   const hash = sha256(fresh)
   const target = join(ARCHIVE_DIR, shot.file)
   const onDisk = existsSync(target) ? readFileSync(target) : null
   const onDiskHash = onDisk ? sha256(onDisk) : '(缺失)'
-  const same = onDisk !== null && Buffer.compare(onDisk, fresh) === 0
+  let same = onDisk !== null && Buffer.compare(onDisk, fresh) === 0
+  let noiseNote = ''
+  if (!same && onDisk && shot.rm) {
+    const d = pixelDiff(decodePng(onDisk), decodePng(fresh))
+    if (!d.sizeMismatch && d.diffPixels <= RM_NOISE.maxPixels && d.maxChannelDelta <= RM_NOISE.maxChannel) {
+      same = true
+      noiseNote = `（字节不等，有界像素等价回退通过：diff=${d.diffPixels}px / maxΔ=${d.maxChannelDelta}，容差 ${RM_NOISE.maxPixels}px / Δ${RM_NOISE.maxChannel}）`
+    }
+  }
   if (!VERIFY_ONLY) {
     mkdirSync(ARCHIVE_DIR, { recursive: true })
     writeFileSync(target, fresh)
   } else if (!same) allMatch = false
   rows.push({ file: shot.file, hash, onDiskHash, same, rm: !!shot.rm, bytes: fresh.length })
-  console.log(`${hash}  ${shot.rm ? '[RM]' : '    '} ${shot.file}`)
+  console.log(`${hash}  ${shot.rm ? '[RM]' : '    '} ${shot.file}${noiseNote}`)
 }
 console.log(`\n落盘目录：${ARCHIVE_DIR}${VERIFY_ONLY ? '（--verify 未写入）' : ''}`)
 

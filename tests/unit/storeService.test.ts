@@ -344,11 +344,20 @@ describe('StoreService.prune', () => {
   })
 
   it('cutoff 为严格小于比较：不旧于 cutoff 的记录保留', () => {
-    const now = new Date().toISOString()
-    seedHistory({ h: { readAt: now, favorite: false } })
-    seedCache({ c: now })
-    store.prune(0)
-    expect(getHistory().h).toBeTruthy()
+    // 毫秒竞态（2026-10-25 CI 取证）：now 取样与 prune 内 Date.now() 跨过毫秒刻度时
+    // t < cutoff 偶发成立、记录被误删。假时钟冻结两者到同一时刻，t == cutoff 精确成立——
+    // 这正是「严格小于才删」语义要验的边界。
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-15T08:00:00Z'))
+    try {
+      const now = new Date().toISOString()
+      seedHistory({ h: { readAt: now, favorite: false } })
+      seedCache({ c: now })
+      store.prune(0)
+      expect(getHistory().h).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

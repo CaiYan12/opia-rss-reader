@@ -1284,7 +1284,7 @@ test('90 年代报刊式条目版式（#28）：方角徽章、2em 缩进、宋�
   }
 })
 
-test('90 年代报刊式框线导读（#29）：真实「导读」小标、上下框线、单列、链接可点、焦点环可见', async ({
+test('90 年代报刊式框线导读（#29）：真实「导读」小标、上下框线、两列、链接可点、焦点环可见', async ({
   page
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
@@ -1338,16 +1338,18 @@ test('90 年代报刊式框线导读（#29）：真实「导读」小标、上�
   expect(geo.labelBottom, '「导读」应在概览列表之上').toBeLessThanOrEqual(geo.ulTop + 1)
   expect(geo.ulBottom, '下框线应在概览列表之下').toBeLessThan(geo.boxBottom)
 
-  // 单列：第二项在第一项下方且左缘对齐
-  const rows = await box.evaluate((el) =>
-    [...el.querySelectorAll('.juya-overview li')].slice(0, 2).map((n) => {
+  // 两列（2026-10-25 用户统一指令，随基类）：第二项与第一项同行、居右格
+  const rows = await box.evaluate((el) => ({
+    lis: [...el.querySelectorAll('.juya-overview li')].slice(0, 2).map((n) => {
       const r = n.getBoundingClientRect()
       return { left: r.left, top: r.top, bottom: r.bottom }
-    })
-  )
-  expect(rows.length, '概览至少两项').toBeGreaterThanOrEqual(2)
-  expect(Math.abs(rows[1].left - rows[0].left), '概览为单列，左缘对齐').toBeLessThanOrEqual(1)
-  expect(rows[1].top, '第二项应在第一项下方').toBeGreaterThanOrEqual(rows[0].bottom - 1)
+    }),
+    columns: getComputedStyle(el.querySelector('.juya-overview')!).gridTemplateColumns
+  }))
+  expect(rows.lis.length, '概览至少两项').toBeGreaterThanOrEqual(2)
+  expect(rows.columns.split(' ').length, '概览应为两列轨道').toBe(2)
+  expect(Math.abs(rows.lis[1].top - rows.lis[0].top), '概览两列：第二项应与第一项同行').toBeLessThanOrEqual(1)
+  expect(rows.lis[1].left, '概览两列：第二项应在右侧格').toBeGreaterThan(rows.lis[0].left)
 
   // 焦点环：键盘 Tab 到概览链接，2px solid 主题焦点色（行为不变）
   const link = box.locator('.juya-overview a').first()

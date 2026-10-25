@@ -132,7 +132,7 @@
 
 ## synthwave（蒸汽梦核式）
 
-需求文档：`docs/SPEC-2026-10-22-synthwave.md`（#34）。本轮风格实现、网格改造、边界回归与本机 A/B 已完成，实施验收基线 `77f245d`。2026-10-22 按用户要求封稿，以 PR 合并 main、同步远端并关闭本轮分支；集成记录以 GitHub PR 为准。未建 synthwave 截图归档基线（已决定不扩大维护范围），不进行发行包验收或新版本发行。
+需求文档：[SPEC #34](https://github.com/CaiYan12/opia-rss-reader/issues/34)（本地副本已清理）。本轮风格实现、网格改造、边界回归与本机 A/B 已完成，实施验收基线 `77f245d`。2026-10-22 按用户要求封稿，以 PR 合并 main、同步远端并关闭本轮分支；集成记录以 GitHub PR 为准。未建 synthwave 截图归档基线（已决定不扩大维护范围），不进行发行包验收或新版本发行。
 
 **范围与提交**
 
@@ -191,3 +191,38 @@
 - 最后微调只在既有下沉首字规则新增 `font-weight: 700`，保留栏目首条导语范围，周围文字仍为 400。六个 headless 样本覆盖亮暗 × 中文／英文／引号开头，无横向溢出；没有启动可见应用或前台宏。
 - 加粗后已重新实跑 `npm run verify` exit 0：23 个单测文件／574 项、158 项 E2E；既有 nocturne 归档先写入再验证，五张全部逐字节一致。原始日志、样本与截图在本机 `out/editorial-dropcap-bold-2026-10-23/`；封版文档更新不重复运行相同验证。
 - 本地封版提交包含该字重与记录，不执行 push、PR、合并 main、tag 或发行；不删除历史分支和证据。
+
+## wabi（侘寂日杂式）
+
+需求：[SPEC #63](https://github.com/CaiYan12/opia-rss-reader/issues/63)（38 条用户故事）；实施票据 #64（阅读页工艺封面与完整视觉形象）、#65（订阅页）、#66（统一验收），均 CLOSED。候选指纹、52 状态矩阵、字体／对比度／隐藏 native 记录与逐条故事映射见[验收报告](WABI-ART-ACCEPTANCE-2026-10-24.md)；本机证据根 `out/wabi-art-implementation-2026-10-24/`（gitignored）。
+
+**范围**：产品修改集中在 wabi 专用 CSS（`juya.css` wabi 段）与 wabi 模板（`wabi.tsx`、`wabi-feed-craft.tsx`、`wabi-reading-craft.tsx`）；共享解析器、通用主题、依赖、IPC 契约与 Mini 未动。订阅页新增订阅页头版（源名称大字 + host + 拓印装饰，头版本身无日期，日期留在卡片）。
+
+**验证（2026-10-24）**：最终 `npm run verify` exit 0——574 Vitest / 190 E2E / Nocturne 对比度 70 文字 + 14 UI / 5 张归档逐字节一致；52 状态几何合成口径全部通过（28 reader 终版重跑 + 24 feed 稳定样本复用）。边界：滚动条 thumb 2 项像素未直接证明（实际滚动槽计算对比亮 3.825、暗 4.749，达标）；隐藏窗口运行不证明 OS 前台焦点。
+
+**封版（2026-10-24）**：用户确认「当前wabi可判定封版」，视觉认可成立；已接受的亮暗阅读／订阅版式作为本轮定稿，后续需求另行立项。（本节先记于 pilot 分支 `1228a9d`，2026-10-25 收尾时随本轮 PR 一并合入 main。）
+
+## 订阅页头版推广（八风格，2026-10-24，SPEC #67）
+
+wabi 引入的订阅页头版（GLOSSARY 已收录该术语，与阅读页「刊头」区分）推广到其余七风格；editorial 以打样（`627c846`）为基线，批量票覆盖 folio/y2k/pop/newsprint90s/synthwave/nocturne。完整 30 条故事映射、逐风格对比度与边界见[验收报告](FEED-MASTHEAD-ACCEPTANCE-2026-10-24.md)；本机证据根 `out/feed-masthead-implementation-2026-10-24/`（ledger、evidence 代表帧、verify 日志）。
+
+**共享预置（#68，SDD 主代理编排 + 子代理实施，2 并发流水）**：host 派生收敛到共享原子层（wabi/editorial 头版组件改引用，本地副本删除，渲染零变化）；订阅页模板工厂新增 `feedScene` 回调透传（newsprint90s 接线前提）；playwright 端口可经 `PLAYWRIGHT_PORT` 覆盖（并行 worktree 隔离，默认 4173 不变）。
+
+**逐风格一档**（形态与对比度详见验收报告）：
+
+- folio（#69 `42c2fda`）：居中信笺刊头，文武线上缘 + 朱菱花押 + 书目信息行；纯 token 零变体覆盖；feed.spec 场景锁形断言更新为「folio 挂头版且其余风格不受影响」。
+- y2k（#70 `8b98cc8`）：像素浮雕 plaque + 铬字渐变（`drop-shadow` 非 text-shadow，`@supports` 实色回退），暗侧霓虹描边；订阅页无新增场景层。
+- pop（#71 `183aaa5`）：蓝沟槽底板 + 品红标题面板 + 奶油 host 面板 + Ben-Day 反转色带；深紫阴影等既有取舍未动。
+- newsprint90s（#72 `4d53421`）：报头与三栏刊头同源（楷体 `--jy-font-masthead`、上 1px 下 4px double），经工厂回调接线，空态同位挂头版；AA 按「纹理全叠最不利行」实算。
+- synthwave（#73 `b0d8b56`）：nameplate 与落日/透视网格**共存**（grilling 裁决）；fragment 中 Scene 在 nameplate 之前（反序会位移 sticky 场景流位、破坏 #40/#45 锁定）；小字走 `--jy-text`（muted 对最不利合成底不过小字门槛）。
+- nocturne（#74 `5c9f7b5`）：亮侧冻结解除**仅限头版**（diff 三处均在头版块，4 张阅读页归档逐字节一致佐证零漂移）；无装饰层故分层硬约束由结构满足；暗侧订阅页归档按设计重生成（写入模式，`--verify` exit 0）。
+
+**验证**：每票定向 E2E 全绿（46–48 过/次，含亮暗×宽窄 120% 几何、空态、长源名换行、版心对齐、装饰 aria 语义）；每票合并后集成态抽检（typecheck + build + 头版/feed 定向套件）全绿。最终全量门与双轴评审见验收报告。
+
+### 八风格头版 V2 丰富化 + 概览两列统一（2026-10-25 用户认可，SPEC #67 收口）
+
+- 用户对 V1 头版反馈「过于简陋干练、不足以体现风格」（点名 y2k 缺窗口标题/关闭钮，参考其阅读页头图）；经两轮 grilling 定 V2 清单（分层施力：y2k/nocturne/editorial/newsprint90s 大补、folio/synthwave 适度、pop 两小件、wabi 不动；参照系=各风格阅读页刊头词汇；信息结构与动效静帧纪律不变）。工票 #76–#83（SDD 串行流水线，并发上限实测 1）。
+- 逐风格签名件：y2k 系统窗口标题栏（真实源名 `.EXE — 运行中` + `_ □ ×` 三钮，`214b065`）；nocturne 极光带静帧（RM 钉定 0.81/0.76、z-index -1、零新增色相，`dc00fdf`）；editorial L 形裁切角标 + host 题注化（`0ece7fc`）；newsprint90s 三栏报头（中栏 `fit-content(66%)` 原型实证裁定，`293482e`）；folio 印章水印 + 朱丝栏（`38997e6`）；synthwave 卡内扫描线 + 霓虹辉光细线（`5a6762f`）；pop 印刷硬影 + 爆炸星（`b3ab889`）；wabi 零改动（本批评审基准）。全部零 animation/transition、共享层零改动。
+- 双轴评审 Spec/Standards 双 PASS 零 P0/P1；最终门 verify exit 0（612 单测 / 263 E2E / 归档一致——RM 档新增有界像素等价回退容光栅噪声，实测 9px/Δ9）。验收报告：[FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md](FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md)；证据根 `out/feed-masthead-v2-implementation-2026-10-24/`。
+- 追加固：用户真机观察「wabi/folio 概览一行两个、其他一行一个」→ 基类 `.juya-overview` 统一 grid 两列 + ≤640 单列回落（`773d06b`，verify exit 0）；nocturne 封版例外唯一授权改动 = 暗侧发丝线挂行界条目 `nth-child(2n+3)`（单列回落恢复原语义，线值零变化）；newsprint「保持单列」守卫翻转为两列不变量。
+- 用户于 2026-10-25 真机复看后明确「全认可」（覆盖 V1 推广、V2 丰富化与概览两列统一），SPEC #67 关闭。本地收口不含 push / PR / 合并 main / tag / 发行；后续需求另行立项。

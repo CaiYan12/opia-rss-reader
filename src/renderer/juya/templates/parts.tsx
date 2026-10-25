@@ -64,7 +64,7 @@ export function feedFieldGates(fields: LayoutConfig['fields'], mode: FeedItemMod
  *  入场 stagger、空态文案都在这里；各风格只注入 renderItem 决定卡片内部排布。
  *  显示字段门控由本骨架按模式计算后传给 renderItem。
  *  scene：可选场景节点，渲染在 .juya-root 内、.juya-feed 之前（z-index 0 固定层在内容之下）。
- *  不传时输出与接线前逐字一致——其余七个风格的调用点不传。 */
+ *  不传时输出与接线前逐字一致——未接线的风格调用点不传（八风格全部已接线）。 */
 export function FeedShell({
   articles,
   variantId,

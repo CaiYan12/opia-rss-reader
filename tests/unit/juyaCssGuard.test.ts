@@ -1828,7 +1828,10 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
 
   const INDEX_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index {"
   const ROW_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li {"
-  const SEP_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after {"
+  // 2026-10-25 概览统一两列适配：分隔线选择器从 li + li 改为行首条目（两列）/除首条外（≤640 单列）
+  const SEP_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after {"
+  const SEP_RULE_NARROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(n + 2)::after {"
   const HOVER_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover {"
 
   it('① 序号微光的作用域收窄到概览条目；条目标题序号徽章的既有规则零改动（反证）', () => {
@@ -1873,15 +1876,20 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
     expect(glow, 'accent 色值取自 token，不得硬编码 hex').not.toMatch(/#6e7bff/i)
   })
 
-  it('③ 条目间发丝线：绝对定位落在既有 6px gap 内（零占位、无 border 叠加）、alpha 明显低于 #6 栏目线决策值 0.22', () => {
+  it('③ 条目间发丝线：绝对定位落在既有 6px 行距内（零占位、无 border 叠加）、alpha 明显低于 #6 栏目线决策值 0.22', () => {
     const sep = ruleOf(SEP_RULE)
     expect(sep, '概览条目分隔线规则应存在').toBeTruthy()
-    expect(sep, '基层 .juya-overview 是 flex column，须用零占位绝对定位').toContain('position: absolute')
-    expect(sep, '线落在 gap 正中（-(6px/2) - 1px/2）').toMatch(/top:\s*-3\.5px/)
-    expect(sep, '不得用 border 直接叠在 flex gap 上（线上下各半格 → 双倍间距错觉）').not.toMatch(
+    expect(sep, '须用零占位绝对定位').toContain('position: absolute')
+    expect(sep, '线落在行距正中（-(6px/2) - 1px/2）').toMatch(/top:\s*-3\.5px/)
+    expect(sep, '不得用 border 直接叠在行距上（线上下各半格 → 双倍间距错觉）').not.toMatch(
       /border-(top|bottom)/
     )
-    // 边缘用相邻兄弟：首条无上线、无末条下线；不用 :first-child/:last-child 兜（flex 重排下会漏）
+    // 单列回落规则与宽屏规则同体（≤640 基类回落单列后恢复逐条上线语义）
+    const narrow = ruleOf(SEP_RULE_NARROW)
+    expect(narrow, '≤640 单列回落分隔线规则应存在').toBeTruthy()
+    const flat = (r: string): string => r.slice(r.indexOf('{')).replace(/\s+/g, ' ')
+    expect(flat(narrow), '回落规则与宽屏规则同一套线值（仅选择器不同）').toBe(flat(sep))
+    // 首条无上线、无末条下线；不用 :first-child/:last-child 兜
     expect(css).not.toMatch(/jynoct[^\n{}]*\.juya-overview[^\n{}]*:(first|last)-child/)
     // 极淡：抠 alpha 实值。上界两条——①本仓 --jy-border 档 0.08（超过就不叫极淡）；
     // ②#6 栏目线的决策值 0.22（两张票的线值不得互相打架）
@@ -3365,6 +3373,14 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     //  · ::backdrop = 暗色半透明遮罩 rgba(10,10,12,0.82)（--jy-bg 的 82% alpha 字面）；
     //    同批的 `.jynoct-lightbox`（面板底 var(--jy-bg)/描边 var(--jy-border)）与
     //    `.jynoct-lightbox img`（filter/object-fit/几何）全走 token 或无字面色值，不入表。
+    // #77 头版极光带静帧（2026-10-24）再新增四条，故 20 → 24 条：
+    //  · .jynoct .jynoct-feed-masthead = 底边渐变发丝线（青白 .22 → 靛蓝 .40 → transparent）；
+    //  · ::before / ::after = 极光带静帧两层（青白亮脊 / 青蓝幕帘 / 靛蓝底纹 / 品红反相幕帘）；
+    //  · .jynoct .jynoct-feed-masthead h1 = 双层冷辉光静帧（accent 靛蓝 .28/.12）。
+    //    同批新增的共用定位/mask 规则不在表内（mask 停靠点用 black 关键字，无字面色）；
+    //    全部为无变体前缀的共享形态（签名件亮暗两变体同值），故亮侧反证清单不变。
+    // 概览统一两列（2026-10-25 用户指令）：分隔线选择器 li + li 改行首条目 nth-child(2n+3)，
+    // 并新增 ≤640 单列回落 nth-child(n+2)（与宽屏同体），故 24 → 25 条。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
@@ -3381,11 +3397,16 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       '.jynoct .juya-feed-item:hover',
       "[data-juya-variant='nocturne-dark'].jynoct .juya-issue img",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
-      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(n + 2)::after",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
-      "[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop"
+      "[data-juya-variant='nocturne-dark'].jynoct-lightbox::backdrop",
+      '.jynoct .jynoct-feed-masthead',
+      '.jynoct .jynoct-feed-masthead::before',
+      '.jynoct .jynoct-feed-masthead::after',
+      '.jynoct .jynoct-feed-masthead h1'
     ])
 
     // 反证（范围闸门）：段内亮侧作用域的字面色规则恰好是既有两条；新增亮侧规则会撞红本断言
@@ -3710,7 +3731,8 @@ describe('nocturne 右边缘对齐记号守卫（2026-10-20，#16 / SPEC 批次 
   const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
   const TOKEN_RULE = `${DARK} .juya-overview {`
   const ROW_RULE = `${DARK} .juya-overview li {`
-  const SEP_RULE = `${DARK} .juya-overview li + li::after {`
+  // 2026-10-25 概览统一两列适配：分隔线选择器改行首条目（宽屏两列）；单列回落见 ③'
+  const SEP_RULE = `${DARK} .juya-overview li:nth-child(2n + 3)::after {`
   const ENTRY_RULE = `${DARK} .juya-entry {`
   const body = (rule: string): string => rule.slice(rule.indexOf('{') + 1, rule.lastIndexOf('}'))
 
@@ -3932,7 +3954,7 @@ describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20
   const HOVER_ROW =
     "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover"
   const SEP_ROW =
-    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after"
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after"
   const bodyOf = (rule: string): string => rule.match(/\{([^}]*)\}/)?.[1] ?? ''
   const propsOf = (rule: string): string[] =>
     bodyOf(rule)
@@ -4415,12 +4437,14 @@ describe('newsprint90s 框线导读守卫（#29：概览上下框线 / 单列 / 
     expect(decl(label, 'display'), '小标需自成一行且可被定位').toBe('inline-block')
   })
 
-  it('概览保持单列：基类 flex column 不变，newsprint 段不改成多列/网格', () => {
+  it('概览随基类两列（2026-10-25 用户统一指令）：基类 grid 两列 + ≤640 单列回落，newsprint 段不另写列规则', () => {
     const base = css.match(/(?:^|\n)\.juya-overview \{[^}]*\}/)?.[0] ?? ''
-    expect(decl(base, 'display')).toBe('flex')
-    expect(decl(base, 'flex-direction')).toBe('column')
+    expect(decl(base, 'display')).toBe('grid')
+    expect(decl(base, 'grid-template-columns')).toBe('repeat(2, minmax(0, 1fr))')
+    const narrow = css.match(/@media \(max-width: 640px\) \{[^@]*?\.juya-overview \{[^}]*\}/)?.[0] ?? ''
+    expect(decl(narrow, 'grid-template-columns'), '窄窗回落单列').toBe('minmax(0, 1fr)')
     const code = newsSection().replace(/\/\*[\s\S]*?\*\//g, '')
-    expect(code, 'newsprint 段不得把概览改成多列或网格').not.toMatch(
+    expect(code, 'newsprint 段不得把概览改成多列或网格（随基类即可）').not.toMatch(
       /\.jynews-overview[^{]*\{[^}]*(?:column-count|grid-template-columns)/
     )
   })
@@ -5356,5 +5380,986 @@ describe('synthwave 暗侧调色板守卫（2026-10-22，#34 review）', () => {
         4.5
       )
     }
+  })
+})
+
+describe('nocturne 订阅页头版极光带守卫（2026-10-24，#77：阅读页签名件极光带静帧搬入）', () => {
+  // #77 把阅读页刊头极光带以「静帧」搬进订阅页头版：容器双伪元素 + RM 钉定透明度
+  // （前层 0.81 / 后层 0.76）、底边升级为渐变发丝线、h1 补双层冷辉光静帧。
+  // 本组锁**结构与静帧纪律**（观感由 tests/e2e/nocturne-feed-masthead.spec.ts 截图人眼判定）。
+  // 核心不变量与阅读页极光组同源：极光 z-index 必须 **-1** —— CSS 2.1 附录 E 中
+  // z-index:0 的定位元素绘于第 6 步，而非定位的正文文本（kicker/h1/domain）在第 5 步，
+  // z-index:0 的极光会盖在文字之上、半透明 + blur 洗淡字形（仓库已踩过的坑）。
+  // 头版与阅读页的结构差异：头版容器没有现成的堆叠上下文祖先（.juya-root 无 position /
+  // z-index），故容器自身 position: relative + z-index: 0 建立上下文给 -1 当「地板」——
+  // 否则 -1 落到更外层上下文的第 2 步，被 .juya-root 的不透明 --jy-bg 背景（同上下文
+  // 第 3 步）整个盖掉，极光不可见。上下文建立后：容器自身背景（含发丝线）第 1 步、
+  // 极光第 2 步、头版文字第 3/5 步，可读性由结构保证。
+  // 亮暗两变体共享：全部新规则都是无变体前缀的 `.jynoct …` 形态（签名件双变体同值）。
+
+  const PREFIX = '.jynoct .jynoct-feed-masthead'
+  const beforeSel = `${PREFIX}::before`
+  const afterSel = `${PREFIX}::after`
+
+  /** 精确选择器取规则（剥注释保持位号）：分组头按 ',' 拆开精确匹配，不能用「行首锚定 +
+   *  首次匹配」——共用规则的分组头第二行正是 `… ::after {`，会误取（阅读页极光组同款教训）。 */
+  const rules = (): { selectors: string[]; body: string }[] => {
+    const masked = css.replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    const out: { selectors: string[]; body: string }[] = []
+    for (let i = 0; i < masked.length; i++) {
+      if (masked[i] !== '{') continue
+      let j = i
+      while (j > 0 && !'{};'.includes(masked[j - 1])) j--
+      const head = masked.slice(j, i).trim()
+      let depth = 0
+      let end = i
+      for (let k = i; k < masked.length; k++) {
+        if (masked[k] === '{') depth++
+        else if (masked[k] === '}') {
+          depth--
+          if (depth === 0) {
+            end = k
+            break
+          }
+        }
+      }
+      out.push({
+        selectors: head.split(',').map((s) => s.trim()).filter(Boolean),
+        body: css.slice(i, end + 1)
+      })
+    }
+    return out
+  }
+  /** 精确匹配「无 @ 前缀的规则、选择器列表恰为 sels」的那条（顺序无关，避免误取分组规则） */
+  const ruleBy = (...sels: string[]): string => {
+    const want = [...sels].sort().join(' || ')
+    const hit = rules().find(
+      (r) =>
+        r.selectors.length === sels.length &&
+        !r.selectors.some((s) => s.startsWith('@')) &&
+        [...r.selectors].sort().join(' || ') === want
+    )
+    return hit?.body ?? ''
+  }
+  const beforeRule = (): string => ruleBy(beforeSel)
+  const afterRule = (): string => ruleBy(afterSel)
+  /** 两条伪元素共用的定位/mask 规则（分组选择器：::before + ::after） */
+  const sharedRule = (): string => ruleBy(beforeSel, afterSel)
+  const containerRule = (): string => ruleBy(PREFIX)
+  const h1Rule = (): string => ruleBy(`${PREFIX} h1`)
+  /** 规则体剥注释：判定「是否真的声明了某属性 / 某字面色」必须剥注释，
+   *  否则注释里**提到**的色值会被误判成声明里的色值（阅读页极光组 ⑨ 同款教训）。 */
+  const bare = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, ' ')
+
+  it('① 极光带存在且为独立装饰层：双伪元素 + 共用定位/mask 规则 + 容器建立堆叠上下文', () => {
+    expect(beforeRule(), '极光前层规则应存在').toBeTruthy()
+    expect(afterRule(), '极光后层规则应存在').toBeTruthy()
+    const shared = sharedRule()
+    expect(shared, '双伪元素应有共用的定位/mask 规则').toBeTruthy()
+    expect(shared, '装饰层须显式声明 content').toContain("content: ''")
+    expect(shared, '装饰层须 absolute 定位').toMatch(/position:\s*absolute/)
+    expect(shared, '装饰层绝不可截获点击').toMatch(/pointer-events:\s*none/)
+    const container = containerRule()
+    expect(container, '头版容器规则应存在').toBeTruthy()
+    expect(container, '容器须为极光提供包含块（position: relative）').toMatch(
+      /position:\s*relative/
+    )
+    expect(
+      bare(container),
+      '容器须自建堆叠上下文（z-index: 0 是极光 -1 的地板；没有它 -1 落回外层、被 --jy-bg 背景盖没）'
+    ).toMatch(/(?:^|[;{\s])z-index:\s*0\s*[;}]/)
+  })
+
+  it('② 分层不变量：极光 z-index 显式 -1（绝不为 0/正数），各层不得覆写', () => {
+    // 核心断言（论证见组头注释）：0 或正数都会把极光画到文字之上、洗淡字形。
+    const z = decl(bare(sharedRule()), 'z-index')
+    expect(z, '极光必须显式声明 z-index').toBe('-1')
+    for (const [name, rule] of [
+      ['前层', beforeRule()],
+      ['后层', afterRule()]
+    ] as const) {
+      expect(rule, `${name}不得覆写共用规则的 z-index`).not.toMatch(/z-index\s*:/)
+    }
+  })
+
+  it('③ 静帧纪律：全部新规则零 animation/transition，且 nocturne 段关键帧集合不增', () => {
+    for (const [name, rule] of [
+      ['共用', sharedRule()],
+      ['前层', beforeRule()],
+      ['后层', afterRule()],
+      ['容器', containerRule()],
+      ['h1', h1Rule()]
+    ] as const) {
+      expect(rule, `${name} 规则应存在（空转绿防护）`).toBeTruthy()
+      expect(
+        bare(rule),
+        `${name} 不得新增动效（V2 静帧纪律：签名件取阅读页动画的静帧值，不搬动画）`
+      ).not.toMatch(/(?:^|[;{\s])(?:animation|transition)\s*:/)
+    }
+    const kfs = [...noctSection().matchAll(/@keyframes ([\w-]+) \{/g)].map((m) => m[1]).sort()
+    expect(kfs, 'nocturne 段关键帧集合（头版静帧不得新增关键帧）').toEqual([
+      'jy-noct-aurora-far',
+      'jy-noct-aurora-near',
+      'jy-noct-glow',
+      'jy-noct-lightbox-in'
+    ])
+  })
+
+  it('④ 静帧透明度 = 阅读页 RM 钉定值（前 0.81 / 后 0.76），取值单一来源不得漂移', () => {
+    // 阅读页两层动画区间（0.62↔1 / 1↔0.52）在 reduced-motion 下显式钉定的中间档，
+    // 静帧直接取这两个值（票面口径），不写关键帧。
+    expect(Number.parseFloat(decl(bare(beforeRule()), 'opacity')), '前层静帧 opacity').toBe(0.81)
+    expect(Number.parseFloat(decl(bare(afterRule()), 'opacity')), '后层静帧 opacity').toBe(0.76)
+  })
+
+  it('⑤ 色相集合（零新增色相）：极光两层 + 底边发丝线恰好四色，h1 辉光单色 accent 靛蓝', () => {
+    const channels = [...(bare(beforeRule()) + bare(afterRule()) + bare(containerRule())).matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map(
+      (m) => `${m[1]},${m[2]},${m[3]}`
+    )
+    expect(
+      [...new Set(channels)].sort(),
+      '头版签名件的色相集合必须恰好是既有极光四色（新增色相即撞红）'
+    ).toEqual(['110,123,255', '200,90,180', '214,236,255', '90,160,255'].sort())
+    const glow = [...bare(h1Rule()).matchAll(/rgba\((\d+),\s*(\d+),\s*(\d+)/g)].map(
+      (m) => `${m[1]},${m[2]},${m[3]}`
+    )
+    expect([...new Set(glow)], 'h1 辉光须是单色 accent 靛蓝（不得混入青蓝/品红等极光色相）').toEqual(
+      ['110,123,255']
+    )
+  })
+
+  it('⑥ 两端渐隐 mask + 零横向溢出：mask 双写、black 关键字停靠，left/right 严格 0', () => {
+    const shared = sharedRule()
+    expect(shared, '须有 -webkit- 前缀 mask（Chromium 前缀写法并存）').toMatch(
+      /-webkit-mask-image:\s*linear-gradient\(90deg,\s*transparent 0%,\s*black 16%,\s*black 84%,\s*transparent 100%\)/
+    )
+    expect(shared, '须有标准 mask-image').toMatch(
+      /[^-]mask-image:\s*linear-gradient\(90deg,\s*transparent 0%,\s*black 16%,\s*black 84%,\s*transparent 100%\)/
+    )
+    // black 关键字写法 ⇒ 共用规则无字面色（不进收口组②的构成色登记表，同阅读页口径）
+    expect(bare(shared), '共用规则不得用字面色值').not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/)
+    for (const [name, rule] of [
+      ['前层', beforeRule()],
+      ['后层', afterRule()]
+    ] as const) {
+      expect(decl(bare(rule), 'left'), `${name} 不得覆写 left（由共用规则给 0）`).toBe('')
+      expect(decl(bare(rule), 'right'), `${name} 不得覆写 right（由共用规则给 0）`).toBe('')
+      expect(rule, `${name}不得引入 transform: translateX 之类的横向位移`).not.toMatch(
+        /translate[XY]?\(/
+      )
+    }
+    expect(decl(bare(shared), 'left'), '共用 left 应为 0（收在头版内容盒内，零横向溢出）').toBe('0')
+    expect(decl(bare(shared), 'right'), '共用 right 应为 0').toBe('0')
+  })
+
+  it('⑦ 底边渐变发丝线：边框本体透明 + 背景层画进 1px 边框条（阅读页栏目条 h2 同一技法）', () => {
+    const container = bare(containerRule())
+    expect(decl(container, 'border-bottom'), '底边框本体透明').toBe('1px solid transparent')
+    expect(decl(container, 'background-size'), '渐变只画 1px 高（不会在内容后铺色）').toBe('100% 1px')
+    expect(decl(container, 'background-position')).toBe('left bottom')
+    expect(decl(container, 'background-origin')).toBe('border-box')
+    expect(decl(container, 'background-clip')).toBe('border-box')
+    const grad = decl(container, 'background-image').replace(/\s+/g, ' ')
+    expect(grad, '青白起点 0.22（与阅读页栏目条逐值一致）').toContain('rgba(214, 236, 255, 0.22) 0%')
+    expect(grad, '靛蓝中段 0.40').toContain('rgba(110, 123, 255, 0.4) 42%')
+    expect(grad, '右端淡出').toContain('transparent 100%')
+  })
+
+  it('⑧ 纵深与不对称照搬阅读页：前层 blur 4 < 后层 blur 13，前层弧心居中、后层偏心', () => {
+    const blurOf = (rule: string): number =>
+      Number.parseFloat(rule.match(/blur\(([\d.]+)px\)/)?.[1] ?? 'NaN')
+    const near = blurOf(beforeRule())
+    const far = blurOf(afterRule())
+    expect(near, '前层 blur 可读').not.toBeNaN()
+    expect(far, '后层 blur 可读').not.toBeNaN()
+    expect(far, '后层应比前层更模糊（更远）').toBeGreaterThan(near)
+    const at = (rule: string): string =>
+      rule.match(/radial-gradient\(\s*[\d.]+%\s+[\d.]+%\s+at\s+([\d.]+%)\s+([\d.]+%)/)?.[0] ?? ''
+    expect(at(beforeRule()), '前层弧心应水平居中（50%）').toContain('at 50%')
+    expect(at(afterRule()), '后层弧心应偏心（非 50%），制造不对称纵深').toBeTruthy()
+    expect(at(afterRule()), '后层弧心不得也是居中（会让两层读作同心圆环）').not.toContain('at 50%')
+  })
+
+  it('⑨ h1 双层冷辉光静帧：filter: drop-shadow 双层（18px/.28 + 40px/.12），零 text-shadow', () => {
+    const h1 = bare(h1Rule())
+    expect(h1, '头版 h1 规则应存在').toBeTruthy()
+    expect(h1, '辉光只能写成 filter: drop-shadow（background-clip:text 陷阱）').toMatch(
+      /filter:\s*drop-shadow\(/
+    )
+    expect(h1, '渐变字不得叠 text-shadow（Chromium 绘制顺序会盖住填充）').not.toMatch(
+      /text-shadow\s*:/
+    )
+    const layers = [...h1.matchAll(/drop-shadow\(([^)]+)\)/g)].map((m) => m[1])
+    expect(layers.length, '双层辉光（近层定轮廓 + 远层铺晕）').toBe(2)
+    expect(layers[0], '近层 18px / 0.28（阅读页呼吸的既有静态基准档）').toContain('18px')
+    expect(layers[0]).toContain('0.28')
+    expect(layers[1], '远层 40px / 0.12').toContain('40px')
+    expect(layers[1]).toContain('0.12')
+  })
+})
+
+describe('y2k 订阅页头版窗口标题栏守卫（2026-10-24，#76：真实 DOM 标题栏与三钮）', () => {
+  // #76 把订阅页头版升级成拟真系统窗口：顶部标题栏以真实订阅源名为窗口标题
+  // （`◆ <源名>.EXE — 运行中`，与阅读页伪标题栏同语法），右端 _ □ × 三钮。
+  // 与阅读页的本质差异：标题栏必须是**真实 DOM 元素**（伪元素 content 无法承载逐订阅源
+  // 动态源名），整体 aria-hidden 对辅助技术静默（aria 语义由 e2e 断言，本组锁 CSS 面）。
+  // 不变量：× 与阅读页关闭钮同款（18×16 / 1px 边 / 12px 700 / on-accent 底 accent 色），
+  // _ □ 呈 muted 未激活态；零新增字面色（全走既有 token）、零新增 animation/transition；
+  // 不加状态栏。V1 的铬字渐变 h1、2px 浮雕边、inset 高光、硬影、monospace domain 全部保留。
+
+  const barRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar')
+  const titleRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar-title')
+  const btnRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar-btn')
+  const closeRule = (): string => y2kRule('\\.jyy2k-feed-masthead-titlebar-btn-close')
+
+  it('① 标题栏为真实 DOM 容器（非伪元素）：absolute + 不截获交互，窗口标题单行 ellipsis', () => {
+    const bar = barRule()
+    expect(bar, '标题栏容器规则应存在').toBeTruthy()
+    expect(
+      bar,
+      '标题栏不得用 content 伪元素承载（逐订阅源动态源名必须走真实 DOM 文本）'
+    ).not.toMatch(/(?:^|[;{\s])content\s*:/)
+    expect(decl(bar, 'position'), '标题栏 absolute 定位在 plaque 顶部').toBe('absolute')
+    expect(decl(bar, 'pointer-events'), '装饰栏不截获点击').toBe('none')
+    const title = titleRule()
+    expect(title, '窗口标题规则应存在').toBeTruthy()
+    expect(decl(title, 'flex'), '标题为弹性主项，可被三钮压缩').toBe('1 1 auto')
+    expect(decl(title, 'min-width'), 'flex 子项收窄前提（缺它 ellipsis 失效）').toBe('0')
+    expect(decl(title, 'overflow')).toBe('hidden')
+    expect(decl(title, 'white-space')).toBe('nowrap')
+    expect(decl(title, 'text-overflow')).toBe('ellipsis')
+  })
+
+  it('② × 与阅读页关闭钮同款（18×16 / 1px 边 / 12px 700 / on-accent 底 accent 色），_ □ 未激活 muted', () => {
+    const btn = btnRule()
+    const close = closeRule()
+    expect(btn, '三钮基础规则应存在').toBeTruthy()
+    expect(decl(btn, 'width')).toBe('18px')
+    expect(decl(btn, 'height')).toBe('16px')
+    expect(decl(btn, 'font-size')).toBe('12px')
+    expect(decl(btn, 'color'), '未激活钮呈 muted 字色').toBe('var(--jy-muted)')
+    expect(decl(btn, 'background'), '未激活钮无底色（视觉静默）').toBe('')
+    expect(close, '× 钮覆盖规则应存在').toBeTruthy()
+    expect(decl(close, 'font-weight')).toBe('700')
+    expect(decl(close, 'color')).toBe('var(--jy-on-accent)')
+    expect(decl(close, 'background')).toBe('var(--jy-accent)')
+    expect(decl(close, 'border'), '× 与阅读页关闭钮同款 1px 边').toBe('1px solid var(--jy-border)')
+    expect(close, '× 钮零新增字面色（on-accent/accent/border 全走 token）').not.toMatch(
+      /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+    )
+  })
+
+  it('③ 静帧纪律：标题栏全部新规则零 animation/transition；标题 muted 对 plaque 两端 ≥4.5', () => {
+    for (const [name, rule] of [
+      ['容器', barRule()],
+      ['标题', titleRule()],
+      ['三钮', btnRule()],
+      ['×', closeRule()]
+    ] as const) {
+      expect(rule, `${name} 规则应存在（空转绿防护）`).toBeTruthy()
+      expect(rule, `${name} 不得新增动效（V2 静帧纪律）`).not.toMatch(
+        /(?:^|[;{\s])(?:animation|transition)\s*:/
+      )
+    }
+    // muted 窗口标题与 domain 行同 token 同口径：对 plaque 渐变两端（card / lead-bg）实算，
+    // 亮 5.28:1 / 4.87:1、暗 5.53:1 / 5.43:1（小文本 ≥4.5 过线；改 token 即撞红须复核）。
+    for (const variant of ['y2k-light', 'y2k-dark']) {
+      const block = variantBlock(variant)
+      const card = tokenHex(block, '--jy-card')
+      const leadBg = tokenHex(block, '--jy-lead-bg')
+      const muted = tokenHex(block, '--jy-muted')
+      expect(contrast(muted, card), `${variant} 标题 muted 对 card ≥4.5`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(muted, leadBg), `${variant} 标题 muted 对 lead-bg ≥4.5`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('④ 阅读页窗口化刊头不受影响：伪标题栏文案与 AT 静默语法原样保留', () => {
+    const pseudoTitle = y2kRule('\\.juya-masthead::before')
+    expect(pseudoTitle, '阅读页伪标题栏规则应存在').toBeTruthy()
+    expect(pseudoTitle, '阅读页伪标题栏静态文案与空 alt 语法不得改动').toContain(
+      "content: '◆ AI_DAILY.EXE — 运行中' / '';"
+    )
+    const pseudoClose = y2kRule('\\.juya-masthead::after')
+    expect(pseudoClose, '阅读页关闭钮伪元素应存在').toBeTruthy()
+    expect(pseudoClose).toContain("content: '×' / '';")
+  })
+})
+
+describe('editorial 订阅页头版裁切角标与题注化守卫（2026-10-24，#78）', () => {
+  // #78 把阅读页 .juya-issue::before/::after 的 L 形裁切角标（24×24 / 内缩 8px / 1px 发丝）
+  // 以「现值搬运」落进订阅页头版容器，并把 host 行对齐阅读页题注语汇（uppercase + 0.08em，
+  // .juya-plate figcaption 同款）——前置 24px 发丝短线。刻意不搬阅读页栏目序号
+  // （counter(jysec, decimal-leading-zero)）：订阅源无真实序号语义，编号即造假信息，
+  // 本组与 e2e 双面锁「头版零序号」。与 #76 同理：容器 ::before 已被 V1 第二条上缘发丝线
+  // 占用，双角标只能落真实 DOM span（模板 aria-hidden；aria 语义由 e2e 断言，本组锁 CSS 面）。
+  // 不变量：V1 双发丝上缘（border-top 1px + ::before top 3px）与 3px double 收底、
+  // 衬线 h1、kicker accent 全部不动；零新增 animation/transition、零新增字面色
+  // （角标与短线全走 --jy-border 发丝 token，同 nocturne 头版 kicker 收尾线词汇）。
+
+  /** 首条形如 `.jyedit <rest> { … }` 的规则块（行首锚定，同 y2kRule / noctRule 口径） */
+  const editRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jyedit ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  const cornerRule = (): string => editRule('\\.jyedit-feed-masthead-corner')
+  const tlRule = (): string => editRule('\\.jyedit-feed-masthead-corner-tl')
+  const brRule = (): string => editRule('\\.jyedit-feed-masthead-corner-br')
+  const domainRule = (): string => editRule('\\.jyedit-feed-masthead-domain')
+  const domainBeforeRule = (): string => editRule('\\.jyedit-feed-masthead-domain::before')
+  const containerRule = (): string => editRule('\\.jyedit-feed-masthead')
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+  const LITERAL_COLOR = /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+
+  it('① 双角标为真实 DOM（非伪元素承载）：24×24 绝对定位、内缩 8px、L 边走发丝 token、pointer-events none', () => {
+    const corner = cornerRule()
+    expect(corner, '角标共用规则应存在（空转绿防护）').toBeTruthy()
+    expect(
+      corner,
+      '角标不得用 content 伪元素承载（容器 ::before 已被 V1 第二条上缘发丝线占用）'
+    ).not.toMatch(/(?:^|[;{\s])content\s*:/)
+    expect(decl(corner, 'position')).toBe('absolute')
+    expect(decl(corner, 'width')).toBe('24px')
+    expect(decl(corner, 'height')).toBe('24px')
+    expect(decl(corner, 'pointer-events'), '装饰角标不拦截点击与选择').toBe('none')
+    const tl = tlRule()
+    expect(tl, '左上角规则应存在').toBeTruthy()
+    expect(decl(tl, 'top')).toBe('8px')
+    expect(decl(tl, 'left')).toBe('8px')
+    expect(decl(tl, 'border-top'), 'L 上边（阅读页 .juya-issue::before 现值）').toBe(
+      '1px solid var(--jy-border)'
+    )
+    expect(decl(tl, 'border-left')).toBe('1px solid var(--jy-border)')
+    const br = brRule()
+    expect(br, '右下角规则应存在').toBeTruthy()
+    expect(decl(br, 'right')).toBe('8px')
+    expect(decl(br, 'bottom')).toBe('8px')
+    expect(decl(br, 'border-right'), 'L 右边（阅读页 .juya-issue::after 现值）').toBe(
+      '1px solid var(--jy-border)'
+    )
+    expect(decl(br, 'border-bottom')).toBe('1px solid var(--jy-border)')
+    for (const [name, rule] of [
+      ['共用', corner],
+      ['左上', tl],
+      ['右下', br]
+    ] as const) {
+      expect(rule, `${name}角标零新增字面色（全走 --jy-border token）`).not.toMatch(LITERAL_COLOR)
+      expect(rule, `${name}角标零新增动效（V2 静帧纪律）`).not.toMatch(NO_EFFECT)
+    }
+  })
+
+  it('② host 行题注化：24px 发丝短线前置 + 0.08em uppercase，muted 对 bg 两变体 ≥4.5', () => {
+    const domain = domainRule()
+    expect(domain, 'domain 规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(domain, 'display'), 'flex 承载前置短线').toBe('flex')
+    expect(decl(domain, 'align-items')).toBe('center')
+    expect(decl(domain, 'gap')).toBe('8px')
+    expect(decl(domain, 'font-size')).toBe('11px')
+    expect(decl(domain, 'letter-spacing'), '字距对齐阅读页题注语汇 0.08em').toBe('0.08em')
+    expect(decl(domain, 'text-transform')).toBe('uppercase')
+    expect(decl(domain, 'color')).toBe('var(--jy-muted)')
+    const before = domainBeforeRule()
+    expect(before, 'host 前置短线规则应存在').toBeTruthy()
+    expect(decl(before, 'width')).toBe('24px')
+    expect(decl(before, 'height')).toBe('1px')
+    expect(decl(before, 'background')).toBe('var(--jy-border)')
+    expect(decl(before, 'flex'), '短线不被压缩').toBe('none')
+    for (const [name, rule] of [
+      ['host 行', domain],
+      ['短线', before]
+    ] as const) {
+      expect(rule, `${name}零新增字面色`).not.toMatch(LITERAL_COLOR)
+      expect(rule, `${name}零新增动效`).not.toMatch(NO_EFFECT)
+    }
+    // muted 对 bg 实算（题注语义文字 ≥4.5；纸纹合成面口径由既有 editorial 审计组覆盖）
+    for (const variant of ['editorial-light', 'editorial-dark']) {
+      const block = variantBlock(variant)
+      expect(
+        contrast(tokenHex(block, '--jy-muted'), tokenHex(block, '--jy-bg')),
+        `${variant} host muted 对 bg ≥4.5`
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('③ V1 骨架不动：双发丝上缘（含 ::before 第二条 top 3px）与 3px double 收底、衬线 h1、kicker accent', () => {
+    const container = containerRule()
+    expect(container, '头版容器规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(container, 'max-width')).toBe('1040px')
+    expect(decl(container, 'padding')).toBe('44px 24px 18px')
+    expect(decl(container, 'border-top'), '上缘第一条发丝线').toBe('1px solid var(--jy-border)')
+    expect(decl(container, 'border-bottom'), '3px double 收底').toBe('3px double var(--jy-border)')
+    expect(decl(container, 'position')).toBe('relative')
+    const secondHairline = editRule('\\.jyedit-feed-masthead::before')
+    expect(secondHairline, '第二条上缘发丝线规则应存在').toBeTruthy()
+    expect(decl(secondHairline, 'top')).toBe('3px')
+    expect(decl(secondHairline, 'border-top')).toBe('1px solid var(--jy-border)')
+    const h1 = editRule('\\.jyedit-feed-masthead h1')
+    expect(h1, 'h1 规则应存在').toBeTruthy()
+    expect(decl(h1, 'font-family'), '衬线标题族不动').toBe('var(--jy-font-heading)')
+    expect(decl(h1, 'letter-spacing')).toBe('-0.02em')
+    const kicker = editRule('\\.jyedit-feed-masthead-kicker')
+    expect(kicker, 'kicker 规则应存在').toBeTruthy()
+    expect(decl(kicker, 'font-size')).toBe('11px')
+    expect(decl(kicker, 'letter-spacing')).toBe('0.3em')
+    expect(decl(kicker, 'color')).toBe('var(--jy-accent)')
+  })
+
+  it('④ 头版零序号、整段零动效：masthead 段无 counter 体系；阅读页栏目序号原样保留', () => {
+    // masthead 分节（容器规则起点 → 「侘寂日杂式」段头；剥注释保持扫描面干净）
+    const from = css.indexOf('.jyedit .jyedit-feed-masthead')
+    const to = css.indexOf('侘寂日杂式')
+    expect(from, 'masthead 段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    const bare = css.slice(from, to).replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(
+      bare,
+      'masthead 段不得引入 counter 体系（刻意不搬阅读页栏目序号：订阅源无真实序号语义）'
+    ).not.toMatch(/counter(?:-reset|-increment|-set)?\s*:/)
+    expect(bare, 'masthead 段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 反证：阅读页栏目序号（counter jysec）仍在阅读页段，未被本票波及
+    const readingSection = css.slice(css.indexOf('杂志编辑式'), css.indexOf('侘寂日杂式'))
+    expect(readingSection).toContain('decimal-leading-zero')
+  })
+})
+
+describe('newsprint90s 订阅页头版三栏报头守卫（2026-10-24，#79：阅读页三栏报头语汇搬入头版）', () => {
+  // #79 把头版从 V1 居中堆叠改为阅读页同构的三栏报头：左「订阅源」引导词 / 中楷体源名 /
+  // 右 host，align-items end 底对齐；上沿 1px 细线与 4px double 收底保留，无日期入头版。
+  // 设计裁定偏差记录（相对裁定原文 `minmax(0,1fr) auto minmax(0,1fr)`）：阅读页中栏 auto
+  // 依靠期号标题短；头版源名任意长，auto 中栏的 max-content 会把两侧 minmax(0,1fr) 轨道
+  // 挤到 ~0（浏览器原型实测：55 字源名下引导词被压成竖排单字栈、host 与标题末行争位），
+  // 违背票内「长源名在中栏自然折行不破格」。故中栏取 fit-content(66%)——短名时与 auto
+  // 同值（fit-content = min(max-content, 66%)，两侧 1fr 等分，中栏仍正中），长名时给两侧
+  // 各留 ≥17% 轨道，host 在自己轨道内 overflow-wrap 折行，三格框内互不侵犯。
+  // 楷体字距向阅读页报头 38px/6px（≈0.158em）量级看齐：clamp(4px, 0.15em, 6px) 随
+  // clamp(32px,5vw,48px) 实际字号收放，48px 上限钳到与阅读页同量的 6px、32px 下限 4.8px。
+  // 窄窗回落与阅读页刊头同一断点 ≤899px：单列居中堆叠。零新增 animation/transition、
+  // 零新增字面色；三栏化后 V1 的堆叠 margin-top 失去语义，随布局一并移除（margin: 0）。
+
+  /** 首条形如 `.jynews <rest> { … }` 的规则块（行首锚定，同 #28 组内同名局部助手） */
+  const newsRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jynews ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  const containerRule = (): string => newsRule('\\.jynews-feed-masthead')
+  const kickerRule = (): string => newsRule('\\.jynews-feed-masthead-kicker')
+  const h1Rule = (): string => newsRule('\\.jynews-feed-masthead h1')
+  const domainRule = (): string => newsRule('\\.jynews-feed-masthead-domain')
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+  const LITERAL_COLOR = /#[0-9a-fA-F]{3,8}\b|rgba?\(/
+
+  it('① 容器三栏底对齐：minmax(0,1fr) fit-content(66%) minmax(0,1fr) + align-items end；V1 框线与版心两档不动', () => {
+    const container = containerRule()
+    expect(container, '头版容器规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(container, 'display')).toBe('grid')
+    expect(decl(container, 'grid-template-columns'), '中栏 fit-content 上限防两侧轨道被长名挤瘪').toBe(
+      'minmax(0, 1fr) fit-content(66%) minmax(0, 1fr)'
+    )
+    expect(decl(container, 'align-items'), '三信息项底对齐').toBe('end')
+    expect(decl(container, 'column-gap')).toBe('12px')
+    expect(decl(container, 'text-align')).toBe('center')
+    expect(decl(container, 'max-width')).toBe('760px')
+    expect(decl(container, 'padding')).toBe('32px 24px 20px')
+    expect(decl(container, 'border-top'), '上沿 1px 细线（V1 保留）').toBe('1px solid var(--jy-border)')
+    expect(decl(container, 'border-bottom'), '下沿 4px double（V1 保留）').toBe('4px double var(--jy-border)')
+    const wideRule =
+      css.match(/(?:^|\n)\.jynews \.jynews-feed-masthead:has\(\+ \.juya-feed-grid\) \{[^}]*\}/)?.[0] ?? ''
+    expect(wideRule, 'grid 预设加宽规则应存在').toBeTruthy()
+    expect(decl(wideRule, 'max-width')).toBe('1120px')
+    expect(container, '容器零新增字面色').not.toMatch(LITERAL_COLOR)
+    expect(container, '容器零新增动效（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+  })
+
+  it('② 左栏 kicker 靠左、右栏 host 靠右各归其位；host 超出侧轨时在自己轨道内折行', () => {
+    const kicker = kickerRule()
+    expect(kicker, 'kicker 规则应存在').toBeTruthy()
+    expect(decl(kicker, 'justify-self')).toBe('start')
+    expect(decl(kicker, 'text-align')).toBe('left')
+    expect(decl(kicker, 'font-family'), '引导词沿用宋体家具字（同阅读页日期/星期行）').toBe('var(--jy-font-body)')
+    expect(decl(kicker, 'font-size')).toBe('11px')
+    expect(decl(kicker, 'letter-spacing')).toBe('1px')
+    expect(decl(kicker, 'color')).toBe('var(--jy-muted)')
+    const domain = domainRule()
+    expect(domain, 'domain 规则应存在').toBeTruthy()
+    expect(decl(domain, 'justify-self')).toBe('end')
+    expect(decl(domain, 'text-align')).toBe('right')
+    expect(decl(domain, 'overflow-wrap'), 'host 长时在自己轨道内折行，不与标题争位').toBe('anywhere')
+    expect(decl(domain, 'font-family')).toBe('var(--jy-font-body)')
+    expect(decl(domain, 'font-size')).toBe('11px')
+    expect(decl(domain, 'letter-spacing')).toBe('1px')
+    expect(decl(domain, 'color')).toBe('var(--jy-muted)')
+    for (const [name, rule] of [
+      ['kicker', kicker],
+      ['domain', domain]
+    ] as const) {
+      expect(rule, `${name} 零新增字面色`).not.toMatch(LITERAL_COLOR)
+      expect(rule, `${name} 零新增动效`).not.toMatch(NO_EFFECT)
+    }
+    // muted 对 bg 实算（引导词/host 语义文字 ≥4.5；纸纹合成面口径由 #27 旧纸面组覆盖）
+    for (const variant of ['newsprint90s-light', 'newsprint90s-dark']) {
+      const block = variantBlock(variant)
+      expect(
+        contrast(tokenHex(block, '--jy-muted'), tokenHex(block, '--jy-bg')),
+        `${variant} kicker/host muted 对 bg ≥4.5`
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('③ 中栏楷体源名：刊头 token 字族、clamp 字号、字距向阅读页报头 6px 量级看齐、堆叠 margin 移除', () => {
+    const h1 = h1Rule()
+    expect(h1, 'h1 规则应存在').toBeTruthy()
+    expect(decl(h1, 'font-family'), '楷体刊头 token 不动').toBe('var(--jy-font-masthead)')
+    expect(decl(h1, 'font-size')).toBe('clamp(32px, 5vw, 48px)')
+    expect(decl(h1, 'letter-spacing'), '随字号收放（0.15em≈阅读页 38px/6px），上限钳 6px 同量级').toBe(
+      'clamp(4px, 0.15em, 6px)'
+    )
+    expect(decl(h1, 'overflow-wrap'), '长源名自然折行').toBe('anywhere')
+    expect(decl(h1, 'margin'), '三栏化后 V1 堆叠 margin-top 失去语义').toBe('0')
+    expect(decl(h1, 'font-weight')).toBe('700')
+    expect(decl(h1, 'color')).toBe('var(--jy-heading)')
+    expect(decl(h1, 'line-height')).toBe('1.3')
+    expect(h1, 'h1 零新增字面色').not.toMatch(LITERAL_COLOR)
+    expect(h1, 'h1 零新增动效').not.toMatch(NO_EFFECT)
+  })
+
+  it('④ ≤899px 与阅读页刊头同断点回落单列居中堆叠；阅读页三栏报头与段级零动效不被波及', () => {
+    const media = extractBlocks(css, /@media \(max-width: 899px\)/).find((block) =>
+      block.includes('.jynews .jynews-feed-masthead')
+    )
+    expect(media, '头版窄窗回落媒体查询规则应存在').toBeTruthy()
+    expect(decl(media!, 'grid-template-columns'), '回落单列').toBe('minmax(0, 1fr)')
+    expect(decl(media!, 'row-gap')).toBe('4px')
+    const centeredRule = media!.match(/\.jynews \.jynews-feed-masthead-kicker,[\s\S]*?\{[^}]*\}/)?.[0] ?? ''
+    expect(centeredRule, 'kicker/domain 回落居中规则应存在').toBeTruthy()
+    expect(decl(centeredRule, 'justify-self')).toBe('center')
+    expect(decl(centeredRule, 'text-align')).toBe('center')
+    // 反证一：阅读页三栏报头仍是 auto 中栏，未被头版改造波及
+    expect(decl(newsRule('\\.juya-masthead'), 'grid-template-columns')).toBe(
+      'minmax(0, 1fr) auto minmax(0, 1fr)'
+    )
+    // 反证二：头版 masthead 分节（容器规则起点 → 「蒸汽梦核式」段头）零 animation/transition
+    const from = css.indexOf('.jynews .jynews-feed-masthead')
+    const to = css.indexOf('蒸汽梦核式')
+    expect(from, 'masthead 段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    const bare = css.slice(from, to).replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, 'masthead 段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+  })
+})
+
+describe('folio 订阅页头版印章水印与朱丝栏守卫（2026-10-24，#80：阅读页印章与朱丝栏静帧搬入头版）', () => {
+  // #80 把阅读页两件语汇以「现值搬运」落进订阅页头版：印章水印（.juya-issue::after 72×72 SVG
+  // data URI 圆角方框+笔画块、rotate -8deg、opacity 0.12、mix-blend multiply）与朱丝栏
+  // （.juya-issue 两侧 linear-gradient 硬停靠 1px 绯色竖线）。落位裁决：
+  // - 印章走容器 ::after——::before 已被 V1 文武线 2px 朱线占用、::after 空闲，零 DOM 变更；
+  //   content '' 对辅助技术静默（不进朗读树、不进焦点顺序），pointer-events none 不改命中区域。
+  // - 头版是静帧：刻意不搬阅读页 hover 0.24 与 transition 300ms；暗变体取阅读页暗侧现值
+  //   （%23d0714f / opacity 0.1 / mix-blend screen，与亮侧 multiply 不同源）。
+  // - 朱丝栏走容器 background-image，内缩 10px 落在 24px 内衬带里，不与居中文字接触。
+  // 构成色只用阅读页既有值并带注释。不变量：V1 居中排法、文武线、朱菱花押、衬线 h1 不动；
+  // 阅读页印章（含 hover/transition）与朱丝栏原样保留。
+
+  /** 首条形如 `.jyfolio <rest> { … }` 的规则块（行首锚定，同 y2kRule / newsRule 口径） */
+  const folioRule = (rest: string): string =>
+    css.match(new RegExp(`(?:^|\\n)\\.jyfolio ${rest} \\{[^}]*\\}`))?.[0] ?? ''
+
+  /** 首条形如 `[data-juya-variant='folio-dark'].jyfolio <rest> { … }` 的复合变体规则
+   *  （正则本身强制复合形式：变体属性紧贴 .jyfolio，无空格后代） */
+  const folioDarkRule = (rest: string): string =>
+    css.match(
+      new RegExp(`(?:^|\\n)\\[data-juya-variant='folio-dark'\\]\\.jyfolio ${rest} \\{[^}]*\\}`)
+    )?.[0] ?? ''
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+
+  it('① 印章走容器 ::after 静帧搬入：72×72 / rotate -8deg / opacity 0.12 / multiply / pointer-events none，零 hover 零 transition', () => {
+    const seal = folioRule('\\.jyfolio-feed-masthead::after')
+    expect(seal, '印章 ::after 规则应存在（空转绿防护）').toBeTruthy()
+    expect(
+      decl(seal, 'content'),
+      '伪元素承载（::before 被 V1 文武线占用、::after 空闲），空内容对 AT 静默'
+    ).toBe("''")
+    expect(decl(seal, 'position')).toBe('absolute')
+    expect(decl(seal, 'top'), '阅读页现值 top 20px').toBe('20px')
+    expect(decl(seal, 'right'), '头版右侧落位，阅读页现值 right 20px').toBe('20px')
+    expect(decl(seal, 'width'), '阅读页现值 72×72').toBe('72px')
+    expect(decl(seal, 'height')).toBe('72px')
+    expect(decl(seal, 'rotate'), '阅读页现值 rotate -8deg').toBe('-8deg')
+    expect(decl(seal, 'opacity'), '头版静帧取 0.12').toBe('0.12')
+    expect(decl(seal, 'mix-blend-mode'), '亮侧 multiply（阅读页现值）').toBe('multiply')
+    expect(decl(seal, 'pointer-events'), '水印不拦截点击与选择').toBe('none')
+    expect(seal, '头版静帧：不搬阅读页 transition 300ms').not.toMatch(NO_EFFECT)
+    expect(seal, '印章为阅读页同款 SVG data URI（圆角方框+笔画块）').toContain('data:image/svg+xml')
+    expect(seal, '亮侧印章朱砂 #b3452e（阅读页现值）').toContain('%23b3452e')
+    expect(
+      css.match(/\.jyfolio \.jyfolio-feed-masthead:hover::after/),
+      '头版静帧：不搬阅读页 hover 0.24'
+    ).toBeNull()
+  })
+
+  it('② 暗变体印章为复合选择器覆盖：阅读页暗侧现值 %23d0714f / opacity 0.1 / screen', () => {
+    const sealDark = folioDarkRule('\\.jyfolio-feed-masthead::after')
+    expect(
+      sealDark,
+      '暗变体印章规则应存在，且必须复合形式（变体属性紧贴 .jyfolio，无空格后代）'
+    ).toBeTruthy()
+    expect(decl(sealDark, 'opacity'), '阅读页暗侧现值 0.1').toBe('0.1')
+    expect(decl(sealDark, 'mix-blend-mode'), '阅读页暗侧现值 screen').toBe('screen')
+    expect(sealDark, '暗侧印章暖赭 #d0714f（阅读页现值）').toContain('%23d0714f')
+    expect(sealDark, '暗变体零动效').not.toMatch(NO_EFFECT)
+  })
+
+  it('③ 朱丝栏竖线：容器 background-image hard-stop 1px 绯线，暗变体取阅读页暗侧色值', () => {
+    const masthead = folioRule('\\.jyfolio-feed-masthead')
+    expect(masthead, '头版容器规则应存在（空转绿防护）').toBeTruthy()
+    // 渐变按阅读页多行原格式书写，逐 token 断言（不假设单行）
+    const grad = decl(masthead, 'background-image')
+    expect(grad, '朱丝栏为 90deg hard-stop 渐变（阅读页 .juya-issue 技法）').toContain(
+      'linear-gradient('
+    )
+    expect(grad, '渐变沿水平轴（两侧竖线）').toContain('90deg')
+    expect(grad, '亮侧绯色 rgba(179, 69, 46, 0.28)（阅读页现值）').toContain(
+      'rgba(179, 69, 46, 0.28)'
+    )
+    expect(grad, '1px 线宽 = 10px 11px 硬停靠（阅读页现值）').toContain('10px 11px')
+    const mastheadDark = folioDarkRule('\\.jyfolio-feed-masthead')
+    expect(mastheadDark, '暗变体朱丝栏覆盖应存在（复合形式）').toBeTruthy()
+    const gradDark = decl(mastheadDark, 'background-image')
+    expect(gradDark, '暗侧 rgba(208, 113, 79, 0.3)（阅读页暗侧现值）').toContain(
+      'rgba(208, 113, 79, 0.3)'
+    )
+    expect(gradDark, '暗侧同为 1px 硬停靠').toContain('10px 11px')
+  })
+
+  it('④ V1 骨架不动：居中排法、文武线（细线 + ::before 2px 朱线 top 3px）、朱菱花押、衬线 h1、kicker/domain', () => {
+    const masthead = folioRule('\\.jyfolio-feed-masthead')
+    expect(decl(masthead, 'max-width')).toBe('1120px')
+    expect(decl(masthead, 'padding')).toBe('40px 24px 24px')
+    expect(decl(masthead, 'text-align')).toBe('center')
+    expect(decl(masthead, 'border-top')).toBe('1px solid var(--jy-border)')
+    expect(decl(masthead, 'border-bottom')).toBe('1px solid var(--jy-border)')
+    expect(decl(masthead, 'position')).toBe('relative')
+    const wenwu = folioRule('\\.jyfolio-feed-masthead::before')
+    expect(wenwu, '文武线粗线规则应存在').toBeTruthy()
+    expect(decl(wenwu, 'top')).toBe('3px')
+    expect(decl(wenwu, 'border-top')).toBe('2px solid var(--jy-accent)')
+    const h1 = folioRule('\\.jyfolio-feed-masthead h1')
+    expect(decl(h1, 'font-family'), '衬线标题族不动').toBe('var(--jy-font-heading)')
+    expect(decl(h1, 'font-size')).toBe('clamp(40px, 7vw, 76px)')
+    expect(decl(folioRule('\\.jyfolio-feed-masthead-kicker'), 'color')).toBe('var(--jy-accent)')
+    expect(decl(folioRule('\\.jyfolio-feed-masthead-domain'), 'color')).toBe('var(--jy-muted)')
+    expect(folioRule('\\.jyfolio-feed-masthead \\.jyfolio-divider'), '朱菱花押复用规则不动').toBeTruthy()
+  })
+
+  it('⑤ 头版段构成色只用阅读页既有值、零动效；≤520px 印章随阅读页同断点隐没；阅读页两件语汇原样保留', () => {
+    const from = css.indexOf('.jyfolio .jyfolio-feed-masthead')
+    const to = css.indexOf('千禧网页式')
+    expect(from, '头版段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    const bare = css.slice(from, to).replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, '头版段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 构成色白名单：印章 SVG 内 %23 编码 hex + 朱丝栏 rgba，全部为阅读页既有值
+    const found = [...bare.matchAll(/%23[0-9a-fA-F]{6}|rgba?\([^)]*\)/g)].map((m) => m[0])
+    const allowed = new Set([
+      '%23b3452e',
+      '%23d0714f',
+      'rgba(179, 69, 46, 0.28)',
+      'rgba(208, 113, 79, 0.3)'
+    ])
+    const stray = [...new Set(found)].filter((color) => !allowed.has(color))
+    expect(stray, `头版段出现白名单外色值：${stray.join(', ')}`).toEqual([])
+    // 窄窗让位：≤520px 与阅读页印章同断点隐没（复用既有媒体查询块）
+    const narrow = extractBlock(bare, /@media \(max-width: 520px\) \{/)
+    expect(narrow, '≤520px 媒体查询块应存在').toBeTruthy()
+    expect(
+      narrow.match(/\.jyfolio \.jyfolio-feed-masthead::after \{[^}]*\}/)?.[0] ?? '',
+      '头版印章窄窗隐没'
+    ).toContain('display: none')
+    // 反证：阅读页印章（transition 300ms + hover 0.24）与朱丝栏原样保留，未被头版改造波及
+    expect(decl(folioRule('\\.juya-issue::after'), 'transition'), '阅读页印章 transition 保留').toContain(
+      'opacity 300ms'
+    )
+    expect(
+      css.match(/\.jyfolio \.juya-issue:hover::after \{[^}]*\}/)?.[0] ?? '',
+      '阅读页 hover 0.24 保留'
+    ).toContain('0.24')
+    expect(
+      decl(folioRule('\\.juya-issue'), 'background-image'),
+      '阅读页朱丝栏保留'
+    ).toContain('rgba(179, 69, 46, 0.28)')
+  })
+})
+
+describe('synthwave 订阅页头版卡内 CRT 质感守卫（2026-10-24，#81：扫描线静纹 + 霓虹辉光细线）', () => {
+  // #81 把两件阅读页 CRT 语汇以静帧搬进毛玻璃卡面：扫描线静纹（场景层 .juya-scene 首层
+  // 1px/4px repeating 技法，alpha 同值：暗 0.10 / 亮 0.06，#41 同一裁决）与霓虹辉光细线
+  // （场景地平线 .juya-scene-grid-persp::before 的 2px + 0 0 18px 4px + --jy-scene-horizon，
+  // 量级照搬）。落位裁决：
+  // - 扫描线走卡面 background-image 首层（多背景首层绘制在最上层），卡底色拆成
+  //   background-color：backdrop-filter 作用于元素背后的内容，与自身背景层互不干扰，
+  //   18px 毛玻璃照旧，卡内文字可读性以②的真实对比度实算兜底。
+  // - 辉光细线走卡面 ::after 常规流收尾：有 host 时即紧随 domain（host 行之下）；
+  //   空 URL 派生不出 hostname 时细线随卡片照常收尾 —— 它是卡面的地平线，不依附 host
+  //   行存在。content '' 对 AT 静默。静帧：零 animation / 零 transition。
+  // - 共享场景层零改动：太阳/网格/场景扫描线/场景地平线辉光原值原位，卡内纹理不要求
+  //   场景层任何配合（④负证）。
+
+  /** 头版段（synthwave 段内 #73 段头注释（从注释开标记起切，供⑤剥注释）→ 下一道 ===== 场景层分隔线）：
+   *  本票全部改动必须落在此区间 */
+  const feedSection = (): string => {
+    const synthStart = css.indexOf('蒸汽梦核式')
+    const from = css.indexOf('/* ---- 订阅页头版 nameplate', synthStart)
+    const to = css.indexOf('/* ==========================================================================', from)
+    return css.slice(from, to)
+  }
+
+  /** 段内首条匹配 opener 的规则块（与 #39 组同一写法） */
+  const feedRule = (opener: RegExp): string => extractBlock(feedSection(), opener)
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+
+  it('① 卡内扫描线静纹：卡面 background 拆层（image 首层 + color 底），分变体同场景 alpha（暗 0.10 / 亮 0.06），毛玻璃与既有卡面声明不被改写', () => {
+    const base = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead \{/)
+    expect(base, '头版卡面基础规则应存在（空转绿防护）').not.toBe('')
+    expect(decl(base, 'background-color'), '卡底色仍走 --jy-card（拆层不换值）').toBe(
+      'var(--jy-card)'
+    )
+    expect(decl(base, 'background-image'), '基础规则不带扫描线，分变体声明').toBe('')
+    expect(decl(base, 'backdrop-filter'), '毛玻璃照旧（扫描线在自身背景层，不碰 backdrop）').toBe(
+      'blur(18px) saturate(1.15)'
+    )
+    expect(decl(base, 'box-shadow'), '既有品红外发光不动').toBe('0 0 18px var(--jy-lead-bg)')
+    const dark = feedRule(
+      /(?:^|\n)\[data-juya-variant='synthwave-dark'\]\.jysynth \.jysynth-feed-masthead \{/
+    )
+    expect(dark, '暗侧扫描线规则应存在，且为复合选择器形式（变体属性紧贴 .jysynth）').not.toBe('')
+    // 渐变允许多行书写（与 folio 朱丝栏同一口径）：归一空白与括号邻接空白后逐 token 断言
+    const flat = (value: string): string =>
+      value
+        .replace(/\(\s+/g, '(')
+        .replace(/\s+\)/g, ')')
+        .replace(/\s+/g, ' ')
+    const darkImage = flat(decl(dark, 'background-image'))
+    expect(darkImage, '1px/4px repeating（场景层同技法）').toContain('repeating-linear-gradient(180deg')
+    expect(darkImage, '暗侧 alpha 与场景扫描线同值 0.10').toContain('rgba(0, 0, 0, 0.1) 0 1px')
+    expect(darkImage, '1px 线 / 4px 周期').toContain('transparent 1px 4px')
+    const light = feedRule(
+      /(?:^|\n)\[data-juya-variant='synthwave-light'\]\.jysynth \.jysynth-feed-masthead \{/
+    )
+    expect(light, '亮侧扫描线规则应存在，且为复合选择器形式').not.toBe('')
+    const lightImage = flat(decl(light, 'background-image'))
+    expect(lightImage, '亮侧 alpha 与场景扫描线同值 0.06（白天压暗减半）').toContain(
+      'rgba(0, 0, 0, 0.06) 0 1px'
+    )
+    expect(lightImage).toContain('transparent 1px 4px')
+  })
+
+  it('② 真实对比度取证：扫描线最暗行上 kicker/h1/domain 仍过 AA（亮侧新最不利 = 扫描线行；暗侧最不利仍是透明行）', () => {
+    // 亮侧：暗字对「更暗的底」对比度更低，扫描线行是新最不利 ——
+    // 0.62 白卡压 sun-2 #ff2d95（#73 既有最不利口径，合成 #ffafd7，既有实测 8.99/9.67）
+    // 再叠 rgba(0,0,0,0.06)（实测约 7.9/8.5，仍过 AA 4.5 且余量充足）。
+    const lightBase = overRgba({ rgb: 0xffffff, alpha: 0.62 }, 0xff2d95)
+    const lightScanRow = alphaOver(0x000000, 0.06, lightBase)
+    expect(lightScanRow, '扫描线行确实比透明行更暗（纹理方向正确）').toBeLessThan(lightBase)
+    const lightBlock = variantBlock('synthwave-light')
+    expect(
+      contrast(tokenHex(lightBlock, '--jy-heading'), lightScanRow),
+      'h1（实色 --jy-heading）/ 扫描线最暗行 ≥ AA'
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrast(tokenHex(lightBlock, '--jy-text'), lightScanRow),
+      'kicker/domain（--jy-text）/ 扫描线最暗行 ≥ AA'
+    ).toBeGreaterThanOrEqual(4.5)
+    // 暗侧：亮字对「更暗的底」对比度更高，扫描线只帮忙；最不利仍是透明行
+    // （#73 口径：0.62 卡压 sun-1 #ffe14d = #6d5a35，既有 5.69 / 5.18）。
+    const darkBase = overRgba({ rgb: 0x140826, alpha: 0.62 }, 0xffe14d)
+    const darkBlock = variantBlock('synthwave-dark')
+    expect(
+      contrast(tokenHex(darkBlock, '--jy-heading'), darkBase),
+      'h1 / 暗侧最不利透明行 ≥ AA（扫描线不改写该口径）'
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrast(tokenHex(darkBlock, '--jy-text'), darkBase),
+      'kicker/domain / 暗侧最不利透明行 ≥ AA'
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      alphaOver(0x000000, 0.1, darkBase),
+      '暗侧扫描线行比透明行更暗 → 对亮字对比度只增不减'
+    ).toBeLessThan(darkBase)
+  })
+
+  it('③ 霓虹辉光细线：卡面 ::after 静帧 echo 场景地平线（2px + 0 0 18px 4px + --jy-scene-horizon），AT 静默、零动效', () => {
+    const line = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead::after \{/)
+    expect(line, '辉光细线规则应存在（空转绿防护）').not.toBe('')
+    expect(decl(line, 'content'), "伪元素承载，content '' 对 AT 静默").toBe("''")
+    expect(decl(line, 'display'), '常规流收尾（有 host 时紧随 host 行，无 host 时随卡收尾）').toBe(
+      'block'
+    )
+    expect(decl(line, 'height'), '场景地平线同值 2px').toBe('2px')
+    expect(decl(line, 'background'), '色取既有场景 token，不新增字面色').toBe(
+      'var(--jy-scene-horizon)'
+    )
+    expect(decl(line, 'box-shadow'), '辉光量级照搬场景地平线 0 0 18px 4px').toBe(
+      '0 0 18px 4px var(--jy-scene-horizon)'
+    )
+    expect(line, '静帧：零 animation / 零 transition').not.toMatch(NO_EFFECT)
+  })
+
+  it('④ 共享场景层零改动：地平线辉光源规则、场景扫描线（暗 0.10 / 亮 0.06）与订阅页网格补偿原值原位', () => {
+    const horizon = extractBlock(css, /(?:^|\n)\.juya-scene-grid-persp::before \{/)
+    expect(horizon, '场景地平线规则应存在').not.toBe('')
+    expect(decl(horizon, 'height'), 'echo 源未被顺手改写').toBe('2px')
+    expect(decl(horizon, 'background')).toBe('var(--jy-scene-horizon)')
+    expect(decl(horizon, 'box-shadow')).toBe('0 0 18px 4px var(--jy-scene-horizon)')
+    const sceneDark = extractBlock(
+      css,
+      /(?:^|\n)\[data-juya-variant='synthwave-dark'\]\.jysynth \.juya-scene \{/
+    )
+    expect(decl(sceneDark, 'background-image'), '场景暗侧扫描线原样').toContain(
+      'rgba(0, 0, 0, 0.1) 0 1px'
+    )
+    const sceneLight = extractBlock(
+      css,
+      /(?:^|\n)\[data-juya-variant='synthwave-light'\]\.jysynth \.juya-scene \{/
+    )
+    expect(decl(sceneLight, 'background-image'), '场景亮侧扫描线原样').toContain(
+      'rgba(0, 0, 0, 0.06) 0 1px'
+    )
+    expect(
+      decl(
+        extractBlock(css, /(?:^|\n)\.jysynth:has\(> \.juya-feed\) \.juya-scene-grid-persp \{/),
+        'bottom'
+      ),
+      '订阅页网格补偿（#40）原样'
+    ).toBe('88px')
+  })
+
+  it('⑤ 头版段构成色只用既有值；全段零动画零过渡；V1 骨架（kicker/h1/domain 排法与字体）不动', () => {
+    const bare = feedSection().replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, '头版段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 构成色白名单：本票只引入场景扫描线既有 alpha，其余为 V1 既有值
+    const found = [...bare.matchAll(/%23[0-9a-fA-F]{6}|rgba?\([^)]*\)/g)].map((m) => m[0])
+    const allowed = new Set([
+      'rgba(0, 0, 0, 0.1)', // 场景暗侧扫描线既有值（#36）
+      'rgba(0, 0, 0, 0.06)', // 场景亮侧扫描线既有值（#41）
+      'rgba(255, 230, 255, 0.45)', // V1 h1 暗侧描边（既有）
+      'rgba(74, 7, 54, 0.28)' // V1 h1 亮侧描边（既有）
+    ])
+    const stray = [...new Set(found)].filter((color) => !allowed.has(color))
+    expect(stray, `头版段出现白名单外色值：${stray.join(', ')}`).toEqual([])
+    const base = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead \{/)
+    expect(decl(base, 'padding'), 'V1 卡面内衬不动').toBe('40px 24px 28px')
+    expect(decl(base, 'border'), '1px 边不动（毛玻璃卡面轮廓照旧）').toBe('1px solid var(--jy-border)')
+    const kicker = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead-kicker \{/)
+    expect(decl(kicker, 'font-size')).toBe('11px')
+    expect(decl(kicker, 'color')).toBe('var(--jy-text)')
+    const h1 = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead h1 \{/)
+    expect(decl(h1, 'font-size')).toBe('clamp(40px, 7vw, 72px)')
+    expect(decl(h1, 'color')).toBe('var(--jy-heading)')
+    const domain = feedRule(/(?:^|\n)\.jysynth \.jysynth-feed-masthead-domain \{/)
+    expect(decl(domain, 'font-size')).toBe('11px')
+    expect(decl(domain, 'color')).toBe('var(--jy-text)')
+  })
+})
+
+describe('pop 订阅页头版印刷硬影与爆炸星守卫（2026-10-24，#82：阅读页 h1 硬影与爆炸星静帧搬入标题面板）', () => {
+  // #82 把阅读页刊头两件波普语汇以「现值搬运」落进订阅页头版标题面板：
+  // - 印刷硬影：h1 text-shadow 3px 3px 0 rgba(0,0,0,.28)（阅读页刊头 h1 同值）。头版 h1 是
+  //   白字实色（var(--jy-on-accent)，非 background-clip:text），text-shadow 可用——仓库硬约束
+  //   只禁「渐变字」用 text-shadow（y2k/nocturne 已踩坑的 Chromium 绘制顺序陷阱）。
+  // - 爆炸星：h1::before 36px 白色星形 SVG data URI（与阅读页 .jypop .juya-masthead h1::before
+  //   逐字节同源）、left -40px top -12px rotate(-8deg)。落位沿用阅读页「h1 左移留白 + ::before
+  //   负偏移」技法：头版标题面板 padding-left 24px + h1 margin-left 16px = 40px 左留白 ≥ 36px
+  //   星形，星形盒（h1 局部 -40..-4）整体收在文字盒外，不压字；kicker 在 h1 上方 12px 沟槽处，
+  //   星形顶缘贴沟槽起线，与 2° 斜置贴纸的下沉角（在贴纸右端）不相交。空 content 对辅助技术
+  //   静默（不进朗读树、不进焦点顺序）；头版静帧，零 hover 零动画零 transition。
+  // 不变量：V1 面板拼贴（品红标题面板/host 面板/Ben-Day 色带/贴纸 kicker/斜置 h1）不动；
+  // 阅读页爆炸星与 h1 硬影原样保留。
+
+  const NO_EFFECT = /(?:^|[;{\s])(?:animation|transition)\s*:/
+
+  /** 头版段（.jypop .jypop-feed-masthead 首条规则 → 下一段「90 年代报刊式」段头） */
+  const feedSection = (): string => {
+    const from = css.indexOf('.jypop .jypop-feed-masthead {')
+    const to = css.indexOf('90 年代报刊式')
+    expect(from, '头版段起点应存在').toBeGreaterThan(0)
+    expect(to, '下一段段头应存在').toBeGreaterThan(from)
+    return css.slice(from, to)
+  }
+
+  it('① h1 印刷硬影：3px 3px 0 rgba(0,0,0,.28) 与阅读页刊头 h1 同值；h1 白字实色可安全用 text-shadow', () => {
+    const h1 = popRule('\\.jypop-feed-masthead h1')
+    expect(h1, '头版 h1 规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(h1, 'text-shadow'), '硬影与阅读页刊头 h1 同值').toBe(
+      '3px 3px 0 rgba(0, 0, 0, 0.28)'
+    )
+    expect(decl(h1, 'color'), '白字实色（非 background-clip:text，text-shadow 安全）').toBe(
+      'var(--jy-on-accent)'
+    )
+    expect(
+      h1,
+      '硬影不得伴随 background-clip（仓库硬约束：渐变字禁 text-shadow，Chromium 绘制顺序）'
+    ).not.toContain('background-clip')
+    // 同值来源：阅读页刊头 h1 硬影原样保留，未被头版搬运波及
+    expect(decl(popRule('\\.juya-masthead h1'), 'text-shadow')).toBe(
+      '3px 3px 0 rgba(0, 0, 0, 0.28)'
+    )
+  })
+
+  it('② 爆炸星静帧搬入：h1::before 36px 白色星形 SVG、left -40px top -12px rotate -8deg，AT 静默零动效', () => {
+    const star = popRule('\\.jypop-feed-masthead h1::before')
+    expect(star, '爆炸星 ::before 规则应存在（空转绿防护）').toBeTruthy()
+    expect(decl(star, 'content'), '伪元素承载，空 content 对 AT 静默').toBe("''")
+    expect(decl(star, 'position')).toBe('absolute')
+    expect(decl(star, 'left'), '阅读页现值 left -40px').toBe('-40px')
+    expect(decl(star, 'top'), '阅读页现值 top -12px').toBe('-12px')
+    expect(decl(star, 'width'), '阅读页现值 36×36').toBe('36px')
+    expect(decl(star, 'height')).toBe('36px')
+    expect(decl(star, 'transform'), '阅读页现值 rotate(-8deg)').toBe('rotate(-8deg)')
+    expect(star, '星形为阅读页同款 SVG data URI').toContain('data:image/svg+xml')
+    expect(star, '白色填充沿用阅读页现值 %23ffffff').toContain('%23ffffff')
+    expect(star, '头版静帧：零 animation / 零 transition').not.toMatch(NO_EFFECT)
+  })
+
+  it('③ 落位不压字：面板内衬 24px + h1 左缩进 16px = 40px 留白 ≥ 36px 星形，星形右缘收在文字盒外', () => {
+    const h1 = popRule('\\.jypop-feed-masthead h1')
+    expect(decl(h1, 'position'), '星形定位参照（阅读页同技法）').toBe('relative')
+    const marginLeft = Number.parseFloat(decl(h1, 'margin-left'))
+    expect(Number.isNaN(marginLeft), 'h1 左缩进应可解析').toBe(false)
+    const panel = popRule('\\.jypop-feed-masthead-panel')
+    const panelPaddingLeft = Number.parseFloat(decl(panel, 'padding').split(/\s+/)[3] ?? '')
+    expect(
+      panelPaddingLeft + marginLeft,
+      '面板内衬 + h1 左缩进 ≥ 星形宽（星形整体收在面板左留白内）'
+    ).toBeGreaterThanOrEqual(36)
+    const star = popRule('\\.jypop-feed-masthead h1::before')
+    const starRight = Number.parseFloat(decl(star, 'left')) + Number.parseFloat(decl(star, 'width'))
+    expect(starRight, '星形右缘 ≤ 0，整体在 h1 文字盒外（不压字）').toBeLessThanOrEqual(0)
+  })
+
+  it('④ V1 面板拼贴零回归：标题面板/host 面板/贴纸 kicker/斜置 h1/色带关键声明不动；全段零动效、构成色只用既有值', () => {
+    const bare = feedSection().replace(/\/\*[\s\S]*?\*\//g, ' ')
+    expect(bare, '头版段零 animation/transition（V2 静帧纪律）').not.toMatch(NO_EFFECT)
+    // 构成色白名单：#82 只引入阅读页既有两值（星形白填充 + h1 硬影黑影），其余头版段零字面色
+    const found = [...bare.matchAll(/%23[0-9a-fA-F]{6}|rgba?\([^)]*\)/g)].map((m) => m[0])
+    const allowed = new Set(['%23ffffff', 'rgba(0, 0, 0, 0.28)'])
+    const stray = [...new Set(found)].filter((color) => !allowed.has(color))
+    expect(stray, `头版段出现白名单外色值：${stray.join(', ')}`).toEqual([])
+    const panel = popRule('\\.jypop-feed-masthead-panel')
+    expect(decl(panel, 'background'), '标题面板品红底不动').toBe('var(--jy-accent)')
+    expect(decl(panel, 'border')).toBe('3px solid var(--jy-border)')
+    expect(decl(panel, 'box-shadow'), '蓝色硬位移影不动').toBe('6px 6px 0 var(--jy-link)')
+    const kicker = popRule('\\.jypop-feed-masthead-kicker')
+    expect(decl(kicker, 'background'), '贴纸反白底不动').toBe('var(--jy-heading)')
+    expect(decl(kicker, 'color')).toBe('var(--jy-bg)')
+    expect(decl(kicker, 'transform'), '贴纸 +2° 斜置不动').toBe('rotate(2deg)')
+    const h1 = popRule('\\.jypop-feed-masthead h1')
+    expect(decl(h1, 'font-size'), '大字档位不动').toBe('clamp(40px, 6.5vw, 68px)')
+    expect(decl(h1, 'transform'), 'h1 -1.5° 斜置不动').toBe('rotate(-1.5deg)')
+    const side = popRule('\\.jypop-feed-masthead-side')
+    expect(decl(side, 'background'), 'host 面板奶油底不动').toBe('var(--jy-card)')
+    expect(decl(side, 'box-shadow')).toBe('6px 6px 0 var(--jy-link)')
+    const strip = popRule('\\.jypop-feed-masthead-strip')
+    expect(decl(strip, 'height'), 'Ben-Day 色带高度不动').toBe('22px')
+    expect(decl(strip, 'pointer-events'), '色带不进指针路径不动').toBe('none')
   })
 })

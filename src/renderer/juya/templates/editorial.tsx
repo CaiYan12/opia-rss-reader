@@ -1,5 +1,6 @@
 import { EntryTitle, Lead, LinksBlock, OverviewItems } from './shared'
 import { DefaultFeedItem, FeedShell } from './parts'
+import { EditorialFeedMasthead } from './editorial-feed-craft'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
 import type { JuyaEntry } from '../parseJuyaIssue'
 import { useAppStore } from '../../stores/useAppStore'
@@ -103,13 +104,20 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
 }
 
 function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
-  const { openArticle } = useAppStore()
+  const { openArticle, sources, activeSourceId } = useAppStore()
+  const activeSource = sources.find((source) => source.id === activeSourceId)
   return (
     <FeedShell
       articles={articles}
       variantId={variantId}
       variantClass={VARIANT_CLASS}
       layout={layout}
+      scene={
+        <EditorialFeedMasthead
+          sourceName={activeSource?.name ?? ''}
+          sourceUrl={activeSource?.url ?? ''}
+        />
+      }
       renderItem={(a, _i, mode, gates, delay) => (
         <DefaultFeedItem a={a} mode={mode} gates={gates} delay={delay} onOpen={() => void openArticle(a)} />
       )}

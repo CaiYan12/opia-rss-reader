@@ -1535,8 +1535,7 @@ test('nocturne 图文回流（真实图源）：右列限 2 张、其余回流�
   page
 }) => {
   // 为什么用 'nocturneSvg' 而不是夹具：tests/fixtures/juya-content.html 的 6 张图全指向
-  // 不可达的 assets.example.com（高度塌陷 ⇒ 任何几何断言都测不到真值），且该目录被 gitignore
-  // （新克隆没有它）。本场景的图源是 data:image/svg+xml（480×320 固有尺寸）⇒ 几何真实且可复现。
+  // 不可达的 assets.example.com（高度塌陷 ⇒ 任何几何断言都测不到真值）。本场景的图源是 data:image/svg+xml（480×320 固有尺寸）⇒ 几何真实且可复现。
   await loadApp(page, 'nocturneSvg')
   await openFirstArticle(page)
 

@@ -5,7 +5,8 @@ import { parseJuyaIssue } from '../../src/renderer/juya/parseJuyaIssue'
 
 // 解析器契约测试（TDD 先行，实现见 src/renderer/juya/parseJuyaIssue.ts）。
 // 结构断言均对照 2026-08-28 期真实样本的脱敏夹具。
-// 夹具目录按项目约定不入库（见 .gitignore），缺失时跳过这些结构断言，而不是让 npm test 在解析阶段整体失败。
+// 夹具已入库（.gitignore 例外，2026-10-25 政策）；skipIf 兜底保留——极端缺文件时跳过这些
+// 结构断言，而不是让 npm test 在解析阶段整体失败。
 const FIXTURE_PATH = join(process.cwd(), 'tests/fixtures/juya-content.html')
 const hasFixture = existsSync(FIXTURE_PATH)
 const fixtureHtml = hasFixture ? readFileSync(FIXTURE_PATH, 'utf-8') : ''

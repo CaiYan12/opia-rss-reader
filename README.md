@@ -177,7 +177,7 @@ src/
 │   ├── stores/           # zustand 全局状态
 │   └── theme/            # CSS 变量注入
 └── shared/               # 主/渲染共用：types.ts、ipc-contract.ts、plugin-api.ts
-tests/                    # vitest 单测（tests/unit）+ Playwright 端到端（tests/e2e）+ 脱敏夹具（tests/fixtures，不提交）
+tests/                    # vitest 单测（tests/unit）+ Playwright 端到端（tests/e2e）+ 脱敏夹具（tests/fixtures，样本 juya-content.html 入库，其余不提交）
 plugins/                  # 插件目录（含示例 example-hello）
 ```
 

@@ -8,8 +8,8 @@ import { BUILTIN_THEMES } from '../../src/main/theme/builtinThemes'
 /** Playwright 渲染层验证辅助：注入 window.opia 桩（数据在内存，不落盘）。
  *  场景由 URL 参数决定初始数据；settingsSet 等调用会修改内存状态并记录到 __stubCalls。 */
 
-// 夹具目录按项目约定不入库（见 .gitignore）；缺失时读取仓库内的合成兜底，
-// 使 CI checkout（没有 tests/fixtures/）也能跑出与本地一致的渲染结构。
+// 夹具 juya-content.html 已入库（.gitignore 例外，2026-10-25 政策）；合成兜底保留，
+// 缺文件时（如旧检出/手动删除）仍能跑出与本地一致的渲染结构。
 const FIXTURE_PATH = join(process.cwd(), 'tests/fixtures/juya-content.html')
 const SYNTHETIC_FIXTURE_PATH = join(process.cwd(), 'tests/e2e/fixtures/juya-content.synthetic.html')
 const fixtureHtml = existsSync(FIXTURE_PATH)
@@ -21,8 +21,8 @@ const SVG_COVER =
 
 /** 自带内联 SVG 图源的图片（2026-10-12，#9）：`data:` URI 带固有 width/height，
  *  渲染高度真实且离线可用。夹具 tests/fixtures/juya-content.html 的 6 张图全指向
- *  `https://assets.example.com/…`（不可达 ⇒ 高度塌陷），且该目录被 .gitignore 排除
- *  （新克隆没有它）⇒ 视觉走查与图文几何断言必须改用本图源。 */
+ *  `https://assets.example.com/…`（不可达 ⇒ 高度塌陷）⇒ 视觉走查与图文几何断言
+ *  必须改用本图源。 */
 const svgImage = (w: number, h: number, fill: string, label: string): string =>
   'data:image/svg+xml,' +
   encodeURIComponent(

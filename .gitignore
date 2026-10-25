@@ -2,6 +2,10 @@
 node_modules/
 
 # Build outputs
+# out/ 例外（2026-10-25 政策）：两份被 docs/ 引用的正本经 git add -f 强跟踪，勿删——
+#   out/feed-masthead-v2-implementation-2026-10-24/ledger.md（头版 V2 裁定台账）
+#   out/wabi-art-implementation-2026-10-24/reviews/standards.md（wabi 轮评审报告）
+# 其余 out/ 内容均为可再生产物或本地审计件。
 out/
 build/
 dist/
@@ -37,8 +41,11 @@ screenshots/
 /_*.py
 /_*.js
 
-# Local-only test fixtures (desensitized RSS snapshots, never committed)
-tests/fixtures/
+# Local-only test fixtures (desensitized RSS snapshots stay untracked).
+# 例外（2026-10-25 政策）：juya-content.html 入库——解析器契约测试与 e2e 在 CI 也要
+# 跑真实样本结构，消除本地/CI 双配置；其余脱敏快照仍不入库。
+tests/fixtures/*
+!tests/fixtures/juya-content.html
 
 # Playwright run artifacts
 test-results/

@@ -50,9 +50,20 @@
   margin: 0 0 28px;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  /* 2026-10-25 用户统一指令：概览目录全风格一行两个（此前基类单列，仅 wabi/folio/editorial
+     两列）。基类改 grid 两列，走基类的风格（y2k/pop/newsprint90s/synthwave/nocturne）随之统一；
+     wabi/editorial 各自的 grid 两列覆盖与 folio 的 column-count 两列保持不动（视觉已达标，封版不动）。
+     窄窗 ≤640px 回落单列（与 editorial 的既有断点一致）。 */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  row-gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .juya-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .juya-overview li {
@@ -61,6 +72,7 @@
   gap: 8px;
   font-size: 13px;
   line-height: 1.5;
+  min-width: 0; /* grid 项防溢出：长标题折行交由内容层 overflow-wrap 处理 */
 }
 
 .juya-overview a {
@@ -1796,7 +1808,8 @@
   letter-spacing: 4px;
 }
 
-/* 框内列表去掉基类的底部外边距（否则下框线前会多出 28px 空白）；仍是单列。 */
+/* 框内列表去掉基类的底部外边距（否则下框线前会多出 28px 空白）；列数随基类（2026-10-25
+   起两列，窄窗单列）。 */
 .jynews-overview .juya-overview {
   margin-bottom: 0;
 }
@@ -3851,18 +3864,20 @@
   /* 行高约 23px，半径比条目 hover 的 8px 更收，避免小行读成胶囊 */
 }
 
-/* ② 条目间极淡发丝线：基层 .juya-overview 是 flex column + gap: 6px（不是普通列表流），
-   所以**不用** border-bottom —— 那样线会顶在 gap 边缘，读成「上下各半格」的双倍间距错觉。
-   改用零占位的绝对定位伪元素，落在现有 6px 间隙正中（top = -(6px/2) - 1px/2 = -3.5px），
-   不参与 flex 布局、不改任何间距。边缘用 `li + li` 相邻兄弟：首条无上线，且没有「末条下线」
-   这条规则，首尾天然干净；相对顺序而非序号判断，flex 重排下也不会漏（不用 :first/:last-child）。
+/* ② 条目间极淡发丝线：落在现有 6px 行距正中（top = -(6px/2) - 1px/2 = -3.5px），
+   零占位绝对定位、不参与布局、不改任何间距。边缘取同一个 `--jy-ov-bleed` ⇒ 线与栏目 h2
+   横线（正文文字右缘）同一条内容栏边界。
+   **2026-10-25 两列统一适配（封版风格的唯一授权改动，见 ledger）**：基类概览改 grid 两列后，
+   「行界」从「每对相邻条目」变为「第 2 行起的行首条目」（DOM 行主序：3、5、7…），
+   选择器随之改 `li:nth-child(2n + 3)`；线只覆行首条目所在半幅（0.05 极淡装饰线，
+   不承载信息）。≤640px 基类回落单列，恢复原「除首条外逐条」语义。
    线色 rgba(255,255,255,0.05)：取色来源 = 本变体 --jy-border rgba(255,255,255,0.08) 的**更弱一档**
    —— 需求要「极淡」，且 #6 已把栏目线单独提到 0.22 做非文本 UI 的 3:1，概览条目线刻意更低，
    两张票的线值不互相打架。合成到 #18192a 上为 #242535，WCAG 对比度 1.15:1：装饰性分隔线、
    不承载信息、不适用 3:1 门槛（同 dust 的处理口径）。
    **左右内缩（#16）**：线贴的是 li 的 padding box，若 left/right 取 0 会随负外边距外凸 8px；
-   改取同一个 `--jy-ov-bleed` ⇒ 线与栏目 h2 横线（正文文字右缘）同一条内容栏边界。 */
-[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after {
+   改取同一个 `--jy-ov-bleed` ⇒ 线不越过本条目盒缘。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after {
   content: '';
   position: absolute;
   left: var(--jy-ov-bleed);
@@ -3870,6 +3885,21 @@
   top: -3.5px;
   height: 1px;
   background: rgba(255, 255, 255, 0.05);
+}
+
+/* 单列（≤640，与基类回落断点一致）：除首条外逐条上线，与两列化之前的行为相同。 */
+@media (max-width: 640px) {
+  /* 取色来源 = --jy-border rgba(255,255,255,0.08) 更弱一档；合成底 #18192a 上的对比度 1.15:1，
+     线值与宽屏规则同一套（见块外上方注释） */
+  [data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(n + 2)::after {
+    content: '';
+    position: absolute;
+    left: var(--jy-ov-bleed);
+    right: var(--jy-ov-bleed);
+    top: -3.5px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
 
 /* ③ hover 整行微亮：底层 `.juya-overview a:hover`（(0,2,1)）已给下划线，本票只补整行底色，

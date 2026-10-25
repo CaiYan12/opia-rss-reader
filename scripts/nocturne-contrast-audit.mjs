@@ -301,7 +301,8 @@ const OVERVIEW_HOVER = must(
 const OVERVIEW_SEP = must(
   rgba(
     must(
-      block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-overview li \+ li::after\s*\{[^}]*\}/),
+      // 2026-10-25 概览统一两列：分隔线选择器改行首条目（宽屏两列）；单列回落规则同体，取一处即可
+      block(/\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-overview li:nth-child\(2n \+ 3\)::after\s*\{[^}]*\}/),
       '概览发丝线规则'
     ),
     'background'

@@ -1828,7 +1828,10 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
 
   const INDEX_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index {"
   const ROW_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li {"
-  const SEP_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after {"
+  // 2026-10-25 概览统一两列适配：分隔线选择器从 li + li 改为行首条目（两列）/除首条外（≤640 单列）
+  const SEP_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after {"
+  const SEP_RULE_NARROW =
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(n + 2)::after {"
   const HOVER_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover {"
 
   it('① 序号微光的作用域收窄到概览条目；条目标题序号徽章的既有规则零改动（反证）', () => {
@@ -1873,15 +1876,20 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
     expect(glow, 'accent 色值取自 token，不得硬编码 hex').not.toMatch(/#6e7bff/i)
   })
 
-  it('③ 条目间发丝线：绝对定位落在既有 6px gap 内（零占位、无 border 叠加）、alpha 明显低于 #6 栏目线决策值 0.22', () => {
+  it('③ 条目间发丝线：绝对定位落在既有 6px 行距内（零占位、无 border 叠加）、alpha 明显低于 #6 栏目线决策值 0.22', () => {
     const sep = ruleOf(SEP_RULE)
     expect(sep, '概览条目分隔线规则应存在').toBeTruthy()
-    expect(sep, '基层 .juya-overview 是 flex column，须用零占位绝对定位').toContain('position: absolute')
-    expect(sep, '线落在 gap 正中（-(6px/2) - 1px/2）').toMatch(/top:\s*-3\.5px/)
-    expect(sep, '不得用 border 直接叠在 flex gap 上（线上下各半格 → 双倍间距错觉）').not.toMatch(
+    expect(sep, '须用零占位绝对定位').toContain('position: absolute')
+    expect(sep, '线落在行距正中（-(6px/2) - 1px/2）').toMatch(/top:\s*-3\.5px/)
+    expect(sep, '不得用 border 直接叠在行距上（线上下各半格 → 双倍间距错觉）').not.toMatch(
       /border-(top|bottom)/
     )
-    // 边缘用相邻兄弟：首条无上线、无末条下线；不用 :first-child/:last-child 兜（flex 重排下会漏）
+    // 单列回落规则与宽屏规则同体（≤640 基类回落单列后恢复逐条上线语义）
+    const narrow = ruleOf(SEP_RULE_NARROW)
+    expect(narrow, '≤640 单列回落分隔线规则应存在').toBeTruthy()
+    const flat = (r: string): string => r.slice(r.indexOf('{')).replace(/\s+/g, ' ')
+    expect(flat(narrow), '回落规则与宽屏规则同一套线值（仅选择器不同）').toBe(flat(sep))
+    // 首条无上线、无末条下线；不用 :first-child/:last-child 兜
     expect(css).not.toMatch(/jynoct[^\n{}]*\.juya-overview[^\n{}]*:(first|last)-child/)
     // 极淡：抠 alpha 实值。上界两条——①本仓 --jy-border 档 0.08（超过就不叫极淡）；
     // ②#6 栏目线的决策值 0.22（两张票的线值不得互相打架）
@@ -3371,6 +3379,8 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     //  · .jynoct .jynoct-feed-masthead h1 = 双层冷辉光静帧（accent 靛蓝 .28/.12）。
     //    同批新增的共用定位/mask 规则不在表内（mask 停靠点用 black 关键字，无字面色）；
     //    全部为无变体前缀的共享形态（签名件亮暗两变体同值），故亮侧反证清单不变。
+    // 概览统一两列（2026-10-25 用户指令）：分隔线选择器 li + li 改行首条目 nth-child(2n+3)，
+    // 并新增 ≤640 单列回落 nth-child(n+2)（与宽屏同体），故 24 → 25 条。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
@@ -3387,7 +3397,8 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       '.jynoct .juya-feed-item:hover',
       "[data-juya-variant='nocturne-dark'].jynoct .juya-issue img",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
-      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(n + 2)::after",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:has(a:focus-visible)",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
@@ -3720,7 +3731,8 @@ describe('nocturne 右边缘对齐记号守卫（2026-10-20，#16 / SPEC 批次 
   const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
   const TOKEN_RULE = `${DARK} .juya-overview {`
   const ROW_RULE = `${DARK} .juya-overview li {`
-  const SEP_RULE = `${DARK} .juya-overview li + li::after {`
+  // 2026-10-25 概览统一两列适配：分隔线选择器改行首条目（宽屏两列）；单列回落见 ③'
+  const SEP_RULE = `${DARK} .juya-overview li:nth-child(2n + 3)::after {`
   const ENTRY_RULE = `${DARK} .juya-entry {`
   const body = (rule: string): string => rule.slice(rule.indexOf('{') + 1, rule.lastIndexOf('}'))
 
@@ -3942,7 +3954,7 @@ describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20
   const HOVER_ROW =
     "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:hover"
   const SEP_ROW =
-    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li + li::after"
+    "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after"
   const bodyOf = (rule: string): string => rule.match(/\{([^}]*)\}/)?.[1] ?? ''
   const propsOf = (rule: string): string[] =>
     bodyOf(rule)
@@ -4425,12 +4437,14 @@ describe('newsprint90s 框线导读守卫（#29：概览上下框线 / 单列 / 
     expect(decl(label, 'display'), '小标需自成一行且可被定位').toBe('inline-block')
   })
 
-  it('概览保持单列：基类 flex column 不变，newsprint 段不改成多列/网格', () => {
+  it('概览随基类两列（2026-10-25 用户统一指令）：基类 grid 两列 + ≤640 单列回落，newsprint 段不另写列规则', () => {
     const base = css.match(/(?:^|\n)\.juya-overview \{[^}]*\}/)?.[0] ?? ''
-    expect(decl(base, 'display')).toBe('flex')
-    expect(decl(base, 'flex-direction')).toBe('column')
+    expect(decl(base, 'display')).toBe('grid')
+    expect(decl(base, 'grid-template-columns')).toBe('repeat(2, minmax(0, 1fr))')
+    const narrow = css.match(/@media \(max-width: 640px\) \{[^@]*?\.juya-overview \{[^}]*\}/)?.[0] ?? ''
+    expect(decl(narrow, 'grid-template-columns'), '窄窗回落单列').toBe('minmax(0, 1fr)')
     const code = newsSection().replace(/\/\*[\s\S]*?\*\//g, '')
-    expect(code, 'newsprint 段不得把概览改成多列或网格').not.toMatch(
+    expect(code, 'newsprint 段不得把概览改成多列或网格（随基类即可）').not.toMatch(
       /\.jynews-overview[^{]*\{[^}]*(?:column-count|grid-template-columns)/
     )
   })

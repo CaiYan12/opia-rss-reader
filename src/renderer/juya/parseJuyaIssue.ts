@@ -27,6 +27,8 @@ export interface JuyaOverviewEntry {
   href: string | null
   /** 条目编号（code 内 "#N" 的 N）；缺失为 null */
   index: string | null
+  /** 页内跳转目标（唯一命中条目的锚点 id）；由 overviewAnchors 注入，未命中为 null */
+  anchorId?: string | null
 }
 
 export interface JuyaEntry {
@@ -43,6 +45,8 @@ export interface JuyaEntry {
   blocks: JuyaEntryBlock[]
   /** 「相关链接」列表 */
   links: JuyaLink[]
+  /** 标题的页内锚点 id；由 overviewAnchors 注入 */
+  anchorId?: string
 }
 
 export interface JuyaSection {

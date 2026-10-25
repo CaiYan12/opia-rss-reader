@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import DOMPurify from 'dompurify'
 import { ExternalLink, Star } from 'lucide-react'
 import type { Article } from '../../shared/types'
 import { JUYA_SOURCE_ID } from '../../shared/types'
 import { useAppStore } from '../stores/useAppStore'
 import { parseJuyaIssue } from '../juya/parseJuyaIssue'
+import { attachOverviewAnchors } from '../juya/overviewAnchors'
 import { resolveJuyaVariant } from '../juya/effectiveJuyaStyle'
 import { JUYA_TEMPLATES } from '../juya/templates'
 
@@ -15,6 +16,8 @@ interface Props {
 export function ReaderView({ article }: Props): JSX.Element {
   const { toggleFavorite, history, openExternalSmart, settings, systemDark } = useAppStore()
   const favorite = history[article.guid]?.favorite ?? false
+  // keep-alive 下多个阅读页同时在 DOM：锚点 id 加实例前缀，避免文档级重复 id
+  const anchorPrefix = `juya-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   // 内容区缩放系数：只作用于正文（工具栏在 zoom 容器外，保持固定尺寸）
   const uiZoom = settings?.uiZoom ?? 1
 
@@ -35,8 +38,9 @@ export function ReaderView({ article }: Props): JSX.Element {
     if (!variant) return null
     const issue = parseJuyaIssue(article.contentHtml)
     if (!issue) return null
-    return { variant, issue, template: JUYA_TEMPLATES[variant.styleId] }
-  }, [article, settings, systemDark])
+    // 概览标题跳页内条目所需的锚点/目标解析（纯函数：匹配规则见 overviewAnchors）
+    return { variant, issue: attachOverviewAnchors(issue, anchorPrefix), template: JUYA_TEMPLATES[variant.styleId] }
+  }, [article, settings, systemDark, anchorPrefix])
 
   /** 拦截正文内链点击：按设置分流（系统浏览器 / 内置浏览器页），禁止窗口内原地导航 */
   const onContentClick = (e: React.MouseEvent<HTMLDivElement>): void => {

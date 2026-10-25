@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Article } from '../../../shared/types'
 import type { JuyaTemplate, JuyaIssueProps, JuyaFeedProps } from '../templateTypes'
-import { EntryBlocks, OverviewItems } from './shared'
+import { EntryBlocks, EntryTitle, OverviewItems } from './shared'
 import { FeedShell, type FeedGates, type FeedItemMode } from './parts'
 import { useAppStore } from '../../stores/useAppStore'
 
@@ -40,22 +40,7 @@ export function makeJuyaTemplate(opts: TemplateOptions): JuyaTemplate {
               <h2>{section.heading}</h2>
               {section.entries.map((entry, i) => (
                 <article className="juya-entry" key={i}>
-                  <h3>
-                    {entry.titleLink ? (
-                      <a
-                        href={entry.titleLink}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          onOpenLink(entry.titleLink as string)
-                        }}
-                      >
-                        {entry.title}
-                      </a>
-                    ) : (
-                      entry.title
-                    )}
-                    {entry.index && <span className="juya-index">#{entry.index}</span>}
-                  </h3>
+                  <EntryTitle entry={entry} onOpenLink={onOpenLink} />
                   {entryColumns ? (
                     <div className="juya-entry-columns">
                       <EntryBlocks entry={entry} onOpenLink={onOpenLink} />

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { loadApp, openFirstArticle, activeTab } from './setup'
-import { readGridPlane, SYNTHWAVE_GRID, type GridPlaneFacts } from './helpers'
+import { readEntryPortFacts, readGridPlane, SYNTHWAVE_GRID, type GridPlaneFacts } from './helpers'
 
 /** 阅读页分流与降级：橘鸦定制路径三重判据（源身份 + 风格开启 + 解析成功）。
  *  keep-alive 下主页与阅读页同时在 DOM，故断言限定活动标签容器。 */
@@ -527,18 +527,25 @@ test('editorial T2：上午日期、文章标题回退及缺省摘要概览', as
   await expect(root.locator('.juya-overview')).toHaveCount(0)
 })
 
-test('editorial T2：32项概览宽屏双列、窄屏单列且顺序与键盘外链一致', async ({ page }) => {
+test('editorial T2：32项概览宽屏双列、窄屏单列，标题跳页内条目、图标仍以键盘打开原文外链', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await loadApp(page, 'editorialT2')
   await openFirstArticle(page)
 
   const root = activeTab(page).locator('.juya-root')
   const overview = root.locator('.juya-overview')
-  const anchors = overview.locator('a')
-  await expect(anchors).toHaveCount(32)
+  const items = overview.locator('li')
+  const jumps = overview.locator('.juya-overview-jump')
+  const extLinks = overview.locator('.juya-overview-ext')
+  await expect(items).toHaveCount(32)
   await expect(overview.locator('.juya-index')).toHaveText(
     Array.from({ length: 32 }, (_, i) => String(i + 1))
   )
+  // 唯一能页内命中的是 #1（正文只有一条 #1）；其余目录项没有对应条目，只保留外链图标
+  await expect(jumps).toHaveCount(1)
+  await expect(jumps).toHaveAttribute('href', /-entry-0$/)
+  const jumpHref = (await jumps.getAttribute('href')) ?? ''
+  await expect(extLinks).toHaveCount(32)
   const wide = await overview.evaluate((el) => ({
     display: getComputedStyle(el).display,
     columns: getComputedStyle(el).gridTemplateColumns,
@@ -553,12 +560,12 @@ test('editorial T2：32项概览宽屏双列、窄屏单列且顺序与键盘外
   await expect(root.locator('.juya-deck')).toHaveCSS('font-style', 'normal')
   await root.evaluate((el) => el.setAttribute('data-juya-variant', 'editorial-light'))
 
-  const order = await anchors.evaluateAll((els) => els.map((el) => ({
-    text: el.textContent?.trim(),
-    href: el.getAttribute('href'),
-    top: el.getBoundingClientRect().top,
-    left: el.getBoundingClientRect().left
-  })))
+  const order = await items.evaluateAll((els) => els.map((li) => {
+    const title = li.querySelector('.juya-overview-text')?.textContent?.trim() ?? ''
+    const ext = li.querySelector('.juya-overview-ext')
+    const rect = li.getBoundingClientRect()
+    return { text: title, href: ext?.getAttribute('href') ?? null, top: rect.top, left: rect.left }
+  }))
   expect(order.map((item) => item.text)).toEqual(
     Array.from({ length: 32 }, (_, i) => `第${i + 1}条概览项目含完整中文标题`)
   )
@@ -582,10 +589,20 @@ test('editorial T2：32项概览宽屏双列、窄屏单列且顺序与键盘外
   const narrowColumns = await overview.evaluate((el) => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/))
   expect(narrowColumns).toHaveLength(1)
 
-  await anchors.first().focus()
+  await jumps.first().focus()
   await page.keyboard.press('Tab')
-  await expect(anchors.nth(1)).toBeFocused()
+  await expect(extLinks.first()).toBeFocused()
   await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Enter')
+  // 标题 Enter = 页内跳转，不产生外链调用；焦点落到目标条目标题
+  await expect(activeTab(page).locator(jumpHref)).toBeFocused()
+  const afterJump = await page.evaluate(() =>
+    (window as unknown as { __stubCalls: Array<[string, string]> }).__stubCalls.filter(([kind]) => kind === 'openExternal')
+  )
+  expect(afterJump).toEqual([])
+
+  // 末尾图标 Enter = 外链（默认 system ⇒ openExternal）
+  await extLinks.first().focus()
   await page.keyboard.press('Enter')
   const externalCalls = await page.evaluate(() =>
     (window as unknown as { __stubCalls: Array<[string, string]> }).__stubCalls.filter(([kind]) => kind === 'openExternal')
@@ -1375,14 +1392,27 @@ test('90 年代报刊式框线导读（#29）：真实「导读」小标、上�
   // index.css 的 outline-color 有 0.2s 过渡，轮询到过渡结束值（亮侧 --jy-focus #8b1a1a）
   await expect(link).toHaveCSS('outline-color', 'rgb(139, 26, 26)')
 
-  // 点击行为不变：默认外链设置 system ⇒ 记录 openExternal，且不原地导航
+  // 点击标题 = 页内跳转：焦点落到条目标题、落点距滚动口顶 24px，不打开外链
   const urlBefore = page.url()
+  const jumpHref = (await link.getAttribute('href')) ?? ''
+  const target = activeTab(page).locator(jumpHref)
   await link.click()
+  await expect(target).toBeFocused()
+  await expect
+    .poll(async () => Math.abs((await readEntryPortFacts(target)).gap - 24))
+    .toBeLessThanOrEqual(1)
+  const afterJump = await page.evaluate(() =>
+    window.__stubCalls.filter(([kind]) => kind === 'openExternal')
+  )
+  expect(afterJump, '页内跳转不得打开外链').toEqual([])
+
+  // 末尾图标 = 外链：仍记录 openExternal，且不原地导航
+  await box.locator('.juya-overview-ext').first().click()
   const calls = await page.evaluate(() =>
     window.__stubCalls.filter(([kind]) => kind === 'openExternal')
   )
   expect(calls).toEqual([['openExternal', 'https://example.com/news/1']])
-  expect(page.url(), '概览链接不得导致原地导航').toBe(urlBefore)
+  expect(page.url(), '概览项的原文外链图标不得导致原地导航').toBe(urlBefore)
 })
 
 test('90 年代报刊式框线导读（#29）：560 宽度无横向溢出', async ({ page }) => {

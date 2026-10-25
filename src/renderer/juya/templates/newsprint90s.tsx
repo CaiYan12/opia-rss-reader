@@ -1,7 +1,7 @@
 import { type CSSProperties } from 'react'
 import { makeJuyaTemplate } from './base'
 import type { JuyaFeedProps, JuyaIssueProps, JuyaTemplate } from '../templateTypes'
-import { EntryBlocks, OverviewItems } from './shared'
+import { EntryBlocks, EntryTitle, OverviewItems } from './shared'
 import { NewsprintFeedMasthead } from './newsprint90s-feed-craft'
 import { useAppStore } from '../../stores/useAppStore'
 
@@ -54,22 +54,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
             <h2>{section.heading}</h2>
             {section.entries.map((entry, i) => (
               <article className="juya-entry" key={i}>
-                <h3>
-                  {entry.titleLink ? (
-                    <a
-                      href={entry.titleLink}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        onOpenLink(entry.titleLink as string)
-                      }}
-                    >
-                      {entry.title}
-                    </a>
-                  ) : (
-                    entry.title
-                  )}
-                  {entry.index && <span className="juya-index">#{entry.index}</span>}
-                </h3>
+                <EntryTitle entry={entry} onOpenLink={onOpenLink} />
                 <div className="juya-entry-columns">
                   <EntryBlocks entry={entry} onOpenLink={onOpenLink} />
                 </div>

@@ -21,6 +21,14 @@
   border-radius: 2px;
 }
 
+/* 概览标题跳转后的焦点落点（h3 tabindex=-1）：与链接焦点环同一记号；offset 放大到 4px
+   给标题留出呼吸（链接环为 2px）。仅在键盘/脚本焦点且 :focus-visible 命中时出现。 */
+.juya-entry h3:focus-visible {
+  outline: 2px solid var(--jy-focus);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
 .juya-root img {
   max-width: 100%;
   height: auto;
@@ -84,6 +92,36 @@
 .juya-overview a:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* 概览项的文字容器：标题与外链图标同处一条行内流，图标才能跟在**文字末尾**
+   （直接作为 li 的 flex 子项会被排到整个标题盒之后，长标题折行时错位）。
+   变体里 `li > :not(.juya-index)` 的长标题折行规则因此落在本容器上，意图不变。 */
+.juya-overview-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 外链图标：24×24 命中区（可点击面积的最小值），12px 视觉尺寸；负纵向外边距
+   抵掉线盒增高，概览行距保持原样（行距 6px 间隙，2px 外溢不会跨到相邻行）。
+   图标链接不是页内跳转链接，禁止继承概览/主题链接的下划线。 */
+.juya-root .juya-overview a.juya-overview-ext {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: -2px 0 -2px 2px;
+  vertical-align: middle;
+  color: inherit;
+  text-decoration: none;
+}
+
+.juya-overview-ext-icon {
+  width: 12px;
+  height: 12px;
+  display: block;
+  flex: none;
 }
 
 .juya-section {

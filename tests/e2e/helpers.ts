@@ -593,6 +593,24 @@ export interface GridPlaneFacts {
   layoutHeight: number
 }
 
+/** 读目标标题相对其滚动口的落点距离与当前滚动位置。
+ *  与产品 `scrollToEntry` 同一口径：向上找最近一个 overflow-y 为 auto/scroll 的祖先。 */
+export async function readEntryPortFacts(
+  target: Locator
+): Promise<{ gap: number; scrollTop: number }> {
+  return target.evaluate((el) => {
+    let scroller: HTMLElement | null = el.parentElement
+    while (scroller && !['auto', 'scroll'].includes(getComputedStyle(scroller).overflowY)) {
+      scroller = scroller.parentElement
+    }
+    if (!scroller) return { gap: Number.NaN, scrollTop: Number.NaN }
+    return {
+      gap: el.getBoundingClientRect().top - scroller.getBoundingClientRect().top,
+      scrollTop: scroller.scrollTop
+    }
+  })
+}
+
 /** 读一次网格平面 + 纹理层的几何与计算样式（相位随调用时刻，动画在跑时两次调用值不同）。 */
 export async function readGridPlane(plane: Locator): Promise<GridPlaneFacts> {
   return plane.evaluate((el) => {

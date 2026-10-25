@@ -327,7 +327,8 @@ for (const side of ['light', 'dark'] as const) {
         outlineWidth: style.outlineWidth,
         outlineOffset: style.outlineOffset,
         outlineColor: style.outlineColor,
-        hitTargetIsLink: hit === element
+        // 外链图标链接的命中点是内部 svg/path：只要仍在链接内，点击就会激活该链接
+        hitTargetIsLink: hit === element || (hit !== null && element.contains(hit))
       }
     })
     console.log(`[wabi keyboard focus settled] ${JSON.stringify({ side, focusFacts })}`)

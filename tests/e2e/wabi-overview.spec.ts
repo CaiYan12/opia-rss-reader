@@ -46,9 +46,11 @@ async function inspectOverview(page: Page) {
   const facts = await list.evaluate((element) => {
     const items = [...element.querySelectorAll('li')].map((item) => {
       const index = item.querySelector('.juya-index')?.textContent?.trim() ?? null
-      const titleElement = [...item.children].find((child) => !child.classList.contains('juya-index')) as HTMLElement
+      const titleElement = item.querySelector('.juya-overview-text') as HTMLElement
+      // 只量标题文字：外链图标是 24×24 命中区，允许溢出文字行盒，不能混进文字矩形断言
+      const titleSource = item.querySelector('.juya-overview-jump') ?? titleElement.firstChild
       const range = document.createRange()
-      range.selectNodeContents(titleElement)
+      range.selectNodeContents(titleSource as Node)
       const textRects = [...range.getClientRects()].map((rect) => ({
         left: rect.left,
         right: rect.right,
@@ -58,7 +60,8 @@ async function inspectOverview(page: Page) {
       const rect = item.getBoundingClientRect()
       return {
         title: titleElement.textContent?.trim() ?? '',
-        href: titleElement instanceof HTMLAnchorElement ? titleElement.href : null,
+        href: item.querySelector('.juya-overview-ext')?.getAttribute('href') ?? null,
+        jump: item.querySelector('.juya-overview-jump')?.getAttribute('href') ?? null,
         index,
         left: rect.left,
         top: rect.top,
@@ -86,8 +89,15 @@ async function inspectOverview(page: Page) {
   expect(facts.items, 'all overview entries remain rendered').toHaveLength(OVERVIEW_SIZE)
   expect(
     facts.items.map(({ title, href, index }) => ({ title, href, index })),
-    'titles, numbering, links, and source order remain intact'
+    'titles, numbering, external links, and source order remain intact'
   ).toEqual(overview.map(({ title, href, index }) => ({ title: title.trim(), href, index })))
+  expect(facts.items[0].jump, 'the uniquely matched first item gets an in-page jump').toMatch(
+    /-entry-0$/
+  )
+  expect(
+    facts.items.slice(1).every(({ jump }) => jump === null),
+    'only the uniquely matched entry gets an in-page jump'
+  ).toBe(true)
   const hrefs = facts.items.map(({ href }) => href).filter((href): href is string => href !== null)
   expect(hrefs, 'all existing external link targets remain present').toHaveLength(OVERVIEW_SIZE - 1)
   expect(new Set(hrefs).size, 'link targets are unique').toBe(OVERVIEW_SIZE - 1)
@@ -120,19 +130,20 @@ test('wabi overview uses the zoomed reading width and preserves all 32 entries i
   const expectedHrefs = overview
     .map(({ href }) => href)
     .filter((href): href is string => href !== null)
-  const firstLink = activeTab(page).locator('.juya-overview a').first()
+  const firstJump = activeTab(page).locator('.juya-overview-jump').first()
+  const firstExt = activeTab(page).locator('.juya-overview-ext').first()
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
   let reachedFirstLink = false
   for (let step = 0; step < 100 && !reachedFirstLink; step++) {
     await page.keyboard.press('Tab')
-    reachedFirstLink = await firstLink.evaluate((element) => element === document.activeElement)
+    reachedFirstLink = await firstJump.evaluate((element) => element === document.activeElement)
   }
-  expect(reachedFirstLink, 'keyboard Tab reaches the first overview link').toBe(true)
+  expect(reachedFirstLink, 'keyboard Tab reaches the first overview jump link').toBe(true)
 
   await expect
-    .poll(() => firstLink.evaluate((element) => getComputedStyle(element).outlineColor))
+    .poll(() => firstJump.evaluate((element) => getComputedStyle(element).outlineColor))
     .not.toBe('rgba(0, 0, 0, 0)')
-  const focus = await firstLink.evaluate((element) => {
+  const focus = await firstJump.evaluate((element) => {
     const style = getComputedStyle(element)
     return {
       visible: element.matches(':focus-visible'),
@@ -147,20 +158,39 @@ test('wabi overview uses the zoomed reading width and preserves all 32 entries i
   expect(focus.outlineColor).not.toBe('rgba(0, 0, 0, 0)')
   await page.screenshot({ path: join(evidence, 'overview-1280-100-focus.png') })
 
+  // Tab 从标题跳转链接开始：其后依次是各目录项的外链图标（无外链的第 24 项不占位）
   const keyboardHrefs: string[] = []
   for (let index = 0; index < expectedHrefs.length; index++) {
+    await page.keyboard.press('Tab')
     keyboardHrefs.push(
       await page.evaluate(() =>
-        document.activeElement instanceof HTMLAnchorElement ? document.activeElement.href : ''
+        document.activeElement instanceof HTMLAnchorElement
+          ? document.activeElement.getAttribute('href') ?? ''
+          : ''
       )
     )
-    if (index < expectedHrefs.length - 1) await page.keyboard.press('Tab')
   }
-  expect(keyboardHrefs, 'Tab order follows the visible row-major link order').toEqual(expectedHrefs)
+  expect(keyboardHrefs, 'Tab order follows the visible row-major external-link order').toEqual(expectedHrefs)
 
-  for (let step = 1; step < expectedHrefs.length; step++) await page.keyboard.press('Shift+Tab')
-  await expect(firstLink).toBeFocused()
+  // 循环结束时焦点在最后一个外链图标；Shift+Tab 31 次回到标题跳转链接
+  for (let step = 0; step < expectedHrefs.length; step++) await page.keyboard.press('Shift+Tab')
+  await expect(firstJump).toBeFocused()
+  const firstJumpHref = (await firstJump.getAttribute('href')) ?? ''
   const urlBeforeActivation = page.url()
+
+  // 标题 Enter = 页内跳转：焦点转移到目标条目标题，不打开外链
+  await page.keyboard.press('Enter')
+  await expect(activeTab(page).locator(firstJumpHref)).toBeFocused()
+  const afterJump = await page.evaluate(() =>
+    (window as unknown as { __stubCalls: Array<[string, string]> }).__stubCalls.filter(
+      ([kind]) => kind === 'openExternal'
+    )
+  )
+  expect(afterJump, 'in-page jump must not open the external link').toEqual([])
+  expect(page.url(), 'in-page jump does not navigate the reader page').toBe(urlBeforeActivation)
+
+  // 末尾图标 Enter = 外链：仍走 SafeLink → openExternal，且不原地导航
+  await firstExt.focus()
   await page.keyboard.press('Enter')
   await expect
     .poll(() =>

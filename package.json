@@ -1,6 +1,6 @@
 {
   "name": "opia-rss-reader",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Windows desktop AI news RSS reader",
   "main": "out/main/index.js",

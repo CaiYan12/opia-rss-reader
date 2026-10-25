@@ -2,7 +2,7 @@
 
 本文件是 **发布考古**：每次发版的 tag、commit、产物字节数与当时的校验口径。这些信息在发版时有用，日常开工不需要 —— 故从 `AGENTS.md` 移出，只在发版/回溯时读。
 
-现行发版流程见 `README.md`（`build.bat` / `build.ps1`）与 `AGENTS.md` 的「本机环境陷阱」章节。
+现行发版流程见 `README.md`（`build.bat` / `build.ps1`）与 [Windows 运行与构建参考](agents/windows-runtime.md)；历史环境结论须先在当前检出核查。
 
 ## v0.2.0（2026-09-24）
 

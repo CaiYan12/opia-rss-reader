@@ -12,19 +12,8 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
-Edit the right-hand column to match whatever vocabulary you actually use.
+## Inspect current tracker state
 
-## State in the tracker (as of 2026-10-06)
+Read current labels with `gh label list --limit 100 --json name`. The table defines role mappings, not a cached claim that labels exist or are missing.
 
-These five labels do not exist in the repository yet — only GitHub's default set (`bug`, `enhancement`, `documentation`, `wontfix`, …) is present. `wontfix` already matches the default string; the other four have to be created before first use:
-
-```bash
-gh label create needs-triage    --color "ededed" --description "Maintainer needs to evaluate this issue"
-gh label create needs-info      --color "ededed" --description "Waiting on reporter for more information"
-gh label create ready-for-agent --color "0e8a16" --description "Fully specified, ready for an AFK agent"
-gh label create ready-for-human --color "1d76db" --description "Requires human implementation"
-```
-
-(`gh label create` takes `<name>` then flags — `--color` / `--description`; color is a bare 6-digit hex, no `#`. Add `--force` to update an existing one.)
-
-Label creation is a one-off setup step, not something a skill should do implicitly. Run it once if a triage workflow actually needs these labels.
+If a needed label is absent, report the actual result and follow the workflow's authorization boundary before creating it. Do not implicitly create or overwrite labels from an old setup snapshot. Keep label creation separate from applying an existing label to an issue.

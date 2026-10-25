@@ -1,6 +1,6 @@
 # Wabi 视觉验收：#66（#63 收口）
 
-> 本记录把实现、自动验证、隐藏 Electron 验收、设计自评和用户视觉认可分开。机器与代理结果不能替代用户确认；**用户视觉认可仍待确认**。
+> 本记录把实现、自动验证、隐藏 Electron 验收、设计自评和用户视觉认可分开。机器与代理结果不能替代用户确认。**用户视觉认可已由用户于 2026-10-24 明确给出（「当前wabi可判定封版」），wabi 判定封版**；封版后新需求另行立项。
 
 ## 候选与范围
 
@@ -61,7 +61,7 @@ The native RSS fixture SHA-256 is `b1638031cff8467fa1699d53818887f03f0b63072cbd3
 | A4 字体与对比度 | 通过，滚动条有像素边界 | 当前候选实测平台字体 4/4 通过。配对 PNG 文字／焦点分析 34 条中 32 条达到阈值、0 条失败；两张滚动条截图没有检测到实色 thumb 像素，故仍标为像素证明未取得。透明 track 上从实际滚动槽截图取样，thumb 计算对比为亮 3.825:1、暗 4.749:1，均超过 3:1。 |
 | A5 原生边界 | 通过，限隐藏运行 | 真实 Electron main/preload/IPC 在独立 userData、sessionData 和 crashDumps 路径运行；初始刷新加入 10 篇，真实 preload API 返回 settings/source/article/history。默认与最小窗口、亮暗及 100%／120% 均记录，默认资料目录前后 stat 相同。窗口始终 hidden/unfocused；DOM 焦点不作为 OS 前台焦点证明。 |
 | A6 最终门 | 通过 | 冻结 CSS 后先写入 Nocturne 既有 5 张归档，再执行唯一一次 `npm run verify`。574 个 Vitest、190 个 Playwright、Nocturne 70/70 文本与 14/14 UI 对比度检查通过；5 张 PNG 逐字节相同。 |
-| A7 证据与认可边界 | 通过记录，用户认可待确认 | 保存原始命令日志、退出码、候选／输入指纹、逐样本 PNG／JSON 和初始失败。用户视觉认可未由代理或自动测试代签；未测 OS 前台行为也未声称通过。 |
+| A7 证据与认可边界 | 通过记录，用户认可已确认 | 保存原始命令日志、退出码、候选／输入指纹、逐样本 PNG／JSON 和初始失败。用户视觉认可于 2026-10-24 由用户本人明确给出，未由代理或自动测试代签；未测 OS 前台行为也未声称通过。 |
 
 纠正合并后的最终全量门日志：`out/wabi-art-implementation-2026-10-24/tickets/66/npm-run-verify-final-corrective.log`。该日志对应本轮共享字体 helper 和两处调用测试的最终 SHA。此前 `tickets/66/npm-run-verify-final.log` 是 helper 抽取前、同样通过的原始输入记录；不覆盖前一份结果。滚动条对比是从实际渲染后的滚动槽像素取底色，不是拿局部纸色 token 代替；由于 Chromium 截图没有呈现实色 thumb，报告保留这两项为 pixel-unproven，而不是把计算值称为像素命中证明。
 
@@ -95,7 +95,7 @@ Nocturne write pass `tickets/66/nocturne-walkthrough-write.log` 在 full verify 
 - **刊头：**reader 日期竖排且保留文章真实 `pubDate`；窄屏陶拓缩短后留在标题下方，实际可见颗粒与日期栏分开。feed 保留大标题、真实 host、对应卡片日期，标题和 host 不互压。
 - **背景：**亮色为浅和纸与稀疏纸纤维，暗色为炭纸与低频边缘磨损；陶拓边界破碎，有粗粒／密度变化。装饰层 `aria-hidden`、`pointer-events:none`，不占焦点。
 - **正文：**正文基线 16px、行高 1.85、左轴一致；32 项概览、原条目编号、文章顺序、图像比例与图注位置由 #64 targeted E2E 和当前全量 E2E 验证。body 保持低饱和，不与刊头争夺主层级。
-- **整体：**跨亮暗和两页共享纸／墨／陶拓语汇；真实 source/日期语义可识别，容器无水平溢出。当前 #66 视觉证据为自评，**仍需用户亲自确认**。
+- **整体：**跨亮暗和两页共享纸／墨／陶拓语汇；真实 source/日期语义可识别，容器无水平溢出。当前 #66 视觉证据为自评，**用户已于 2026-10-24 亲自确认并判定封版**。
 
 ## 独立评审
 
@@ -103,7 +103,7 @@ Nocturne write pass `tickets/66/nocturne-walkthrough-write.log` 在 full verify 
 - **SPEC 轴：**`out/wabi-art-implementation-2026-10-24/reviews/spec.md` 为 0 项发现。
 - **视觉轴：**`out/wabi-art-implementation-2026-10-24/reviews/visual.md` 独立检查 4 张代表帧：reader 亮宽、reader 暗窄 120%、feed 亮宽、feed 暗窄 120%。评审对所见帧报告 0 项新增可操作视觉缺陷；此范围不是人工逐帧检查全部矩阵。
 - **纠正后的验证：**新 helper 与 reader/feed 调用点定向 E2E 为 24/24 通过，原始日志 `tickets/66/targeted-font-helper-playwright.log`；随后唯一一次纠正后 `npm run verify` 574 单测、190 E2E、Nocturne 审计和归档比较均通过，见上方最终门日志。
-- **用户确认：**以上独立评审都不替用户确认视觉方向，用户认可仍待明确答复。
+- **用户确认：**以上独立评审都不替用户确认视觉方向；用户已于 2026-10-24 明确给出视觉认可并判定封版。
 
 当前最终几何代表帧：reader light wide `reader-date-clearance/main40/reader-light-1280-100.png`，reader light narrow `reader-date-clearance/main40/reader-light-480-120.png`；窄断点 light `reader-date-clearance/breakpoints/reader-light-641-100.png`。feed 稳定代表帧为 `final-settled/main40/feed-light-1280-100.png` 和 `final-settled-v2/main40/feed-dark-480-120.png`。feed 录屏／PNG 中的卡片封面是确定性几何 SVG，不是实际线上封面内容审美证明。
 
@@ -157,5 +157,5 @@ Nocturne write pass `tickets/66/nocturne-walkthrough-write.log` 在 full verify 
 - 实现：完成；产品修改集中在 Wabi 专用 CSS。
 - 功能验证：refactor 定向 E2E 24/24；最终 `npm run verify` 574 Vitest、190 E2E、70/70 text contrast、14/14 UI contrast 和 5/5 archive byte comparisons 均通过；此前隐藏 native、矩阵和像素记录按原范围复用。
 - 独立 review：规范轴无硬性违反、SPEC 轴 0 项发现、代表帧视觉评审完成；review paths 与逐轴结果见上方。
-- 用户视觉认可：**待用户明确确认；不由本报告代填。**
+- 用户视觉认可：**已确认（2026-10-24，用户明示「当前wabi可判定封版」）。**
 - 本票没有检查物理屏幕前台焦点、显示帧率、线上真实封面审美或发布环境。滚动条保留 2 项 thumb 直接像素未证明；其他计算与截图范围按 A4 说明。

@@ -8,12 +8,12 @@ This repo is a single Electron application package (no `pnpm-workspace.yaml`, no
 
 ```
 /
-├── GLOSSARY.md          ← does not exist yet
-├── docs/adr/            ← does not exist yet
+├── GLOSSARY.md          ← domain vocabulary
+├── docs/adr/            ← decisions, created lazily when needed
 └── src/
 ```
 
-Both are created lazily by `/domain-modeling` when terms or decisions actually get resolved — not upfront.
+`GLOSSARY.md` is the vocabulary reference. Inspect the current filesystem for ADRs; create an ADR through `/domain-modeling` only when a decision needs one, not as setup scaffolding.
 
 ## Before exploring, read these
 
@@ -22,7 +22,7 @@ Both are created lazily by `/domain-modeling` when terms or decisions actually g
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront.
 
-`AGENTS.md` is the authoritative existing convention document for this repo (architecture constraints, pinned dependency versions, Windows environment pitfalls, verified RSS source facts, UI architecture facts). It plays the role a glossary would otherwise serve for many of these terms — read it, and don't duplicate its content into a new glossary.
+`AGENTS.md` contains architecture boundaries and task-specific navigation. Use its pointers for Windows, UI and verification conventions; use `GLOSSARY.md` for domain vocabulary. Keep these responsibilities separate rather than copying implementation history or vocabulary into the root steering file.
 
 ## Use the glossary's vocabulary
 

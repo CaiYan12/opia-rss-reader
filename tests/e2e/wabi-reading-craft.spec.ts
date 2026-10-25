@@ -205,17 +205,29 @@ test('wabi display title remains readable when both handwritten font names are u
     ({ familyName, glyphCount, isCustomFont }) => ({ familyName, glyphCount, isCustomFont })
   )
   const declaredFallback = await title.evaluate((element) => getComputedStyle(element).fontFamily)
+  // 命名回退族是否在本机可解析——CI 的 Windows runner 不带中文补充字体（KaiTi/楷体等随语言包分发），
+  // 回退链会落到系统 CJK 字体（如 Microsoft YaHei）。只有本机确有命名族时才断言命中命名族；
+  // 任何环境下都必须成立的是「字形仍渲染」（可读性不因手写字体缺席而丢）。
+  const namedResolvable = await page.evaluate(() =>
+    ['KaiTi', '楷体', 'Kai Ti', 'Noto Serif SC'].some(
+      (family) => document.fonts.check(`12px "${family}"`) || document.fonts.check(`12px ${family}`)
+    )
+  )
   const evidenceDir = join(process.cwd(), 'out', 'wabi-art-implementation-2026-10-24', '64', 'verify')
   mkdirSync(evidenceDir, { recursive: true })
   writeFileSync(
     join(evidenceDir, 'font-fallback.json'),
-    JSON.stringify({ declaredFallback, renderedFonts }, null, 2),
+    JSON.stringify({ declaredFallback, namedResolvable, renderedFonts }, null, 2),
     'utf8'
   )
-  console.log(`[wabi display fallback fonts] ${JSON.stringify({ declaredFallback, renderedFonts })}`)
+  console.log(
+    `[wabi display fallback fonts] ${JSON.stringify({ declaredFallback, namedResolvable, renderedFonts })}`
+  )
 
   expect(renderedFonts.some((font) => font.glyphCount > 0)).toBe(true)
-  expect(renderedFonts.some((font) => /KaiTi|楷体|Noto Serif SC/i.test(font.familyName))).toBe(true)
+  if (namedResolvable) {
+    expect(renderedFonts.some((font) => /KaiTi|楷体|Noto Serif SC/i.test(font.familyName))).toBe(true)
+  }
 })
 
 test('wabi reader wraps a long issue heading beside its vertical date at 120% zoom', async ({ page }) => {

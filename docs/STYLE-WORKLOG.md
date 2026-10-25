@@ -226,3 +226,4 @@ wabi 引入的订阅页头版（GLOSSARY 已收录该术语，与阅读页「刊
 - 双轴评审 Spec/Standards 双 PASS 零 P0/P1；最终门 verify exit 0（612 单测 / 263 E2E / 归档一致——RM 档新增有界像素等价回退容光栅噪声，实测 9px/Δ9）。验收报告：[FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md](FEED-MASTHEAD-V2-ACCEPTANCE-2026-10-24.md)；证据根 `out/feed-masthead-v2-implementation-2026-10-24/`。
 - 追加固：用户真机观察「wabi/folio 概览一行两个、其他一行一个」→ 基类 `.juya-overview` 统一 grid 两列 + ≤640 单列回落（`773d06b`，verify exit 0）；nocturne 封版例外唯一授权改动 = 暗侧发丝线挂行界条目 `nth-child(2n+3)`（单列回落恢复原语义，线值零变化）；newsprint「保持单列」守卫翻转为两列不变量。
 - 用户于 2026-10-25 真机复看后明确「全认可」（覆盖 V1 推广、V2 丰富化与概览两列统一），SPEC #67 关闭。本地收口不含 push / PR / 合并 main / tag / 发行；后续需求另行立项。
+- 补记（2026-10-25）：上句「本地收口不含 push / PR / 合并 main」为收口时点状态；随后经用户指令 push 并开 PR，#84 已合并入 main（`2ddc670`，main `7d25a7f` 与 `origin/main` 同步）。未 tag、未发行仍成立，后续需求另行立项不变。

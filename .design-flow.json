@@ -219,6 +219,14 @@
         "用户「全认可」（真机复看，覆盖 V1 推广 + V2 丰富化 + 概览两列统一）",
         "SPEC #67 CLOSED；认可记录落 FEED-MASTHEAD-V2-ACCEPTANCE + STYLE-WORKLOG"
       ]
+    },
+    {
+      "stage": "polish",
+      "date": "2026-10-25",
+      "outputs": [
+        "收尾：PR #84 合并 main（2ddc670）并同步远端；CI 三处环境差异修复（wabi 字体断言×2、storeService 毫秒竞态）",
+        "清理：46 分支 / worktree / opia-wt / TEMP 脚本 / test-results；wabi 封版段自 pilot（1228a9d）移植入库"
+      ]
     }
   ],
   "outputs": {
@@ -298,5 +306,5 @@
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
     "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
   ],
-  "next": "SPEC #67 已收口（用户全认可 2026-10-25）。待用户指令：push / PR / 合并 main / 发行均未授权；wabi 封版 worklog 段仍在 pilot 分支待合并时机。"
+  "next": "本轮全部收尾完成（2026-10-25）：PR #84 已合并 main（2ddc670）并同步远端，46 个轮次分支、worktree、opia-wt 与临时脚本已清理；open issue 清零。后续新需求另行立项。"
 }

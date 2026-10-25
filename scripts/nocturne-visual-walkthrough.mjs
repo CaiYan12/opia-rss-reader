@@ -430,6 +430,8 @@ let allMatch = true
 // 双变体翻转，全部落在图版 plate-1/plate-2 的 1px 装饰边右缘 3px 竖条内（x963-965）；
 // 同批次非 RM 含图版归档逐字节一致、守卫锁死阅读页规则零改动 ⇒ 判定为 GPU 光栅化噪声
 // 而非规则变化。字节比对失败时回退有界像素等价：差异必须给数，超容差仍判不一致。
+// 容差宽度是跨机 GPU 光栅余量而非放宽验收：实测 9px/Δ9，取 64px/Δ16（约 7×/1.8×）
+// 容纳不同显卡/驱动的分块边界抖动；非 RM 档仍逐字节。
 const RM_NOISE = { maxPixels: 64, maxChannel: 16 }
 for (const shot of SHOTS) {
   const fresh = results.get(shot.file)

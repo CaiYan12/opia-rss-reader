@@ -3692,7 +3692,7 @@
    8% 白叠底（1.78:1），属装饰性淡出、不承载信息。
    盒模型零变化：文字位置 / 内边距 / 盒尺寸与改前逐值一致（只有边框颜色与背景图层变化）。
    禁 text-shadow（同 background-clip:text 的绘制顺序陷阱）；外发光一律禁（守卫只放行 inset 内阴影，
-   给将来的内顶高光留空间）。实测像素见提交信息与 docs/juyathemesworks 走查归档。 */
+   给将来的内顶高光留空间）。实测像素见提交信息与 docs/juyathemesworks/nocturne 走查归档。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-lead {
   border-left: 3px solid transparent;
   background-image: linear-gradient(

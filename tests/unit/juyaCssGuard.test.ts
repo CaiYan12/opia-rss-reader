@@ -515,7 +515,7 @@ describe('pop 刊头多面板拼贴守卫（2026-10-11 用户指令：刊头由�
 })
 
 describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修正 A/B）', () => {
-  // 需求：docs/juyathemesworks/nocturne-dark.md §6（决策 10 导语高亮窗）+ §7.1（决策 11 栏目 h2 发丝线），仅暗侧。
+  // 需求：docs/juyathemesworks/nocturne/nocturne-dark.md §6（决策 10 导语高亮窗）+ §7.1（决策 11 栏目 h2 发丝线），仅暗侧。
   // 真值一律从 CSS 规则里 regex 抠出后再断言（注释可自证，规则才是被浏览器消费的东西）；
   // 对比度一律自己按 alpha 合成后实算（tokenHex 读不了 rgba）。
   //
@@ -1038,7 +1038,7 @@ describe('nocturne 暗侧原生件配色守卫（2026-10-20，#12 / SPEC B5a）'
 })
 
 describe('nocturne 刊头 neon 守卫（2026-10-12，#4）', () => {
-  // 需求：docs/juyathemesworks/nocturne-dark.md §4.2（静态辉光近层 .28 / 远层 .12；呼吸 9s alternate，
+  // 需求：docs/juyathemesworks/nocturne/nocturne-dark.md §4.2（静态辉光近层 .28 / 远层 .12；呼吸 9s alternate，
   // 近层 alpha .22 ↔ .32 摆动；alpha 沿用 --jy-accent #6e7bff）。区间两端以关键帧声明为真值断言。
   // 硬约束（AGENTS.md / §10 红线 2）：background-clip:text 上禁用 text-shadow——它会盖住渐变填充
   // （Chromium 绘制顺序，y2k 已踩坑），辉光只能用 filter: drop-shadow。
@@ -1787,7 +1787,7 @@ describe('nocturne 图文回流守卫（2026-10-12，#8：右列限 2 张，其�
 })
 
 describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 + 发丝线 + hover 整行微亮）', () => {
-  // 需求：docs/juyathemesworks/nocturne-dark.md §7.2（决策 10）。真值一律从 juya.css 规则里
+  // 需求：docs/juyathemesworks/nocturne/nocturne-dark.md §7.2（决策 10）。真值一律从 juya.css 规则里
   // regex 抠出后**自行 alpha 合成再实算**——tokenHex 读不了 rgba，本票相关 token 全是 rgba 字面量。
   // 底色口径（2026-10-31 星尘夜空）：概览区在页顶；`.juya-scene` 是 sticky ⇒ 概览滚到滚动口顶端时
   // y=0。n1 是 145%×125% 的大雾（覆盖中心与右下），内容盒内最亮处在内容列左缘 x=24（700 视口）；
@@ -2349,7 +2349,7 @@ describe('nocturne 阅读页图片压暗与发丝描边守卫（2026-10-20，#14
 })
 
 describe('nocturne 字体语言守卫（2026-10-12，#3）', () => {
-  // 需求：docs/juyathemesworks/nocturne-dark.md §2 —— 三档无衬线分工（零衬线），仅暗侧。
+  // 需求：docs/juyathemesworks/nocturne/nocturne-dark.md §2 —— 三档无衬线分工（零衬线），仅暗侧。
   // 本机实测（Fonts 注册表 596 条）：Inter / SF Pro Text / SF Pro Display 均未安装，
   // 原栈整体落回 Segoe UI + Noto Sans SC = 与应用 UI 字体无差别，风格识别度归零。
   // 可用中文黑体只有 Segoe UI / Noto Sans SC / 微软雅黑 / SimHei / DengXian，故首选必须在其中。

@@ -6,8 +6,9 @@
 
 ## nocturne（暗夜精修式）
 
-需求文档：`docs/juyathemesworks/nocturne-dark.md`（含 §5 / §7.1 两段实施期校正）。
-归档基线：`docs/juyathemesworks/nocturne-dark-*.png`（5 张，`scripts/nocturne-visual-walkthrough.mjs --verify` 逐字节校验）。
+需求文档：`docs/juyathemesworks/nocturne/nocturne-dark.md`（含 §5 / §7.1 两段实施期校正）。
+亮侧破晓设计稿（未实现）：`docs/juyathemesworks/nocturne/nocturne-light.md`。
+归档基线：`docs/juyathemesworks/nocturne/nocturne-dark-*.png`（5 张，`scripts/nocturne-visual-walkthrough.mjs --verify` 逐字节校验）。
 
 ### 二轮打磨（2026-10-20 ~ 10-21，SPEC #10 / 票据 #11–#23）
 
@@ -90,6 +91,8 @@
 - 全量 `npm run verify` exit 0：typecheck 0；Vitest **25 文件 627 项**；Playwright **266 项**；对比度审计 text 70 + ui 14 PASS；5 张归档逐字节一致、RM 证据全 PASS。
 
 边界：星点是装饰层，不参与文字 AA；订阅卡文字对比按合成层手算 ≥5:1；`backdrop-filter` 是新的合成层，perf probe / 真实窗口复核待做；静态归档帧中卡后星点稀疏，滚动或亮星经过卡后时最明显。
+
+封版与后续：用户于同日认可暗侧「星尘夜空」并封版（2026-10-31）；亮侧破晓设计稿（未实现）已入 `docs/juyathemesworks/nocturne/nocturne-light.md`；暗侧不再改。
 
 ## folio（纸感精读式）
 

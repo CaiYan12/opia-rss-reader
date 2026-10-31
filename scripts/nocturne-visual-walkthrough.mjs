@@ -3,7 +3,7 @@
  * nocturne-dark 视觉走查截图归档生成器（GitHub issue #9）
  * =============================================================================
  * 本脚本要修掉的缺陷（已独立核实）：
- *   `docs/juyathemesworks/` 下 5 张归档截图**没有任何已入库的生成脚本**——`git grep` 全仓找不到
+ *   `docs/juyathemesworks/nocturne/` 下 5 张归档截图**没有任何已入库的生成脚本**——`git grep` 全仓找不到
  *   产出这些 png 的代码（只有 `tests/e2e/contrast.spec.ts` 里一处用于测量的小条带
  *   `page.screenshot`）。后果有二：
  *     ① 5 张图**不可复现**：别人无法重新生成、无法核对；
@@ -85,7 +85,7 @@ import { inflateSync } from 'node:zlib'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_DIR = join(ROOT, 'out', 'renderer')
-const ARCHIVE_DIR = join(ROOT, 'docs', 'juyathemesworks')
+const ARCHIVE_DIR = join(ROOT, 'docs', 'juyathemesworks', 'nocturne')
 const HELPERS_TS = join(ROOT, 'tests', 'e2e', 'helpers.ts')
 const STUB_BUNDLE = join(ROOT, 'out', '.visual-walkthrough-stub.mjs')
 const PORT = 4196

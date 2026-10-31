@@ -290,7 +290,7 @@ node scripts/nocturne-visual-walkthrough.mjs --verify   # 期望：exit 0，5 �
 npm run test:e2e                              # 期望：90 passed（集成侧统一收口时执行）
 ```
 
-## 归档截图（`docs/juyathemesworks/`）
+## 归档截图（`docs/juyathemesworks/nocturne/`）
 
 | 文件 | 视口 | 说明 |
 |---|---|---|

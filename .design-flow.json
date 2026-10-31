@@ -269,7 +269,7 @@
     "mastheadV2FinalTip": "773d06b (含概览两列统一)",
     "spec67Closed": "2026-10-25 用户全认可后关闭",
     "nocturneStardust": "src/renderer/juya/juya.css + templates/nocturne.tsx",
-    "nocturneStardustArchives": "docs/juyathemesworks/nocturne-dark-*.png（5 张，2026-10-31 重生成）",
+    "nocturneStardustArchives": "docs/juyathemesworks/nocturne/nocturne-dark-*.png（5 张，2026-10-31 重生成）",
     "nocturneStardustReview": "out/nocturne-stardust-2026-10-31/（本机证据，gitignored）"
   },
   "decisions": [

@@ -4,6 +4,21 @@
 
 现行发版流程见 `README.md`（`build.bat` / `build.ps1`）与 [Windows 运行与构建参考](agents/windows-runtime.md)；历史环境结论须先在当前检出核查。
 
+## v0.2.1r1（2026-10-31）
+
+v0.2.1 的重发构建（r1），收 v0.2.1 之后的 nocturne 双端补完：暗侧星尘夜空 + 毛玻璃订阅卡、亮侧破晓首次实现（均封版）。应用版本号仍为 0.2.1，产物沿用 v0.2.1 命名（重发先例 `v0.1.0r1`）。
+
+- **tag** `v0.2.1r1`（轻量）→ commit `93b4f45`
+- 附件：
+  - `OpiaRSSReader-v0.2.1-portable.exe` — 110,686,931 bytes（SHA256 `e797663654cca121…`）
+  - `OpiaRSSReader-v0.2.1-win32-x64.zip` — 162,799,067 bytes（SHA256 `cbcddd041cf00eb8…`）
+  - 解包目录 `OpiaRSSReader-v0.2.1-win32-x64\`
+- 内嵌 `ProductVersion 0.2.1.0`，与基础版本一致。
+- 校验口径：tsc 0 错误 / vitest 25 文件 641 项 / Playwright 273 项 / nocturne 对比度审计暗侧 text 70 + ui 14 PASS / 暗、亮各 5 张归档逐字节一致 / 亮侧 RM 与冻结档同 SHA256；CI verify run `41211671163`（@ `93b4f45`）success。
+- 构建：`build.ps1` 后按 `build.bat` 步骤精简 locales（仅 en-US / zh-CN）并重新组装 zip；无 EBUSY。
+- 备注：本轮本机工作区曾被 DSH 打上 Low 完整性标签，构建产物继承后无法运行（portable 报临时文件错误、unpacked 静默退出码 3）；按用户授权将仓库根、`build/`、`release/` 重设为 Medium 后修复，详见 [Windows 运行参考](agents/windows-runtime.md) 2026-10-31 补记。标签属本地元数据，不影响附件字节。
+- release 自检：release 目录 portable 以 `--inspect-brk` 无窗口启动，5s 内拉起主进程。
+
 ## v0.2.1（2026-10-25）
 
 八风格订阅页头版（V1+V2）+ 逐风格精修（nocturne / folio / y2k / pop / editorial / wabi）+ 概览目录全风格两列统一与标题页内跳转 + 验证证据链入库（归档生成脚本 / 对比度实算审计 / CI 单闸门）。
@@ -58,5 +73,6 @@
 | 订阅页头版 V1 + V2 + 概览两列统一（PR #84，#67 及子票 #68–#83） | 2026-10-24 ~ 10-25 | 随 v0.2.1 发布 |
 | 概览标题页内跳转 + 原文外链图标（PR #85） | 2026-10-25 | 随 v0.2.1 发布 |
 | 验证/CI 基建与工程治理（verify 单闸门、归档脚本入库、fixture 入库、正本强跟踪、actions v5） | 2026-10-21 ~ 10-25 | 随 v0.2.1 发布 |
+| nocturne 暗侧星尘夜空 + 亮侧破晓（封版）+ 本机打包标签修复 | 2026-10-31 | 随 v0.2.1r1 发布；详见 `docs/STYLE-WORKLOG.md` 与 Windows 运行参考 |
 
 当前无未发版批次。

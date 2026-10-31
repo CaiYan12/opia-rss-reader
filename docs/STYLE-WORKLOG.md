@@ -7,7 +7,7 @@
 ## nocturne（暗夜精修式）
 
 需求文档：`docs/juyathemesworks/nocturne/nocturne-dark.md`（含 §5 / §7.1 两段实施期校正）。
-亮侧破晓设计稿（未实现）：`docs/juyathemesworks/nocturne/nocturne-light.md`。
+亮侧破晓（2026-10-31 实现，待视觉认可）：`docs/juyathemesworks/nocturne/nocturne-light.md`。
 归档基线：`docs/juyathemesworks/nocturne/nocturne-dark-*.png`（5 张，`scripts/nocturne-visual-walkthrough.mjs --verify` 逐字节校验）。
 
 ### 二轮打磨（2026-10-20 ~ 10-21，SPEC #10 / 票据 #11–#23）
@@ -92,7 +92,31 @@
 
 边界：星点是装饰层，不参与文字 AA；订阅卡文字对比按合成层手算 ≥5:1；`backdrop-filter` 是新的合成层，perf probe / 真实窗口复核待做；静态归档帧中卡后星点稀疏，滚动或亮星经过卡后时最明显。
 
-封版与后续：用户于同日认可暗侧「星尘夜空」并封版（2026-10-31）；亮侧破晓设计稿（未实现）已入 `docs/juyathemesworks/nocturne/nocturne-light.md`；暗侧不再改。
+封版与后续：用户于同日认可暗侧「星尘夜空」并封版（2026-10-31）；亮侧破晓同日实现（见下节），设计/实施记录在 `docs/juyathemesworks/nocturne/nocturne-light.md`；暗侧不再改。
+
+### 亮侧破晓（2026-10-31，封版）
+
+范围与决策：
+
+- 只动 `nocturne-light`；暗侧封版、其余七风格、共享层、应用主题、依赖不动。共享 `Scene` / 订阅页头版只加亮侧覆写。
+- 场景：左下晨霞（珊瑚/杏/蜜桃/晨金/玫瑰）+ 右上冷底（青瓷/青绿/长春花/薰衣草）九层静态渐变；晨光弧 + 两条流云带 + 两组等高线；横向 mask 让正文列中心最低。
+- 正文 veil：`.juya-issue::before` 中心 0.74 雾白、两侧 0.58，顶部薰衣草 0.32 / 底部蜜桃 0.12；z-index -1、pointer-events none。
+- 晨雾：`dust::after` 的 `jy-noct-light-mist` 120s alternate，只动 transform，**不写 will-change**（常驻提升层会让 RM/冻结档产生 ±2 级栅格噪声）；RM 与冻结档现逐字节相同。
+- 订阅卡：`rgba(255,255,255,0.7)` + `backdrop-filter: blur(14px)`（无 saturate）；不支持模糊时回落 `rgba(255,255,255,0.9)`。
+- 表面：H1 墨色 + 84×2px 晨光/青绿细线；导语 4% 底 + `--jy-lead-text #5b5c65` + `#c24d36 → #2f7f78` 渐变竖线（晨光端为过 UI 3:1 压深）；概览焦点环 `2px solid #4f5ed8`。
+- AA 校准：muted `#5f6069`（候选 `#66676f` 在 480 最暗可达面只有 4.47）；概览序号/头版 kicker 用 `--jy-link #4051c9`（accent #4f5ed8 同面 4.34，只留焦点环/未读点等非文本 UI）；头版 host 用 `--jy-text`；头版 H1 不继承暗侧靛蓝辉光。
+- 字体不动：Inter/SF Pro 未安装，README TODO 留字体 CDN。
+
+验证（2026-10-31）：
+
+- `npm run verify` **exit 0**：typecheck 0；Vitest **25 文件 641 项**；Playwright **273 项**。
+- 亮侧 `scripts/nocturne-light-walkthrough.mjs --verify`（端口 4200）：5 张亮侧归档逐字节一致；真实像素审计全 PASS（正文 8.94–9.04 / muted 5.02–5.07、hover 4% 面 5.30–5.34 / 导语 4.85–5.20 / 卡片 muted 5.60–6.03 / 焦点环 4.30–4.35）；RM 证据全 PASS 且 RM 图与冻结档同 SHA256。
+- 暗侧：`nocturne-contrast-audit.mjs` 70 text + 14 UI PASS；5 张暗侧归档逐字节一致。
+- 双轴评审后修正：`verify:ci` 不接归档比对；端口避让 4200；注释 token 对齐；H1 细线补 pointer-events；亮侧头版 H1 去暗侧辉光；卡片去 saturate；补 muted hover 像素行。
+
+亮侧归档：`docs/juyathemesworks/nocturne/nocturne-light-*.png`（5 张：阅读刊头 / 首条图文 / 订阅页 / 560 / RM）。
+
+边界：用户同日确认封版并授权提交（2026-10-31），push 另等指令；`backdrop-filter` 真机性能未复核；字体 CDN 未做；亮侧审计只在本机 verify 链路（CI 按仓库约定不比对归档）。
 
 ## folio（纸感精读式）
 

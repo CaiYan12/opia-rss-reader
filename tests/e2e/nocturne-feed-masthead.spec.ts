@@ -230,7 +230,9 @@ for (const sample of [
 // black 关键字停靠等 CSS 原文纪律由 tests/unit/juyaCssGuard.test.ts 头版极光带守卫组锁死；
 // 此处只断计算样式（Chromium 会把 mask 停靠点 black 序列化成 rgb(0,0,0)，故只认百分比）。
 for (const scheme of ['light', 'dark'] as const) {
-  test(`nocturne 订阅页头版极光带静帧成立 ${scheme}`, async ({ page }) => {
+  test(`nocturne 订阅页头版${scheme === 'dark' ? '极光带' : '破晓晨光带'}静帧成立 ${scheme}`, async ({
+    page
+  }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await loadNocturne(page, 'wabi', '', scheme)
     const root = activeTab(page).locator('.juya-root')
@@ -278,27 +280,47 @@ for (const scheme of ['light', 'dark'] as const) {
     expect(facts.containerPosition).toBe('relative')
     expect(facts.containerZ, '容器建立堆叠上下文（极光 -1 的地板）').toBe('0')
 
-    // 双伪元素极光带：独立装饰层、绘制在文字之下、静帧、两端渐隐
-    for (const [name, layer, opacity, blur, hues] of [
-      [
-        '前层',
-        facts.before,
-        '0.81',
-        'blur(4px)',
-        ['rgba(214, 236, 255, 0.92)', 'rgba(90, 160, 255, 0.42)', 'rgba(110, 123, 255']
-      ],
-      [
-        '后层',
-        facts.after,
-        '0.76',
-        'blur(13px)',
-        ['rgba(200, 90, 180, 0.5)', 'rgba(110, 123, 255, 0.18)']
-      ]
-    ] as const) {
+    // 双伪元素光带：独立装饰层、绘制在文字之下、静帧、两端渐隐。
+    // 2026-10-31 破晓：亮侧不再共享暗侧极光，改为自己的晨光弧/云端带（静态，无 RM 分岔）。
+    const ribbonLayers =
+      scheme === 'dark'
+        ? ([
+            [
+              '前层',
+              facts.before,
+              '0.81',
+              'blur(4px)',
+              ['rgba(214, 236, 255, 0.92)', 'rgba(90, 160, 255, 0.42)', 'rgba(110, 123, 255']
+            ],
+            [
+              '后层',
+              facts.after,
+              '0.76',
+              'blur(13px)',
+              ['rgba(200, 90, 180, 0.5)', 'rgba(110, 123, 255, 0.18)']
+            ]
+          ] as const)
+        : ([
+            [
+              '晨光弧',
+              facts.before,
+              '1',
+              'blur(6px)',
+              ['rgba(255, 138, 107, 0.62)', 'rgba(255, 210, 122, 0.4)', 'rgba(251, 251, 252, 0.82)']
+            ],
+            [
+              '青瓷云端带',
+              facts.after,
+              '0.9',
+              'blur(11px)',
+              ['rgba(167, 200, 182, 0.42)', 'rgba(47, 127, 120, 0.22)']
+            ]
+          ] as const)
+    for (const [name, layer, opacity, blur, hues] of ribbonLayers) {
       expect(layer.content, `${name} content 为空串（AT 静默）`).toBe('""')
       expect(layer.position).toBe('absolute')
       expect(layer.zIndex, `${name} 绘制在文字之下（z-index -1，字形不被洗淡）`).toBe('-1')
-      expect(layer.opacity, `${name} RM 钉定静帧透明度`).toBe(opacity)
+      expect(layer.opacity, `${name} 静帧透明度`).toBe(opacity)
       expect(layer.webkitMaskImage, `${name} 两端渐隐 mask（水平向）`).toContain(
         'linear-gradient(90deg'
       )
@@ -311,21 +333,41 @@ for (const scheme of ['light', 'dark'] as const) {
       expect(layer.animationName, `${name} 静帧（无动画）`).toBe('none')
       expect(layer.pointerEvents, `${name} 不截获点击`).toBe('none')
     }
-    expect(facts.before.top).toBe('-26px')
-    expect(facts.after.top).toBe('-40px')
+    if (scheme === 'dark') {
+      expect(facts.before.top).toBe('-26px')
+      expect(facts.after.top).toBe('-40px')
+    } else {
+      expect(facts.before.top).toBe('-30px')
+      expect(facts.after.top).toBe('-18px')
+    }
 
-    // 底边渐变发丝线：边框本体透明，颜色画进 1px 边框条
+    // 底边渐变发丝线：边框本体透明，颜色画进 1px 边框条（亮侧另有径向文字白雾层）
     expect(facts.borderBottomWidth).toBe('1px')
     expect(facts.borderBottomColor, '底边框本体透明').toBe('rgba(0, 0, 0, 0)')
-    expect(facts.containerBgImage, '渐变发丝线（青白 → 靛蓝 → 透明）').toContain('linear-gradient')
-    expect(facts.containerBgImage).toContain('rgba(214, 236, 255, 0.22)')
-    expect(facts.containerBgImage).toContain('rgba(110, 123, 255, 0.4)')
-    expect(facts.containerBgSize).toBe('100% 1px')
+    if (scheme === 'dark') {
+      expect(facts.containerBgImage, '渐变发丝线（青白 → 靛蓝 → 透明）').toContain(
+        'linear-gradient'
+      )
+      expect(facts.containerBgImage).toContain('rgba(214, 236, 255, 0.22)')
+      expect(facts.containerBgImage).toContain('rgba(110, 123, 255, 0.4)')
+      expect(facts.containerBgSize).toBe('100% 1px')
+    } else {
+      expect(facts.containerBgImage, '亮侧底边线晨光→青绿').toContain(
+        'rgba(255, 138, 107, 0.5)'
+      )
+      expect(facts.containerBgImage).toContain('rgba(47, 127, 120, 0.4)')
+      expect(facts.containerBgImage, '亮侧文字白雾为径向渐隐').toContain('radial-gradient')
+      expect(facts.containerBgSize).toBe('100% 1px, 100% 100%')
+    }
 
-    // h1 双层冷辉光静帧（18px/.28 定轮廓 + 40px/.12 铺晕，accent 靛蓝）
-    expect(facts.h1Filter, '双层 drop-shadow').toMatch(/drop-shadow[\s\S]*drop-shadow/)
-    expect(facts.h1Filter).toContain('rgba(110, 123, 255, 0.28)')
-    expect(facts.h1Filter).toContain('rgba(110, 123, 255, 0.12)')
+    // h1 辉光：暗侧保留双层冷辉光；亮侧破晓不继承暗侧靛蓝光语言（设计稿 §5）
+    if (scheme === 'dark') {
+      expect(facts.h1Filter, '双层 drop-shadow').toMatch(/drop-shadow[\s\S]*drop-shadow/)
+      expect(facts.h1Filter).toContain('rgba(110, 123, 255, 0.28)')
+      expect(facts.h1Filter).toContain('rgba(110, 123, 255, 0.12)')
+    } else {
+      expect(facts.h1Filter, '亮侧头版 H1 不继承暗侧辉光').toBe('none')
+    }
     expect(facts.h1Anim).toBe('none')
 
     // 零横向溢出（极光 left/right:0 收在盒内）

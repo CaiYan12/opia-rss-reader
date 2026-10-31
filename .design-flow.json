@@ -236,6 +236,15 @@
         "src/renderer/juya/juya.css + src/renderer/juya/templates/nocturne.tsx",
         "5 张 nocturne 归档重生成（RM 证据 PASS）；对比度审计 70 text + 14 UI PASS；守卫/审计/E2E/文档收口，全量 verify exit 0（25 文件 627 单测 / 266 E2E / 5 归档一致）"
       ]
+    },
+    {
+      "stage": "polish",
+      "date": "2026-10-31",
+      "outputs": [
+        "nocturne-light 破晓：grill 4 轮定稿（docs/juyathemesworks/nocturne/nocturne-light.md），实现 + 亮侧 5 归档 + 真实像素审计",
+        "src/renderer/juya/juya.css + scripts/nocturne-light-walkthrough.mjs + 守卫/E2E；暗侧封版零改动",
+        "全量 verify exit 0：641 单测 / 273 E2E / 暗侧 70 text + 14 UI / 5 暗归档 + 5 亮归档；亮侧 RM=冻结档；用户同日确认封版并授权提交"
+      ]
     }
   ],
   "outputs": {
@@ -270,7 +279,12 @@
     "spec67Closed": "2026-10-25 用户全认可后关闭",
     "nocturneStardust": "src/renderer/juya/juya.css + templates/nocturne.tsx",
     "nocturneStardustArchives": "docs/juyathemesworks/nocturne/nocturne-dark-*.png（5 张，2026-10-31 重生成）",
-    "nocturneStardustReview": "out/nocturne-stardust-2026-10-31/（本机证据，gitignored）"
+    "nocturneStardustReview": "out/nocturne-stardust-2026-10-31/（本机证据，gitignored）",
+    "nocturneLightSpec": "docs/juyathemesworks/nocturne/nocturne-light.md",
+    "nocturneLightImplementation": "src/renderer/juya/juya.css",
+    "nocturneLightAudit": "scripts/nocturne-light-walkthrough.mjs",
+    "nocturneLightArchives": "docs/juyathemesworks/nocturne/nocturne-light-*.png（5 张，2026-10-31）",
+    "nocturneLightPreview": "out/nocturne-light-preview/（本机，gitignored）"
   },
   "decisions": [
     "用户点名 /design-flow + /frontend-design（2026-10-11，橘鸦风格修复阶段）",
@@ -313,12 +327,14 @@
     "用户再次明确调用 implement-spec，沿用 GPT-6 Luna xhigh 逐票并行；64/65 前沿，66 收口；强风格、正文克制，用户视觉认可仍待实际确认。",
     "wabi 视觉补强已按 GPT-6 Luna xhigh 逐票并行完成并收口；最终候选 c26118432ea9ef9ed9562832ff3170e49e3c558b，574 单测／190 E2E／5 归档一致，52 状态与隐藏真实 Electron 通过；双轴评审无待修项。用户视觉认可仍待确认，未封版、推送或发行。",
     "2026-10-24 用户视觉反馈：V1 头版过于简陋干练、不足以体现风格（点名 y2k 缺窗口标题/关闭钮，参考其阅读页头图）；经两轮 grill 确认八风格头版 V2 清单。Round1 边界：分层施力（y2k/nocturne/editorial/newsprint90s 大补、folio/synthwave 适度、pop 两小件、wabi 不动）；参照系=各风格阅读页刊头词汇库（头版=刊头语言的订阅源版）；信息结构（源名+订阅源+host，无日期）与 V1 主材质不动；高度软规则（允许增高、首屏仍瞥见第一张卡）；动效一律静帧（最严解释「克制」，共享场景层照旧）。Round2 清单：y2k=系统窗口标题栏（真实源名 .EXE — 运行中，DOM+aria-hidden、长名 ellipsis）+_ □ × 三钮（× 同阅读页 on-accent）不加状态栏；nocturne=极光带静帧（z-index -1、两端 mask、零新增色相、取 RM 钉定 opacity 0.81/0.76）+底边渐变发丝线+h1 冷辉光静帧；editorial=L 形裁切角标+host 题注化（刻意不搬栏目序号——订阅源无真实序号语义，编号即造假信息）；newsprint90s=三栏报头 grid 1fr auto 1fr 底对齐（左 kicker/中楷体源名 6px 字距量级/右 host）+窄窗回落居中堆叠；folio=印章水印（72×72 rotate -8deg opacity .12 multiply）+左右朱丝栏竖线；synthwave=卡内扫描线静纹+domain 下霓虹辉光细线；pop=h1 印刷硬影 3px 3px 0（同阅读页）+爆炸星 SVG 点缀；wabi=不动（V1 已是工艺封面基准，动它风险大于收益）。共享层零改动；GLOSSARY 无新增词；验证=逐风格定向 E2E+守卫更新+全量 verify+headless 截图。流程裁定：主代理直接实施、轻量管线不发布 issue；用户明确指令——未经允许不立 SPEC/TICKET、不开工 implement，三者为独立阶段门。",
-      "2026-10-31 用户转述朋友反馈（nocturne-dark 背景星辰不明显、纯黑），两轮 grill Q1–Q9 + 追加「卡片背景可以用毛玻璃模糊」后实施：仅 nocturne-dark、两页 Scene（dust+nebula+stars）、深靛蓝黑 #0e0c18 + 斜向雾、十层星尘 + 两层亮星（左上密→右下疏、11s/14s 慢闪）、订阅卡 rgba(20,19,28,0.68)+blur(18px) saturate(125%)；视觉候选已获用户认可并授权提交，守卫/审计/E2E/文档收口中；未 push。"
+    "2026-10-31 用户转述朋友反馈（nocturne-dark 背景星辰不明显、纯黑），两轮 grill Q1–Q9 + 追加「卡片背景可以用毛玻璃模糊」后实施：仅 nocturne-dark、两页 Scene（dust+nebula+stars）、深靛蓝黑 #0e0c18 + 斜向雾、十层星尘 + 两层亮星（左上密→右下疏、11s/14s 慢闪）、订阅卡 rgba(20,19,28,0.68)+blur(18px) saturate(125%)；视觉候选已获用户认可并授权提交，守卫/审计/E2E/文档收口中；未 push。",
+    "2026-10-31 亮侧破晓：Q1–Q4 均走推荐（暗侧封版 / 亮侧解冻 / 浅长春花+薰衣草冷底 + 左下珊瑚→杏→蜜桃→晨金早霞 + 青瓷/青绿雾 + 玫瑰过渡 / 晨光弧+流云带+等高线 / 120s 晨雾 / 卡片 0.7 白毛玻璃）。实施期按真实像素 AA 校准：muted #5f6069、导语 #5b5c65；概览序号与头版 kicker 用 --jy-link #4051c9（accent #4f5ed8 只留非文本 UI）、头版 host 用 --jy-text、头版 H1 去暗侧辉光、卡片 blur(14px) 无 saturate；字体不动（README TODO 字体 CDN）。用户同日确认封版并授权提交，push 另等指令。"
   ],
   "blocked": [
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
     "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务",
-    "毛玻璃 backdrop-filter 的 perf probe / 真实窗口复核（2026-10-31 星尘夜空；静态归档无法证明合成成本）"
+    "毛玻璃 backdrop-filter 的 perf probe / 真实窗口复核（暗侧 2026-10-31 + 亮侧 2026-10-31）",
+    "nocturne-light 字体 CDN（Inter/SF Pro 未安装，README TODO）"
   ],
-  "next": "2026-10-31 星尘夜空：全量 verify exit 0；按用户授权提交（SHA 见 git log），push 另需指令。"
+  "next": "2026-10-31 亮侧破晓已封版并提交；全量 verify exit 0；push 另等明确指令。"
 }

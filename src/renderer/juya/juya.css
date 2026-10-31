@@ -2940,16 +2940,26 @@
    本节下文旧注释中的 #0a0a0c / muted 5.84 / lead 7.01 / 遮罩 1.05 / hover 边框 1.52 等为历史口径，
    当前对比度以 scripts/nocturne-contrast-audit.mjs 实算为准（2026-10-31：70 text + 14 UI PASS）。 */
 [data-juya-variant='nocturne-light'] {
+  /* 2026-10-31 破晓（设计稿 docs/juyathemesworks/nocturne/nocturne-light.md §3/§7）：
+     只改亮侧文字取值，不动 --jy-bg / accent / 字体栈。
+     --jy-muted #70717c 在 4% 导语底上只有 4.32:1（F-1 旧账）⇒ 破晓场景实测算后
+       再深一档到 #5f6069：对 --jy-bg #fbfbfc 6.0369、对导语底 #f2f2f3 5.5803、
+       对 hover∩导语 #e9e9ea 5.1456；在 480 视口最暗可达合成面上仍 ≥ AA 4.5。
+     --jy-lead-text 是导语专用记账（与暗侧同名记号分工一致）：取 muted 与正文之间的一档 #5b5c65，
+       对导语底 5.9333、对 hover∩导语 5.4711；正文 #3a3b44 对导语底 10.34，层级差 >4.4。
+     取色来源：与 --jy-muted / --jy-text 同一中性墨色色相（#0f0f18 系），只做亮度分档，零新增色相。
+     字体栈本轮按设计稿 §5/§8 不改（仍是本机未安装的 Inter/SF Pro，README-TODO 待字体 CDN）。 */
   --jy-bg: #fbfbfc;
   --jy-card: #ffffff;
   --jy-border: rgba(15, 15, 24, 0.1);
   --jy-heading: #17181d;
   --jy-text: #3a3b44;
-  --jy-muted: #70717c;
+  --jy-muted: #5f6069;
   --jy-accent: #4f5ed8;
   --jy-on-accent: #ffffff;
   --jy-link: #4051c9;
   --jy-lead-bg: rgba(15, 15, 24, 0.04);
+  --jy-lead-text: #5b5c65;
   --jy-focus: #4f5ed8;
   --jy-radius: 12px;
   --jy-font-body: Inter, 'SF Pro Text', 'Segoe UI', 'Noto Sans SC', sans-serif;
@@ -3328,10 +3338,73 @@
   color: transparent;
 }
 
+/* 亮侧刊头字（墨色渐变；2026-10-31 破晓新增 position，只作 H1 晨光细线的包含块，不改盒模型）。
+   取色来源：--jy-heading #17181d / --jy-text #3a3b44（既有亮侧墨色）；
+   对比度对 --jy-bg #fbfbfc 为 17.14 / 10.75（30px 大文本门槛 3:1，远超）。 */
 [data-juya-variant='nocturne-light'].jynoct .juya-masthead h1 {
   background: linear-gradient(180deg, #17181d, #3a3b44);
   -webkit-background-clip: text;
   background-clip: text;
+  position: relative;
+}
+
+/* 亮侧 H1 晨光细线（2026-10-31 破晓，设计稿 §5「H1 深墨字 + 一道晨光/青绿细线」）：
+   短下划线是装饰，不承载信息，故不套非文本 UI 3:1；它也不参与布局（absolute）。
+   取色来源：晨光珊瑚 #ff8a6b / 晨金 #ffd27a / 青绿 #2f7f78 —— 前两色取设计稿 §3.1 的
+   早霞锚点，青绿取 §3.1 绿的饱和端。对比度（装饰件参照）：三段对 --jy-bg #fbfbfc 分别为
+   2.23 / 1.44 / 4.59:1；细线只是「破晓」的语气标记，文字可读性不依赖它。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-masthead h1::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 84px;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #ff8a6b 0%, #ffd27a 44%, #2f7f78 100%);
+}
+
+/* 亮侧导语竖线（2026-10-31 破晓，设计稿 §5「左竖线可承接晨光/青绿渐变」）：
+   几何沿用基层 3px border-left（置透明作占位），渐变只落边框条；origin/clip 同为 border-box
+   —— 与暗侧同一技法，避免两端透出裸页面底。文字改用专用 --jy-lead-text。
+   取色来源：晨光深珊瑚 #c24d36 / 青绿 #2f7f78 —— 取设计稿 §3.1 的珊瑚与青绿锚点，
+   为过非文本 UI 3:1 把晨光端压深（原 #ff8a6b 对导语底只有 2.06:1）。
+   对比度：对 4% 导语底 #f2f2f3 分别为 4.26 / 4.24:1；文字 --jy-lead-text 5.93:1（AA 门槛 4.5）。
+   零外发光、零 animation/transition（与暗侧同一光语言纪律）。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-lead {
+  color: var(--jy-lead-text);
+  border-left: 3px solid transparent;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #c24d36 14%,
+    #2f7f78 64%,
+    transparent 100%
+  );
+  background-size: 3px 100%;
+  background-position: left top;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  background-clip: border-box;
+}
+
+/* 亮侧概览焦点环（2026-10-31 破晓，设计稿 §9「焦点环按现有门槛」）：
+   与暗侧同一写法 —— Chromium UA 的 auto 焦点圈忽略作者 outline-color，必须写完整简写。
+   取色来源：--jy-focus #4f5ed8（本变体既有靛蓝 accent，零新增色相）；
+   对比度：对 --jy-bg #fbfbfc 5.1735:1 ≥ 非文本 UI 3:1。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-overview a:focus-visible {
+  outline: 2px solid var(--jy-focus);
+  outline-offset: 2px;
+}
+
+/* 亮侧概览序号（2026-10-31 破晓，设计稿 §5「概览序号仍用靛蓝」）：
+   共享 .jynoct .juya-index 是 muted，暗侧另有 accent 覆写；亮侧补回靛蓝（不加微光，
+   与暗侧「两个序号角色靠有无微光区分」的语义一致）。
+   取色来源：--jy-link #4051c9（设计稿 §3.1 靛蓝档的更深文字值，kicker 同源）。
+   对比度：accent #4f5ed8 在 veil 0.74 后的最暗可达面上只有 4.34:1（13px 序号 < AA 4.5）；
+   改用同族更深靛蓝后实测 ≥5.2。accent token 本身不动（焦点环/未读点等非文本 UI 仍用它）。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-overview .juya-index {
+  color: var(--jy-link);
 }
 
 /* 刊头 neon 微光（2026-10-12，#4）：在银灰渐变字外叠两层同源辉光——近层 18px 定轮廓、远层 40px 铺晕，
@@ -3579,6 +3652,191 @@
   }
 }
 
+/* ==========================================================================
+   nocturne-light 破晓场景（2026-10-31；需求 docs/juyathemesworks/nocturne/nocturne-light.md）
+   设计语言：晨光弧 + 流云带 + 等高线细节；晨光从左侧/左下升起、冷色退到右上、
+   正文列上覆一层很浅的雾白/薰衣草 veil。曲线静止，只有晨雾以 120s 极慢漂移。
+   范围：只给亮侧加覆写；共享 .juya-scene-* 预设与暗侧取值一字节不动。
+   ========================================================================== */
+/* 破晓雾场：左下晨霞（珊瑚/杏/蜜桃/晨金/玫瑰）+ 右上冷底（青瓷/青绿/长春花/薰衣草）。
+   九层大椭圆全部静态；alpha 取 0.16–0.44，保证正文列仍以亮色为主。
+   取色来源（设计稿 §3.1 锚点，均为本风格新引入的晨霞/绿/冷色；accent 仍保持靛蓝）：
+     晨霞 #ff8a6b / #ffb27a / #ffd0b0 / #ffd27a、玫瑰 #f3a6b8、
+     青瓷 #a7c8b6、青绿 #2f7f78、冷底 #eef0fb / #e9ebff。
+   对比度：本层是 aria-hidden 的纯装饰背景；正文列可读性由 issue 上的 veil（下方 ⑨）与
+   文字 token 共同保证，亮侧实测见 scripts/nocturne-light-walkthrough.mjs 的审计段。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-scene-nebula {
+  --jy-dawn-coral: rgba(255, 138, 107, 0.4);
+  --jy-dawn-apricot: rgba(255, 178, 122, 0.36);
+  --jy-dawn-peach: rgba(255, 208, 176, 0.44);
+  --jy-dawn-gold: rgba(255, 210, 122, 0.32);
+  --jy-dawn-rose: rgba(243, 166, 184, 0.34);
+  --jy-dawn-celadon: rgba(167, 200, 182, 0.36);
+  --jy-dawn-teal: rgba(47, 127, 120, 0.16);
+  --jy-dawn-peri: rgba(238, 240, 251, 0.86);
+  --jy-dawn-cold: rgba(233, 235, 255, 0.72);
+  background-image:
+    radial-gradient(120% 86% at 8% 106%, var(--jy-dawn-coral), transparent 62%),
+    radial-gradient(96% 72% at 0% 86%, var(--jy-dawn-apricot), transparent 60%),
+    radial-gradient(132% 74% at 34% 112%, var(--jy-dawn-peach), transparent 66%),
+    radial-gradient(74% 54% at 18% 98%, var(--jy-dawn-gold), transparent 62%),
+    radial-gradient(92% 70% at 58% 108%, var(--jy-dawn-rose), transparent 64%),
+    radial-gradient(116% 94% at 84% 2%, var(--jy-dawn-celadon), transparent 66%),
+    radial-gradient(64% 54% at 98% 34%, var(--jy-dawn-teal), transparent 72%),
+    radial-gradient(150% 120% at 100% 0%, var(--jy-dawn-peri), transparent 78%),
+    radial-gradient(120% 100% at 70% -8%, var(--jy-dawn-cold), transparent 70%);
+}
+
+/* 晨光弧 / 流云带 / 等高线（静态细节层）。
+   三条宽曲线：低晨光弧（蜜桃→珊瑚窄环带）、两条流云带（暖白 / 青瓷）；
+   两组 repeating-radial-gradient 沿弧走向做等高线发丝线（青绿 0.13 / 晨光 0.12）。
+   横向 mask 让正文列中心只留 0.22 强度、两侧逐步回到 0.75 —— 细节密度「边缘高、正文低」。
+   取色来源：晨光 #ffd0b0/#ff8a6b、青瓷 #a7c8b6、青绿 #2f7f78（设计稿 §3.1）。
+   对比度：纯装饰层（aria-hidden、不承载信息）；正文列由 veil 提亮后实测 ≥ AA（见审计脚本）。
+   零 twinkle：亮侧不延续暗侧亮星动画，动画只留给更下层的晨雾。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-scene-stars {
+  background-image:
+    radial-gradient(
+      150% 70% at 50% 118%,
+      transparent 58%,
+      rgba(255, 208, 176, 0.5) 64%,
+      rgba(255, 138, 107, 0.32) 70%,
+      transparent 76%
+    ),
+    radial-gradient(160% 66% at 8% 92%, transparent 62%, rgba(255, 255, 255, 0.55) 68%, transparent 73%),
+    radial-gradient(130% 60% at 78% 104%, transparent 64%, rgba(167, 200, 182, 0.32) 70%, transparent 76%),
+    repeating-radial-gradient(
+      ellipse 150% 75% at 30% 118%,
+      transparent 0 22px,
+      rgba(47, 127, 120, 0.13) 22px 23px,
+      transparent 23px 44px
+    ),
+    repeating-radial-gradient(
+      ellipse 120% 60% at 90% 0%,
+      transparent 0 26px,
+      rgba(255, 138, 107, 0.12) 26px 27px,
+      transparent 27px 54px
+    );
+  background-size: auto;
+  animation: none;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.75) 6%,
+    rgba(0, 0, 0, 0.42) 30%,
+    rgba(0, 0, 0, 0.22) 50%,
+    rgba(0, 0, 0, 0.42) 70%,
+    rgba(0, 0, 0, 0.75) 94%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.75) 6%,
+    rgba(0, 0, 0, 0.42) 30%,
+    rgba(0, 0, 0, 0.22) 50%,
+    rgba(0, 0, 0, 0.42) 70%,
+    rgba(0, 0, 0, 0.75) 94%,
+    transparent 100%
+  );
+}
+
+/* 晨露：六层青绿/晨光细小点，135° mask 左上密→右下疏；本体静态（覆盖共享 96s dust 漂移）。
+   取色来源：青绿 #2f7f78、晨光深珊瑚 #c24d36（与导语竖线同一 AA 校准色）。
+   对比度：纯装饰（aria-hidden / pointer-events:none），不参与文字 AA。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-scene-dust {
+  --jy-dawn-dew: rgba(47, 127, 120, 0.18);
+  --jy-dawn-dew-warm: rgba(194, 77, 54, 0.16);
+  animation: none;
+  will-change: auto;
+  background-image:
+    radial-gradient(1.2px 1.2px at 14% 24%, var(--jy-dawn-dew) 50%, transparent 51%),
+    radial-gradient(1px 1px at 38% 68%, var(--jy-dawn-dew-warm) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 66% 36%, var(--jy-dawn-dew) 50%, transparent 51%),
+    radial-gradient(1px 1px at 82% 78%, var(--jy-dawn-dew-warm) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 24% 88%, var(--jy-dawn-dew) 50%, transparent 51%),
+    radial-gradient(1px 1px at 56% 12%, var(--jy-dawn-dew-warm) 50%, transparent 51%);
+  background-size: 52px 52px, 76px 76px, 108px 108px, 134px 134px, 168px 168px, 204px 204px;
+  -webkit-mask-image: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.5) 46%,
+    rgba(0, 0, 0, 0.12) 78%,
+    transparent 98%
+  );
+  mask-image: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.5) 46%,
+    rgba(0, 0, 0, 0.12) 78%,
+    transparent 98%
+  );
+}
+
+/* 晨雾漂移（120s alternate，只动 transform ⇒ 合成器友好；不写 will-change：常驻提升层会让
+   RM 与冻结档的栅格结果产生 ±2 级噪声，transform 动画本身已由合成器处理）。inset -12% 保证位移后不露边。
+   取色来源：雾白 #ffffff、雾紫 #eef0fb、青瓷 #a7c8b6（设计稿 §3.1/§6）。
+   对比度：半透明白雾叠在亮色场景上只会抬亮正文底，不降低深墨文字的对比度；
+   具体合成面实测见 scripts/nocturne-light-walkthrough.mjs 审计段。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-scene-dust::after {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  background-image:
+    radial-gradient(70% 46% at 18% 62%, rgba(255, 255, 255, 0.34), transparent 70%),
+    radial-gradient(60% 40% at 56% 78%, rgba(238, 240, 251, 0.36), transparent 72%),
+    radial-gradient(52% 36% at 82% 44%, rgba(167, 200, 182, 0.18), transparent 72%);
+  animation: jy-noct-light-mist 120s ease-in-out infinite alternate;
+}
+
+@keyframes jy-noct-light-mist {
+  from {
+    transform: translate3d(-1.6%, 0.8%, 0) scale(1.03);
+  }
+  to {
+    transform: translate3d(1.6%, -0.8%, 0) scale(1.06);
+  }
+}
+
+/* 正文列 veil（设计稿 §4.2「正文列中心留浅雾可读面」）：两层都很浅——
+   横向中心 0.74 雾白、两侧 0.58 后淡出；纵向顶部 0.32 薰衣草冷雾、底部 0.12 晨光暖雾。
+   z-index -1：落在 .juya-issue 堆叠上下文第 2 步（正文文字之下、场景之上），
+   几何上不可能盖住文字像素；pointer-events:none 不拦截交互。
+   取色来源：雾白 #fbfbfc = --jy-bg；薰衣草 #eef0fb = 设计稿 §3.1 冷底；晨光 #ffd0b0 = §3.1 蜜桃。
+   对比度：veil 只会把场景底进一步提亮，深墨文字对比度随之上抬；实测见审计脚本。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-issue::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(238, 240, 251, 0.32) 0%,
+      transparent 20%,
+      transparent 80%,
+      rgba(255, 208, 176, 0.12) 100%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(251, 251, 252, 0.58) 8%,
+      rgba(251, 251, 252, 0.74) 50%,
+      rgba(251, 251, 252, 0.58) 92%,
+      transparent 100%
+    );
+}
+
+/* 亮侧 RM：共享 RM 块只覆盖 `.juya-scene-dust` 本体，**不包含 `::after` 动画载体** ——
+   亮侧晨雾必须在自己的选择器上单独列名。此处 `!important` 只用于确保撤销，不依赖与共享块
+   比特异性（本选择器 0,3,1 本来就高于共享块的 0,1,0）。 */
+@media (prefers-reduced-motion: reduce) {
+  [data-juya-variant='nocturne-light'].jynoct .juya-scene-dust::after {
+    animation: none !important;
+  }
+}
+
 /* 审计 F-11 回退：不支持 background-clip:text 的引擎上渐变被裁掉、color: transparent 会让标题整条隐形，
    退回实色 --jy-heading（白灰实字仍带上面的 drop-shadow 微光）。 */
 @supports not (background-clip: text) {
@@ -3796,6 +4054,9 @@
   transform: translateY(-1px);
 }
 
+/* 亮侧卡片 hover 边框（2026-10-31 破晓沿用）：取色来源 rgba(15,15,24,0.2) = 本变体 --jy-border
+   rgba(15,15,24,0.1) 的加深一档（同色相、只提 alpha）；对比度对 --jy-bg #fbfbfc 合成 #c4c4c8
+   ≈ 1.6:1 —— 与暗侧同口径，属装饰性 hover 线索，不上抬非文本 UI 3:1。 */
 [data-juya-variant='nocturne-light'].jynoct .juya-feed-item:hover {
   border-color: rgba(15, 15, 24, 0.2);
 }
@@ -3811,6 +4072,29 @@
   background: rgba(20, 19, 28, 0.68);
   -webkit-backdrop-filter: blur(18px) saturate(125%);
   backdrop-filter: blur(18px) saturate(125%);
+}
+
+/* 亮侧订阅卡：晨雾白毛玻璃（2026-10-31 破晓，设计稿 §5「晨雾白毛玻璃」）。
+   背景 0.7 白 + blur(14px) saturate(115%)：只模糊卡面背后的晨光/云带，卡内文字保持锐利。
+   取色来源：白 0.7 = 设计稿 §3.1 订阅卡取值区间（12–18px blur 的中档 14px）；
+   只做模糊、不加 saturate（设计稿 §5 未要求饱和度补偿，卡面保持中性白）。
+   对比度（保守合成面：卡片 0.7 白叠在最饱和晨霞 #f8c7bd 上 → #fdf1ee）：
+     --jy-text #3a3b44 10.05、--jy-heading #17181d 16.03、--jy-muted #5f6069 5.65、--jy-link #4051c9 5.87，
+   均 ≥ AA 4.5；实测以 scripts/nocturne-light-walkthrough.mjs 的栅格审计为准。 */
+[data-juya-variant='nocturne-light'].jynoct .juya-feed-item {
+  background: rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* 不支持 backdrop-filter 的引擎回落（设计稿 §5「不支持模糊的引擎回落半透明」）：
+   仍保持晨雾白半透明，只把不透明度提到 0.9，避免底层晨霞把卡面文字压到 AA 以下。 */
+@supports not (backdrop-filter: blur(1px)) {
+  /* 取色来源：白 0.9 是晨雾白 0.7 的不透明化回落；对比度取最饱和晨霞 #f8c7bd 合成面 #fefaf9，
+     --jy-text 12.5 / --jy-muted 6.0，均 ≥ AA 4.5（比 0.7 更保守，仅损失一点透光）。 */
+  [data-juya-variant='nocturne-light'].jynoct .juya-feed-item {
+    background: rgba(255, 255, 255, 0.9);
+  }
 }
 
 /* 第二轮定制排版：图文并排图恒在右（纪律排布），题注等宽；序号退化为灰色 # 小字 */
@@ -4246,9 +4530,11 @@
      ② `.juya-masthead h1`     —— 刊头呼吸（jy-noct-glow，9s，只动 filter 的 drop-shadow alpha）；
      ③ `.juya-masthead::before`—— 极光前层（jy-noct-aurora-near，24s，只动 opacity）；
      ④ `.juya-masthead::after` —— 极光后层（jy-noct-aurora-far，31s，只动 opacity）；
-     ⑤ `.juya-feed-item`       —— 订阅页入场（jy-enter，220ms 一次性）；
+     ⑤ `.juya-feed-item`       —— 订阅页入场（jy-enter，220ms 一次性；暗亮两变体同值）；
      ⑥ `.jynoct-lightbox img`  —— 放大视图入场（jy-noct-lightbox-in，160ms；dialog portal 到 body，
-       变体标记挂在 dialog 自身，故不是 `.jynoct` 的后代）。
+       变体标记挂在 dialog 自身，故不是 `.jynoct` 的后代）；
+     ⑦ 亮侧 `.juya-scene-dust::after` —— 晨雾漂移（jy-noct-light-mist，120s，2026-10-31 破晓）；
+     ⑧ 亮侧 `.juya-feed-item` —— 亮侧订阅卡入场（同 ⑤ 的 jy-enter，按变体单独列名）。
    为什么不改成透明度动画：**不做**动画 `filter`→`opacity` 重构（无实测数据支撑）。
    只声明 `animation-play-state`：计算样式中的 opacity / filter 保持冻结当帧值，
    回到前台动画从原 currentTime 继续，不会有可见跳变（E2E 逐项断言）。 */
@@ -4260,6 +4546,13 @@
 [data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after,
 [data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-feed-item,
 [data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct-lightbox img {
+  animation-play-state: paused;
+}
+
+/* 亮侧破晓的持续动画（2026-10-31）：晨雾 ::after（120s）与亮侧订阅卡入场（jy-enter）。
+   与暗侧分开列块，便于逐变体核对；仍然只声明 animation-play-state（不冻结可见属性）。 */
+[data-app-hidden] [data-juya-variant='nocturne-light'].jynoct .juya-scene-dust::after,
+[data-app-hidden] [data-juya-variant='nocturne-light'].jynoct .juya-feed-item {
   animation-play-state: paused;
 }
 
@@ -4471,6 +4764,8 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  /* 亮侧不继承暗侧 H1 的靛蓝辉光：头版的光语言是晨光弧/云端带，墨字保持干净。 */
+  filter: none;
 }
 
 [data-juya-variant='nocturne-dark'].jynoct .jynoct-feed-masthead h1 {
@@ -4478,6 +4773,99 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* ---- 亮侧订阅页头版：破晓晨光弧 / 云端带（2026-10-31，设计稿 §5/§13）----
+   暗侧共享极光正本（.jynoct .jynoct-feed-masthead::before/::after 与底边线）一字节不动；
+   这里只加亮侧覆写：几何层级（left/right:0、z-index:-1、pointer-events:none）与文字分层
+   全部沿用上面共享规则，亮侧只换「光的样子」。
+   取色来源（设计稿 §3.1 晨霞/绿锚点，与阅读页 H1 细线、导语竖线同源）：
+     晨光珊瑚 #ff8a6b、晨金 #ffd27a、青瓷 #a7c8b6、青绿 #2f7f78、雾白 #fbfbfc。
+   对比度：纯装饰层，由共享 z-index:-1 结构性落在头版文字之下，文字门槛不适用；
+   前层顶部另叠 0.5 雾白洗光，保证 ink 标题与 11px kicker 在晨霞上仍锐利（实测见审计脚本）。 */
+[data-juya-variant='nocturne-light'].jynoct .jynoct-feed-masthead {
+  /* 两层：最上层是底边渐变发丝线（几何仍 1px，落在 border-box 底边），
+     下层是头版文字的可读白雾 —— 亮侧头版直接坐在晨光带上，11px kicker 与 host
+     若没有这层白雾，对最暗晨霞只有 3.1–4.4:1；这里用**径向渐隐**（不是满盒实色），
+     只在左侧文字区抬亮、88% 处透明，避免出现硬边白板压掉晨光带。 */
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(255, 138, 107, 0.5) 0%,
+      rgba(255, 210, 122, 0.34) 22%,
+      rgba(47, 127, 120, 0.4) 58%,
+      transparent 100%
+    ),
+    radial-gradient(
+      92% 150% at 18% 46%,
+      rgba(251, 251, 252, 0.88) 0%,
+      rgba(251, 251, 252, 0.68) 42%,
+      rgba(251, 251, 252, 0.24) 70%,
+      transparent 88%
+    );
+  background-size: 100% 1px, 100% 100%;
+  background-position: left bottom, left top;
+  background-repeat: no-repeat, no-repeat;
+}
+
+/* 取色来源：晨光珊瑚 #ff8a6b / 晨金 #ffd27a / 雾白 #fbfbfc（设计稿 §3.1）；
+   对比度：纯装饰层，由共享 z-index:-1 结构性落在文字之下，门槛不适用（文字实测见审计脚本）。 */
+[data-juya-variant='nocturne-light'].jynoct .jynoct-feed-masthead::before {
+  top: -30px;
+  height: 104px;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(251, 251, 252, 0.18) 0%,
+      rgba(251, 251, 252, 0.82) 45%,
+      rgba(251, 251, 252, 0.82) 92%,
+      rgba(251, 251, 252, 0.35) 100%
+    ),
+    radial-gradient(
+      120% 112% at 10% 132%,
+      transparent 55%,
+      rgba(255, 138, 107, 0.62) 70%,
+      rgba(255, 178, 122, 0.36) 84%,
+      transparent 97%
+    ),
+    radial-gradient(
+      150% 120% at 42% 146%,
+      transparent 70%,
+      rgba(255, 210, 122, 0.4) 84%,
+      transparent 97%
+    );
+  filter: blur(6px);
+  opacity: 1;
+}
+
+/* 取色来源：青瓷 #a7c8b6 / 青绿 #2f7f78（设计稿 §3.1）；对比度：纯装饰层，同前层口径。 */
+[data-juya-variant='nocturne-light'].jynoct .jynoct-feed-masthead::after {
+  top: -18px;
+  height: 96px;
+  background-image: radial-gradient(
+    140% 130% at 88% 150%,
+    transparent 64%,
+    rgba(167, 200, 182, 0.42) 80%,
+    rgba(47, 127, 120, 0.22) 93%,
+    transparent 100%
+  );
+  filter: blur(11px);
+  opacity: 0.9;
+}
+
+/* 亮侧头版 kicker 的 AA 校准（2026-10-31）：共享 kicker 用 --jy-accent #4f5ed8，
+   叠上晨光带后实测只有 4.20:1（11px 小字 < 4.5）。改用既有 --jy-link #4051c9：
+   仍是同一靛蓝族（链接/交互身份），不是新增色相；对最暗头版合成面实测 ≥4.8。
+   这是「accent 不漂」在**文字可读性**上的唯一例外，只作用于 kicker 标签，不改 accent token。 */
+[data-juya-variant='nocturne-light'].jynoct .jynoct-feed-masthead-kicker {
+  color: var(--jy-link);
+}
+
+/* 亮侧头版 host（2026-10-31）：共享 host 用 --jy-muted；晨光带最暗面上 11px 只有 4.51–4.53
+   （擦线），改用 --jy-text #3a3b44 抬到 ≥7，字号/字距/大写语义不变。
+   取色来源：--jy-text #3a3b44（既有正文墨色）；对比度实测见 scripts/nocturne-light-walkthrough.mjs。 */
+[data-juya-variant='nocturne-light'].jynoct .jynoct-feed-masthead-domain {
+  color: var(--jy-text);
 }
 
 /* 渐变字降级（与阅读页刊头字同一结构）：不支持 background-clip: text 时回实色标题 token。 */

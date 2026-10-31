@@ -19,6 +19,7 @@ type Measurement = {
     before: StyleSnapshot
     after: StyleSnapshot
     dust: StyleSnapshot
+    dustAfter: StyleSnapshot
     stars: StyleSnapshot
     starsAfter: StyleSnapshot
   }
@@ -31,8 +32,11 @@ type Action = 'none' | 'hide' | 'show'
 
 const HIDDEN = 'data-app-hidden'
 
-async function openNocturneReader(page: Page): Promise<Locator> {
-  await loadApp(page, 'nocturneSvg')
+async function openNocturneReader(
+  page: Page,
+  scenario: 'nocturneSvg' | 'nocturneLightSvg' = 'nocturneSvg'
+): Promise<Locator> {
+  await loadApp(page, scenario)
   await openFirstArticle(page)
   const root = activeTab(page).locator('.juya-root')
   await expect(root).toBeVisible()
@@ -74,6 +78,7 @@ function measure(root: Locator, action: Action): Promise<Measurement> {
         before: read(masthead, '::before'),
         after: read(masthead, '::after'),
         dust: read(dust),
+        dustAfter: read(dust, '::after'),
         stars: read(stars),
         starsAfter: read(stars, '::after')
       },
@@ -205,4 +210,62 @@ test('不可见标记暂停全部 nocturne 动画（含伪元素），可见属�
     expect(after!.time, `${name} 恢复后 currentTime 应继续推进`).toBeGreaterThan(before!.time)
   }
   expect(await root.getAttribute(HIDDEN), '内容根容器始终不带该标记').toBeNull()
+})
+
+test('不可见标记暂停 nocturne-light 晨雾动画（伪元素），可见属性不跳变', async ({ page }) => {
+  const root = await openNocturneReader(page, 'nocturneLightSvg')
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every((a) => a.constructor.name !== 'CSSTransition' || a.playState !== 'running'),
+    undefined,
+    { timeout: 5000 }
+  )
+
+  const running = await measure(root, 'none')
+  const runningAnims = running.animations.filter((a) => a.state === 'running')
+  const mist = runningAnims.find((a) => a.name === 'jy-noct-light-mist')
+  expect(mist, '亮侧阅读页应有 120s 晨雾漂移').toBeTruthy()
+  expect(mist?.pseudo, '晨雾动画挂在 dust 的 ::after').toBe('::after')
+  // 亮侧明确不延续暗侧亮星 twinkle / 亮星两层
+  for (const name of ['jy-twinkle', 'jy-noct-stars-a', 'jy-noct-stars-b']) {
+    expect(runningAnims.map((a) => a.name), `亮侧不得出现 ${name}`).not.toContain(name)
+  }
+
+  const hidden = await measure(root, 'hide')
+  expect(hidden.htmlHas, '标记应挂在 documentElement').toBe(true)
+  expect(hidden.rootHas, '标记不得挂内容根容器').toBe(false)
+  expect(hidden.animations.filter((a) => a.state === 'running'), '置标记后不得有 running 动画').toEqual(
+    []
+  )
+  expect(
+    hidden.animations.filter((a) => a.state === 'paused').map((a) => a.name),
+    '晨雾动画对象仍在且为 paused（不是被 animation: none 移除）'
+  ).toContain('jy-noct-light-mist')
+  expectStylesClose(hidden.styles, running.styles)
+
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
+  )
+  const settled = await measure(root, 'none')
+  await page.waitForTimeout(250)
+  const frozen = await measure(root, 'none')
+  expectStylesClose(frozen.styles, settled.styles, 1e-4)
+  const before = settled.animations.find((a) => a.name === 'jy-noct-light-mist')
+  const after = frozen.animations.find((a) => a.name === 'jy-noct-light-mist')
+  expect(
+    Math.abs(after!.time - before!.time),
+    '晨雾 currentTime 应冻结（若仍在跑，250ms 会推进 250ms）'
+  ).toBeLessThan(25)
+
+  await page.evaluate(() => document.documentElement.removeAttribute('data-app-hidden'))
+  await page.waitForTimeout(150)
+  const resumed = await measure(root, 'none')
+  const resumedMist = resumed.animations.find((a) => a.name === 'jy-noct-light-mist')
+  expect(resumedMist?.state, '恢复可见后晨雾动画继续运行').toBe('running')
+  expect(resumedMist!.time, '恢复后 currentTime 应继续推进').toBeGreaterThan(after!.time)
 })

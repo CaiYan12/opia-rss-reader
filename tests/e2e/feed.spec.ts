@@ -208,6 +208,149 @@ test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio
   expect(glass.backdrop, '卡面毛玻璃（饱和补偿；计算值归一为 1.25）').toContain('saturate(1.25)')
 })
 
+test('订阅页亮侧破晓（2026-10-31）：晨霞场景、亮侧头版晨光带与晨雾白毛玻璃卡', async ({ page }) => {
+  await loadApp(page, 'nocturneLight')
+  const root = activeTab(page).locator('.juya-root.jynoct')
+  await expect(root).toHaveAttribute('data-juya-variant', 'nocturne-light')
+  const scene = root.locator('.juya-scene')
+  await expect(scene).toHaveCount(1)
+  await expect(scene.locator('.juya-scene-dust')).toHaveCount(1)
+  await expect(scene.locator('.juya-scene-nebula')).toHaveCount(1)
+  await expect(scene.locator('.juya-scene-stars')).toHaveCount(1)
+
+  // 雾场是晨霞+冷底，不再是共享中性白；亮星层改为静态等高线（零 twinkle）
+  const nebulaBg = await scene
+    .locator('.juya-scene-nebula')
+    .evaluate((el) => getComputedStyle(el).backgroundImage)
+  expect(nebulaBg, '晨霞珊瑚进入亮侧雾场').toContain('rgba(255, 138, 107')
+  expect(nebulaBg, '右上冷底长春花').toContain('rgba(238, 240, 251')
+  const stars = await scene.locator('.juya-scene-stars').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { animation: cs.animationName, bg: cs.backgroundImage }
+  })
+  expect(stars.animation, '亮侧不再 twinkle').toBe('none')
+  expect(stars.bg, '等高线细节层').toContain('repeating-radial-gradient')
+  const dust = await scene.locator('.juya-scene-dust').evaluate((el) => {
+    const base = getComputedStyle(el)
+    const after = getComputedStyle(el, '::after')
+    return {
+      baseAnimation: base.animationName,
+      mistAnimation: after.animationName,
+      mistDuration: after.animationDuration
+    }
+  })
+  expect(dust.baseAnimation, '晨露本体静态（无共享 96s 漂移）').toBe('none')
+  expect(dust.mistAnimation, '晨雾漂移是独立的 120s 关键帧').toBe('jy-noct-light-mist')
+  expect(dust.mistDuration, '晨雾周期 120s').toBe('120s')
+
+  // 头版：亮侧自己的晨光弧（共享暗色极光正本不动）
+  await expect(root.locator('.jynoct-feed-masthead')).toHaveCount(1)
+  const ribbon = await root.locator('.jynoct-feed-masthead').evaluate((el) => ({
+    before: getComputedStyle(el, '::before').backgroundImage,
+    after: getComputedStyle(el, '::after').backgroundImage,
+    line: getComputedStyle(el).backgroundImage
+  }))
+  expect(ribbon.before, '前层晨光弧').toContain('rgba(255, 138, 107')
+  expect(ribbon.after, '后层青瓷云端带').toContain('rgba(167, 200, 182')
+  expect(ribbon.line, '底边线晨光→青绿').toContain('rgba(47, 127, 120')
+
+  // 晨雾白毛玻璃卡
+  const card = root.locator('.juya-feed-item').first()
+  await expect(card).toBeVisible()
+  const glass = await card.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { bg: cs.backgroundColor, backdrop: cs.backdropFilter }
+  })
+  expect(glass.bg, '晨雾白 0.7').toBe('rgba(255, 255, 255, 0.7)')
+  expect(glass.backdrop, '毛玻璃 14px（设计稿只要求模糊）').toContain('blur(14px)')
+})
+
+test('阅读页亮侧破晓（2026-10-31）：正文 veil、H1 细线、导语专用文字档与渐变竖线', async ({ page }) => {
+  await loadApp(page, 'nocturneLightSvg')
+  await openFirstArticle(page)
+  const tab = activeTab(page)
+  const root = tab.locator('.juya-root.jynoct')
+  await expect(root).toHaveAttribute('data-juya-variant', 'nocturne-light')
+  await expect(root.locator('.juya-scene')).toHaveCount(1)
+
+  const issue = await root.locator('.juya-issue').evaluate((el) => {
+    const cs = getComputedStyle(el, '::before')
+    return {
+      zIndex: cs.zIndex,
+      pointerEvents: cs.pointerEvents,
+      background: cs.backgroundImage
+    }
+  })
+  expect(issue.zIndex, 'veil 在文字之下（负值）').toBe('-1')
+  expect(issue.pointerEvents, 'veil 不拦截交互').toBe('none')
+  expect(issue.background, '中心雾白 0.74 可读面').toContain('rgba(251, 251, 252, 0.74)')
+
+  const h1 = await root.locator('.juya-masthead h1').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    const line = getComputedStyle(el, '::after')
+    return {
+      text: cs.backgroundImage,
+      line: line.backgroundImage,
+      lineWidth: line.width,
+      lineHeight: line.height
+    }
+  })
+  expect(h1.text, 'H1 仍为深墨渐变（不是整条晨霞大字）').toContain('rgb(23, 24, 29)')
+  expect(h1.text, 'H1 仍为深墨渐变').toContain('rgb(58, 59, 68)')
+  expect(h1.line, 'H1 晨光细线').toContain('rgb(255, 138, 107)')
+  expect(h1.line, 'H1 晨光细线青绿端').toContain('rgb(47, 127, 120)')
+  expect(h1.lineWidth, '细线宽 84px').toBe('84px')
+  expect(h1.lineHeight, '细线高 2px').toBe('2px')
+
+  const lead = root.locator('.juya-lead').first()
+  await expect(lead).toBeVisible()
+  const leadStyle = await lead.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return {
+      color: cs.color,
+      borderLeftColor: cs.borderLeftColor,
+      background: cs.backgroundImage
+    }
+  })
+  expect(leadStyle.color, '导语专用深墨档 #5b5c65').toBe('rgb(91, 92, 101)')
+  expect(leadStyle.borderLeftColor, '3px 边框只作几何占位').toBe('rgba(0, 0, 0, 0)')
+  expect(leadStyle.background, '竖线晨光端').toContain('rgb(194, 77, 54)')
+  expect(leadStyle.background, '竖线青绿端').toContain('rgb(47, 127, 120)')
+})
+
+test('阅读页亮侧破晓：概览键盘焦点环为靛蓝 2px solid，不裁切', async ({ page }) => {
+  await loadApp(page, 'nocturneLightSvg')
+  await openFirstArticle(page)
+  const tab = activeTab(page)
+  const link = tab.locator('.juya-overview a').first()
+  await expect(link).toBeVisible()
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  let reached = false
+  for (let i = 0; i < 60 && !reached; i++) {
+    await page.keyboard.press('Tab')
+    reached = await link.evaluate((el) => el === document.activeElement).catch(() => false)
+  }
+  expect(reached, '键盘 Tab 应能到达亮侧概览目录链接').toBe(true)
+  const focus = await link.evaluate((el) => {
+    const a = el as HTMLElement
+    const ul = a.closest('.juya-overview') as HTMLElement
+    const cs = getComputedStyle(a)
+    return {
+      style: cs.outlineStyle,
+      width: cs.outlineWidth,
+      offset: cs.outlineOffset,
+      overflow: getComputedStyle(ul).overflow,
+      focusVisible: a.matches(':focus-visible')
+    }
+  })
+  expect(focus.focusVisible).toBe(true)
+  expect(focus.style, '完整 outline 简写（UA auto 不读 outline-color）').toBe('solid')
+  expect(focus.width).toBe('2px')
+  expect(focus.offset).toBe('2px')
+  expect(focus.overflow, '焦点环不被裁切').toBe('visible')
+  await expect(link).toHaveCSS('outline-color', 'rgb(79, 94, 216)')
+})
+
 test('订阅页亮侧（#41）：日间版场景同样挂载，网格底边在可视区内，条目同为 18px 毛玻璃', async ({
   page
 }) => {

@@ -16,7 +16,7 @@
     "perf:probe": "node scripts/perf-probe.mjs",
     "verify": "npm run typecheck && npm run test && npm run test:e2e && npm run verify:nocturne",
     "verify:ci": "npm run typecheck && npm run test && npm run test:e2e && node scripts/nocturne-contrast-audit.mjs",
-    "verify:nocturne": "node scripts/nocturne-contrast-audit.mjs && node scripts/nocturne-visual-walkthrough.mjs --verify"
+    "verify:nocturne": "node scripts/nocturne-contrast-audit.mjs && node scripts/nocturne-visual-walkthrough.mjs --verify && node scripts/nocturne-light-walkthrough.mjs --verify"
   },
   "build": {
     "appId": "com.opia.rssreader",

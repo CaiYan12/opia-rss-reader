@@ -183,6 +183,8 @@ export type Scenario =
   | 'y2k'
   | 'nocturne'
   | 'nocturneSvg'
+  | 'nocturneLight'
+  | 'nocturneLightSvg'
   | 'nocturneLightbox'
   | 'editorial'
   | 'editorialT1'
@@ -273,6 +275,15 @@ export function makeStubScript(scenario: Scenario): string {
     // 视觉走查 / 图文几何专用（#9）：nocturne 暗侧 + 自带内联 SVG 图源的正文
     settings.themeMode = 'dark'
     settings.juyaDarkStyleId = 'nocturne'
+    articles = [juyaArticle({ contentHtml: SVG_ISSUE_HTML })]
+  } else if (scenario === 'nocturneLight') {
+    // 2026-10-31 破晓：nocturne 亮侧（订阅页 + 阅读页）
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'nocturne'
+  } else if (scenario === 'nocturneLightSvg') {
+    // 亮侧视觉走查 / 对比度实测：nocturne-light + 自带内联 SVG 图源
+    settings.themeMode = 'light'
+    settings.juyaLightStyleId = 'nocturne'
     articles = [juyaArticle({ contentHtml: SVG_ISSUE_HTML })]
   } else if (scenario === 'nocturneLightbox') {
     // 点击图片放大查看（#21 / SPEC B5b）：nocturne 暗侧 + 裸图/链接图各一

@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { inflateSync } from 'node:zlib'
@@ -109,97 +109,126 @@ const contrast = (a: number, b: number) => {
   return (l1 + 0.05) / (l2 + 0.05)
 }
 
-/** 从 juya.css 实读 nocturne-dark 变体块的导语专用文字记号 `--jy-lead-text`（#13 / SPEC B1）。
- *  硬编码会让 token 一改就静默测错颜色；取首个 `[data-juya-variant='nocturne-dark'] {` 块内的
+/** 从 juya.css 实读 nocturne 变体块的导语专用文字记号 `--jy-lead-text`（#13 / SPEC B1）。
+ *  硬编码会让 token 一改就静默测错颜色；取首个 `[data-juya-variant='<variant>'] {` 块内的
  *  6 位 hex —— 与 juyaCssGuard 的 tokenHex、审计脚本的 hex() 同口径。
- *  （#13 起导语不再复用 --jy-muted；仍读 muted 会系统性低估导语对比度。） */
-const readLeadText = (): number => {
+ *  （#13 起导语不再复用 --jy-muted；仍读 muted 会系统性低估导语对比度。）
+ *  2026-10-31 破晓：亮侧也有自己的 --jy-lead-text（#5b5c65），本函数按变体读取。 */
+const readLeadText = (variant = 'nocturne-dark'): number => {
   const css = readFileSync(join(__dirname, '../../src/renderer/juya/juya.css'), 'utf-8')
-  const block = css.match(/\[data-juya-variant='nocturne-dark'\]\s*\{[^}]*\}/)?.[0] ?? ''
+  const block =
+    css.match(new RegExp(`\\[data-juya-variant='${variant}'\\]\\s*\\{[^}]*\\}`))?.[0] ?? ''
   const hex = block.match(/--jy-lead-text:\s*#([0-9a-fA-F]{6})/)?.[1]
-  if (!hex) throw new Error("juya.css 的 nocturne-dark 变体块未解析到 --jy-lead-text")
+  if (!hex) throw new Error(`juya.css 的 ${variant} 变体块未解析到 --jy-lead-text`)
   return Number.parseInt(hex, 16)
 }
-const LEAD_TEXT = readLeadText()
-const LEAD_TEXT_LUM = lum(LEAD_TEXT)
+const LEAD_TEXT_LUM = lum(readLeadText('nocturne-dark'))
+const LEAD_TEXT_LIGHT_LUM = lum(readLeadText('nocturne-light'))
 
-/** 冻结动效：刊头 9s 呼吸 + dust 96s 漂移 + 亮星 11s/14s 慢闪会让像素逐次不同；
- *  冻结后测量可复现（dust 动画区间 0.68–0.94、亮星 0.56–1，关键帧以外没有静态 opacity ⇒
- *  冻结保留在 1，是两者的最亮档，属于对己方最不利的一侧，偏保守）。 */
+/** 冻结动效：暗侧刊头 9s 呼吸 + dust 96s 漂移 + 亮星 11s/14s 慢闪、亮侧晨雾 120s
+ *  都会让像素逐次不同；冻结后测量可复现（暗侧 dust/亮星关键帧没有静态 opacity ⇒ 冻结保留在 1，
+ *  是对己方最不利的一侧，偏保守）。 */
 const FREEZE =
   '*, *::before, *::after { animation: none !important; transition: none !important; }'
 
-for (const vw of [480, 700, 800]) {
-  test(`叠加态可达最坏面（${vw}px 视口，滚到滚动口顶端）：导语 --jy-lead-text 对比度 ≥ 4.5（含 hover 态）`, async ({
-    page
-  }) => {
-    await page.setViewportSize({ width: vw, height: 800 })
-    await loadApp(page, 'nocturneSvg')
-    await openFirstArticle(page)
-    await page.addStyleTag({ content: FREEZE })
-    await page.mouse.move(0, 0) // 默认态：鼠标不在条目上
+/** 同一口径的栅格实测：把导语文字行顶到滚动口顶端，隐藏字形后采样真实背景像素。
+ *  暗侧（星尘夜空）与亮侧（破晓）共用；差异只在场景与 hover 层，故两者都跑。 */
+async function runLeadContrastCase(
+  page: Page,
+  opts: {
+    scenario: 'nocturneSvg' | 'nocturneLightSvg'
+    leadLum: number
+    vw: number
+    label: string
+  }
+): Promise<void> {
+  const { scenario, leadLum, vw, label } = opts
+  await page.setViewportSize({ width: vw, height: 800 })
+  await loadApp(page, scenario)
+  await openFirstArticle(page)
+  await page.addStyleTag({ content: FREEZE })
+  await page.mouse.move(0, 0) // 默认态：鼠标不在条目上
 
-    const tab = activeTab(page)
-    const lead = tab.locator('.juya-lead').first()
-    await lead.waitFor({ state: 'visible' })
-    await page.addStyleTag({ content: '.juya-lead { color: transparent !important; }' })
+  const tab = activeTab(page)
+  const lead = tab.locator('.juya-lead').first()
+  await lead.waitFor({ state: 'visible' })
+  await page.addStyleTag({ content: '.juya-lead { color: transparent !important; }' })
 
-    const scroller = tab.locator('.view-scroll').first()
-    const padTop = await lead.evaluate((el) => Number.parseFloat(getComputedStyle(el).paddingTop))
-    const padLeft = await lead.evaluate((el) => Number.parseFloat(getComputedStyle(el).paddingLeft))
-    const padRight = await lead.evaluate((el) => Number.parseFloat(getComputedStyle(el).paddingRight))
-    const before = { lead: await lead.boundingBox(), port: await scroller.boundingBox() }
-    expect(before.lead && before.port, '导语与滚动口的几何量可取').toBeTruthy()
-    await scroller.evaluate(
-      (el, d) => {
-        el.scrollTop += d
-      },
-      before.lead!.y + padTop - before.port!.y
-    )
-    await page.waitForTimeout(150)
-    const after = { lead: await lead.boundingBox(), port: await scroller.boundingBox() }
-    const x0 = after.lead!.x + padLeft
-    const x1 = after.lead!.x + after.lead!.width - padRight
+  const scroller = tab.locator('.view-scroll').first()
+  const padTop = await lead.evaluate((el) => Number.parseFloat(getComputedStyle(el).paddingTop))
+  const padLeft = await lead.evaluate((el) => Number.parseFloat(getComputedStyle(el).paddingLeft))
+  const padRight = await lead.evaluate((el) => Number.parseFloat(getComputedStyle(el).paddingRight))
+  const before = { lead: await lead.boundingBox(), port: await scroller.boundingBox() }
+  expect(before.lead && before.port, '导语与滚动口的几何量可取').toBeTruthy()
+  await scroller.evaluate(
+    (el, d) => {
+      el.scrollTop += d
+    },
+    before.lead!.y + padTop - before.port!.y
+  )
+  await page.waitForTimeout(150)
+  const after = { lead: await lead.boundingBox(), port: await scroller.boundingBox() }
+  const x0 = after.lead!.x + padLeft
+  const x1 = after.lead!.x + after.lead!.width - padRight
 
-    const measure = async (): Promise<number> => {
-      await page.waitForTimeout(120)
-      const buf = await page.screenshot({
-        clip: { x: Math.round(x0), y: Math.round(after.port!.y), width: Math.round(x1 - x0), height: 6 }
-      })
-      const { rows, width } = decodePng(buf)
-      const perColumn: number[] = []
-      for (let cx = 0; cx < width; cx++) {
-        const lumas = rows.map((r) => lum(r[cx])).sort((a, b) => a - b)
-        perColumn.push((LEAD_TEXT_LUM + 0.05) / (lumas[Math.floor(lumas.length / 2)] + 0.05))
-      }
-      return Math.min(...perColumn)
+  const measure = async (): Promise<number> => {
+    await page.waitForTimeout(120)
+    const buf = await page.screenshot({
+      clip: { x: Math.round(x0), y: Math.round(after.port!.y), width: Math.round(x1 - x0), height: 6 }
+    })
+    const { rows, width } = decodePng(buf)
+    const perColumn: number[] = []
+    for (let cx = 0; cx < width; cx++) {
+      const lumas = rows.map((r) => lum(r[cx])).sort((a, b) => a - b)
+      const surface = lumas[Math.floor(lumas.length / 2)]
+      // 暗侧文字比背景亮、亮侧文字比背景暗 —— 必须按亮度大小取比值，不能写死方向。
+      const [hi, lo] = surface > leadLum ? [surface, leadLum] : [leadLum, surface]
+      perColumn.push((hi + 0.05) / (lo + 0.05))
     }
+    return Math.min(...perColumn)
+  }
 
-    const defaultWorst = await measure()
-    // eslint-disable-next-line no-console
-    console.log(`[对比度实测] vw=${vw} 可达最坏面（默认态，导语滚到滚动口顶端）= ${defaultWorst.toFixed(4)}:1`)
-    expect(
-      defaultWorst,
-      `红线 7：导语 --jy-lead-text 对「雾 + 导语底」的合成底须 ≥ 4.5（实测 ${defaultWorst.toFixed(4)}）`
-    ).toBeGreaterThanOrEqual(4.5)
+  const defaultWorst = await measure()
+  // eslint-disable-next-line no-console
+  console.log(
+    `[对比度实测] ${label} vw=${vw} 可达最坏面（默认态，导语滚到滚动口顶端）= ${defaultWorst.toFixed(4)}:1`
+  )
+  expect(
+    defaultWorst,
+    `${label}：导语 --jy-lead-text 对合成底须 ≥ 4.5（实测 ${defaultWorst.toFixed(4)}）`
+  ).toBeGreaterThanOrEqual(4.5)
 
-    // hover 态（#9 G-1 修复后应达标）：鼠标悬停在条目上时，暗侧已**不再叠背景微亮**
-    // （原 `.jynoct .juya-entry:hover` 与 `.juya-lead` 同用 --jy-lead-bg ⇒ 叠两层 0.08 白，
-    //  muted 掉到 ~3.6–4.0 < AA 4.5）。修复：暗侧撤掉背景微亮、改走 border-bottom-color 提亮
-    //  （边框不参与文字的背景合成）。实测任何正 alpha 都不可行 —— 底色近黑时微亮成比例放大
-    //  对比度分母，连 0.005 都把 vw=480 压到 4.4967。
-    // 故本断言现要求 hover 态**同样 ≥ 4.5**（不再是「已知缺口」留痕）。
-    const entry = tab.locator('article.juya-entry').first()
-    const eb = await entry.boundingBox()
-    expect(eb, '条目几何可取').toBeTruthy()
-    await page.mouse.move(eb!.x + eb!.width / 2, eb!.y + Math.min(60, eb!.height / 2))
-    const hoverWorst = await measure()
-    // eslint-disable-next-line no-console
-    console.log(`[对比度实测] vw=${vw} 条目 hover ∩ 导语 = ${hoverWorst.toFixed(4)}:1`)
-    expect(
-      hoverWorst,
-      `红线 7（hover 态）：悬停条目时导语 --jy-lead-text 仍须 ≥ 4.5（实测 ${hoverWorst.toFixed(4)}）`
-    ).toBeGreaterThanOrEqual(4.5)
+  // hover 态：暗侧已撤背景微亮（边框提亮不参与文字合成）；亮侧保留共享 4% 暗层 ——
+  // 两种路径都必须 ≥ 4.5，亮侧的 4% 层正是 muted 旧账 4.32 的来源，必须实测确认新 token 有余量。
+  const entry = tab.locator('article.juya-entry').first()
+  const eb = await entry.boundingBox()
+  expect(eb, '条目几何可取').toBeTruthy()
+  await page.mouse.move(eb!.x + eb!.width / 2, eb!.y + Math.min(60, eb!.height / 2))
+  const hoverWorst = await measure()
+  // eslint-disable-next-line no-console
+  console.log(`[对比度实测] ${label} vw=${vw} 条目 hover ∩ 导语 = ${hoverWorst.toFixed(4)}:1`)
+  expect(
+    hoverWorst,
+    `${label}（hover 态）：悬停条目时导语 --jy-lead-text 仍须 ≥ 4.5（实测 ${hoverWorst.toFixed(4)}）`
+  ).toBeGreaterThanOrEqual(4.5)
+}
+
+for (const vw of [480, 700, 800]) {
+  test(`暗侧叠加态可达最坏面（${vw}px）：导语 --jy-lead-text ≥ 4.5（含 hover）`, async ({ page }) => {
+    await runLeadContrastCase(page, {
+      scenario: 'nocturneSvg',
+      leadLum: LEAD_TEXT_LUM,
+      vw,
+      label: '暗侧星尘夜空'
+    })
+  })
+  test(`亮侧破晓可达最坏面（${vw}px）：导语 --jy-lead-text ≥ 4.5（含 hover）`, async ({ page }) => {
+    await runLeadContrastCase(page, {
+      scenario: 'nocturneLightSvg',
+      leadLum: LEAD_TEXT_LIGHT_LUM,
+      vw,
+      label: '亮侧破晓'
+    })
   })
 }
 

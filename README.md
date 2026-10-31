@@ -223,6 +223,7 @@ plugins/<your-plugin>/
 - [x] 完善 `FeedProvider`、`Theme`、`CardRenderer` 插件 API 文档与示例（[docs/PLUGIN_API.md](docs/PLUGIN_API.md) + `plugins/` 三个示例；CardRenderer 明确标注 v1 未接通）
 - [ ] 持续优化不同 Windows 环境下的兼容性、打包与升级体验
 - [ ] 根据社区反馈完善订阅管理、阅读体验与无障碍支持
+- [ ] `nocturne-light` 字体：亮侧字体栈仍指向本机未安装的 `Inter / SF Pro`，实际落 Segoe UI + Noto Sans SC；后续尝试通过字体 CDN 加载，需评估离线可用性、许可证、首屏与缓存成本（2026-10-31 破晓设计稿 §8）
 
 ## 🐛 Issue 与反馈
 

@@ -14,7 +14,14 @@ type StyleSnapshot = { opacity: string; filter: string }
 type AnimationInfo = { name: string; state: string; pseudo: string | null; time: number }
 
 type Measurement = {
-  styles: { h1: StyleSnapshot; before: StyleSnapshot; after: StyleSnapshot; dust: StyleSnapshot }
+  styles: {
+    h1: StyleSnapshot
+    before: StyleSnapshot
+    after: StyleSnapshot
+    dust: StyleSnapshot
+    stars: StyleSnapshot
+    starsAfter: StyleSnapshot
+  }
   animations: AnimationInfo[]
   htmlHas: boolean
   rootHas: boolean
@@ -44,7 +51,8 @@ function measure(root: Locator, action: Action): Promise<Measurement> {
     const masthead = el.querySelector('.juya-masthead')
     const h1 = el.querySelector('.juya-masthead h1')
     const dust = el.querySelector('.juya-scene-dust')
-    if (!masthead || !h1 || !dust) throw new Error('nocturne 刊头 / 场景结构缺失')
+    const stars = el.querySelector('.juya-scene-stars')
+    if (!masthead || !h1 || !dust || !stars) throw new Error('nocturne 刊头 / 场景结构缺失')
 
     if (act === 'hide') document.documentElement.setAttribute('data-app-hidden', '')
     if (act === 'show') document.documentElement.removeAttribute('data-app-hidden')
@@ -65,7 +73,9 @@ function measure(root: Locator, action: Action): Promise<Measurement> {
         h1: read(h1),
         before: read(masthead, '::before'),
         after: read(masthead, '::after'),
-        dust: read(dust)
+        dust: read(dust),
+        stars: read(stars),
+        starsAfter: read(stars, '::after')
       },
       animations,
       htmlHas: document.documentElement.hasAttribute('data-app-hidden'),
@@ -74,7 +84,16 @@ function measure(root: Locator, action: Action): Promise<Measurement> {
   }, action)
 }
 
-const CONTINUOUS = ['jy-dust-drift', 'jy-noct-glow', 'jy-noct-aurora-near', 'jy-noct-aurora-far']
+/** 2026-10-31 星尘夜空：dust 改用 jy-noct-dust-drift，亮星两层 jy-noct-stars-a/b 也是持续动画。
+ *  逐一列举本变体阅读页上应持续运行的动画（漏一个就说明暂停清单与 CSS 脱节）。 */
+const CONTINUOUS = [
+  'jy-noct-dust-drift',
+  'jy-noct-stars-a',
+  'jy-noct-stars-b',
+  'jy-noct-glow',
+  'jy-noct-aurora-near',
+  'jy-noct-aurora-far'
+]
 
 /** 可见属性的「等值」判据：透明度直接比数值；滤镜串按数值序列逐项比（动画只动 alpha/半径）。
  *  tolerance 缺省 0.01 =「肉眼不可见」；冻结断言用 1e-4（暂停生效比采样晚约 1ms，见下）。 */

@@ -2935,7 +2935,10 @@
 }
 
 /* ---- 暗夜精修式（2026-09-24 重设计新增，暗侧默认） ----
-   发丝级 alpha 分层边框；暗侧仅顶部一道极光渐晕（无第二光源，克制无霓虹） */
+   发丝级 alpha 分层边框；暗侧仅顶部一道极光渐晕（无第二光源，克制无霓虹）
+   2026-10-31 星尘夜空（封版例外）：底色改 #0e0c18、muted 改 #9a9ba6，雾/星尘/亮星/订阅卡按新设计；
+   本节下文旧注释中的 #0a0a0c / muted 5.84 / lead 7.01 / 遮罩 1.05 / hover 边框 1.52 等为历史口径，
+   当前对比度以 scripts/nocturne-contrast-audit.mjs 实算为准（2026-10-31：70 text + 14 UI PASS）。 */
 [data-juya-variant='nocturne-light'] {
   --jy-bg: #fbfbfc;
   --jy-card: #ffffff;
@@ -2960,13 +2963,15 @@
    --jy-text 11.50、--jy-heading 17.6、--jy-link 8.2、--jy-muted 5.84（叠满三层 nebula 后 5.12，
    见本段场景注释）；--jy-border 白 0.08 合成 #1e1e1f ≈ 1.19（装饰性发丝线，§7.1 已留档差额）。 */
 [data-juya-variant='nocturne-dark'] {
-  --jy-bg: #0a0a0c;
-  background-image: radial-gradient(1200px 480px at 50% -12%, rgba(110, 123, 255, 0.14), transparent 62%);
+  /* 2026-10-31 星尘夜空重做：底色从近黑 #0a0a0c 抬到深靛蓝黑 #0e0c18；顶部中央洗光删除
+     （避免与 Scene 雾/星尘叠成双重背景，也让对比度审计只面对单一背景模型）。
+     muted 由 #8a8b94 提亮到 #9a9ba6，为抬底+加雾后的文字 AA 留余量（同灰阶，零新增色相）。 */
+  --jy-bg: #0e0c18;
   --jy-card: #121216;
   --jy-border: rgba(255, 255, 255, 0.08);
   --jy-heading: #f4f4f6;
   --jy-text: #c4c5cc;
-  --jy-muted: #8a8b94;
+  --jy-muted: #9a9ba6;
   --jy-accent: #6e7bff;
   --jy-on-accent: #0a0a0c;
   --jy-link: #93a1ff;
@@ -3046,34 +3051,126 @@
    对近黑底 1.52:1，刻意低于非文本 UI 的 3:1 —— 它是不承载信息的 aria-hidden 装饰层）。本变体
    不覆写该 token：覆写只会抬高尘埃的存在感，与需求 §3.2「存在感极低、不抢正文」相悖；将来若确需
    为 nocturne 调色，仍须用复合选择器形态 `[data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust`。 */
+/* 2026-10-31 星尘夜空（用户反馈「背景纯黑、星辰不明显」）：三层雾从「贴边、避让正文列中心」
+   改为「左上大雾 + 右上青蓝 + 左下品红」的斜向夜空。n1 用 145%×125% 的大椭圆覆盖中心与右下，
+   alpha 抬到 0.105（原 0.07），让整页离开纯黑；三层允许重叠，可达最坏面由
+   scripts/nocturne-contrast-audit.mjs 的 fogAt 逐像素合成实算（不再有「三层不相交」前提）。
+   取色来源：三层色相沿用本变体既有 --jy-accent #6e7bff (110,123,255) / 既有青蓝
+   rgba(90,160,255)（--jy-nebula-2）/ 既有品红 rgba(200,90,180)（--jy-nebula-3），零新增色相。
+   WCAG 对比度（可达最坏面，审计脚本实算）：1280px 正文 10.3766 / muted 6.4723 / 导语 6.6157；
+   560px 10.1506 / 6.3314 / 6.4370；均 ≥ AA 4.5。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula {
-  --jy-nebula-1: rgba(110, 123, 255, 0.07);
-  --jy-nebula-2: rgba(90, 160, 255, 0.04);
-  --jy-nebula-3: rgba(200, 90, 180, 0.025);
+  --jy-nebula-1: rgba(110, 123, 255, 0.105);
+  --jy-nebula-2: rgba(90, 160, 255, 0.05);
+  --jy-nebula-3: rgba(200, 90, 180, 0.03);
   background-image:
-    radial-gradient(44% 50% at 0% 0%, var(--jy-nebula-1), transparent 76%),
-    radial-gradient(44% 50% at 100% 0%, var(--jy-nebula-2), transparent 76%),
-    radial-gradient(42% 44% at 0% calc(100% - 136px), var(--jy-nebula-3), transparent 78%);
+    radial-gradient(145% 125% at 0% 0%, var(--jy-nebula-1), transparent 82%),
+    radial-gradient(85% 95% at 100% 0%, var(--jy-nebula-2), transparent 78%),
+    radial-gradient(75% 80% at 0% calc(100% - 136px), var(--jy-nebula-3), transparent 80%);
 }
 
-/* ---- 星尘破除规则点阵（2026-10-20，#20 / SPEC 批次 B5）----
-   病根：共享 dust 预设的 6 层平铺尺寸是 3×44 + 3×132 —— 132 = 44×3，两组互为整数倍，六层相位
-   共锁进一个 132px 的大格点，暗侧背景读出可辨认的规则点阵。
-   修法：**只在暗侧作用域**覆写 background-size 为 6 个互不相同、任意两层之比都不贴近整数的尺寸；
-   共享 `.juya-scene-dust` 预设（y2k / synthwave 也在用）一字节不改。
-   取值来源（脚本搜索，非随手填）：搜索空间 = 小尺寸 [38,60] × 大尺寸 [100,200] 中取 3+3，
-   共 295,137,150 组；判据「任意两层之比距最近整数 ≥0.1」+「1280×800 点数 ∈ [1000,2500]」
-   ⇒ 2,546,089 组解；取「最小两两余量」最大者（0.2241，是门槛 0.1 的两倍以上），
-   再按点数最接近共享原值 1764 定为：38 / 47 / 58 / 129 / 161 / 199 px（points = 1604.0）。
-   实算两两之比距最近整数：最小 0.2241（129/58 与 161/58），最大 0.4737（58/38）——无一贴近整数，
-   且六层尺寸互不相同（同尺寸的三层只是同一格点的偏移拷贝，周期仍等于该 size）。
-   **接缝**：jy-dust-drift 是 `infinite alternate` 往复（不是单向循环），终点位移无需为 size 整数倍，
-   故不改 keyframe、不改共享层的背景位置序列；RM 下共享层 `animation: none` 原样生效
-   （本条只声明 background-size，不碰 animation / transition / 点色 token）。
-   隔离：作用域写复合形态（AGENTS「变体覆盖选择器约定」）；共享预设一字节不改 ⇒ y2k / synthwave
-   的 dust 完全不受影响（其模板也不挂本变体的复合选择器）。 */
+/* ---- 星尘夜空：nocturne 专属星尘（2026-10-31，替代 2026-10-20 仅改 background-size 的版本）----
+   用户反馈「星辰不明显、背景纯黑」⇒ 不再只是拆规则点阵，而是把共享 dust 覆写成十层星尘：
+   尺寸 46/55/70/83/104/122/157/175/194/258（脚本搜索：两两比值距最近整数最小 0.1084，
+   1280×800 点数 1461，接近原 1604），十层位置/大小/亮度/间距全不同；共享预设零改动。
+   左上→右下密度递减用 135deg mask（0–24% 全量、58% 收至 0.6、96% 归零）；亮星层另见下方 stars。
+   共享层 jy-dust-drift 改为本段 jy-noct-dust-drift（96s alternate，十层位移），RM/暂停仍按元素暂停。
+   取色来源：冷白 rgba(220,228,255) / 亮白 rgba(232,238,255) / 极光亮脊冷青 rgba(214,236,255)
+   —— 均由本变体既有 --jy-heading #f4f4f6、刊头冷白 #ffffff→#b9c6f0 与极光亮脊色派生，零新增色相。
+   WCAG 对比度：星尘是 aria-hidden / pointer-events:none 的纯装饰层，不承载信息，不参与文字 AA；
+   点色峰值合成到本变体底色约 2.5:1（仅作 decorations 参照，不套 3:1 门槛）。 */
 [data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust {
-  background-size: 38px 38px, 47px 47px, 58px 58px, 129px 129px, 161px 161px, 199px 199px;
+  --jy-noct-dust-1: rgba(220, 228, 255, 0.22);
+  --jy-noct-dust-2: rgba(232, 238, 255, 0.34);
+  --jy-noct-dust-3: rgba(214, 236, 255, 0.26);
+  background-image:
+    radial-gradient(1px 1px at 8% 14%, var(--jy-noct-dust-1) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 41% 9%, var(--jy-noct-dust-2) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 68% 21%, var(--jy-noct-dust-3) 50%, transparent 51%),
+    radial-gradient(1px 1px at 23% 38%, var(--jy-noct-dust-1) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 52% 31%, var(--jy-noct-dust-2) 50%, transparent 51%),
+    radial-gradient(1.1px 1.1px at 87% 46%, var(--jy-noct-dust-1) 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 14% 62%, var(--jy-noct-dust-3) 50%, transparent 51%),
+    radial-gradient(1px 1px at 37% 72%, var(--jy-noct-dust-1) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 63% 58%, var(--jy-noct-dust-2) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 79% 83%, var(--jy-noct-dust-3) 50%, transparent 51%);
+  background-size: 46px 46px, 55px 55px, 70px 70px, 83px 83px, 104px 104px, 122px 122px, 157px 157px, 175px 175px, 194px 194px, 258px 258px;
+  animation: jy-noct-dust-drift 96s ease-in-out infinite alternate;
+  -webkit-mask-image: linear-gradient(135deg, black 0%, black 24%, rgba(0, 0, 0, 0.6) 58%, transparent 96%);
+  mask-image: linear-gradient(135deg, black 0%, black 24%, rgba(0, 0, 0, 0.6) 58%, transparent 96%);
+  will-change: background-position, opacity;
+}
+
+@keyframes jy-noct-dust-drift {
+  from {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+    opacity: 0.68;
+  }
+  to {
+    background-position: 46px -92px, -27px 55px, 35px 21px, 83px -41px, -52px 104px, 122px -61px, -78px 157px, 175px 87px, -97px 194px, 258px 129px;
+    opacity: 0.94;
+  }
+}
+
+/* ---- 星尘夜空：亮星层（共享 stars 预设的 nocturne 覆写）----
+   2–3px 冷白/靛蓝/品红亮点 + 柔光，大 tile 稀疏；与 dust 共用同一个 135deg mask（左上密→右下疏）。
+   两层错相慢闪（11s / 14s，只动 opacity，合成器友好）；RM 下由下方 RM 块钉死静态档。
+   取色来源：白/冷白取自刊头渐变与极光亮脊，靛蓝 = --jy-focus #8b97ff，品红 = --jy-nebula-3 rgba(200,90,180)；
+   WCAG 对比度：星点为装饰层（不承载信息），不参与文字 AA。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars {
+  --jy-noct-star-white: rgba(255, 255, 255, 0.9);
+  --jy-noct-star-cool: rgba(214, 236, 255, 0.8);
+  --jy-noct-star-indigo: rgba(139, 151, 255, 0.7);
+  --jy-noct-star-magenta: rgba(200, 90, 180, 0.55);
+  background-image:
+    radial-gradient(7px 7px at 7% 8%, var(--jy-noct-star-white) 0 6%, rgba(190, 200, 255, 0.35) 26%, transparent 70%),
+    radial-gradient(6px 6px at 33% 23%, var(--jy-noct-star-cool) 0 7%, rgba(160, 190, 255, 0.25) 30%, transparent 72%),
+    radial-gradient(4.5px 4.5px at 18% 55%, var(--jy-noct-star-indigo) 0 10%, transparent 68%),
+    radial-gradient(5.5px 5.5px at 52% 13%, var(--jy-noct-star-white) 0 8%, transparent 68%),
+    radial-gradient(4.8px 4.8px at 74% 36%, var(--jy-noct-star-cool) 0 10%, transparent 66%),
+    radial-gradient(5.2px 5.2px at 89% 63%, var(--jy-noct-star-magenta) 0 12%, transparent 68%);
+  background-size: 640px 610px, 830px 760px, 980px 910px, 1120px 1040px, 1310px 1190px, 1490px 1360px;
+  animation: jy-noct-stars-a 11s ease-in-out infinite alternate;
+  -webkit-mask-image: linear-gradient(135deg, black 0%, black 26%, rgba(0, 0, 0, 0.58) 60%, transparent 96%);
+  mask-image: linear-gradient(135deg, black 0%, black 26%, rgba(0, 0, 0, 0.58) 60%, transparent 96%);
+  will-change: opacity;
+}
+
+/* 亮星远层（::after）：取色来源同本元素（--jy-noct-star-* token 继承，白/冷白/靛蓝/品红）；
+   WCAG 对比度：纯装饰星点，不参与文字 AA；与主层共用 mask，另一相位慢闪补纵深。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(6.5px 6.5px at 22% 14%, var(--jy-noct-star-white) 0 7%, rgba(200, 210, 255, 0.3) 28%, transparent 72%),
+    radial-gradient(5px 5px at 61% 27%, var(--jy-noct-star-indigo) 0 11%, transparent 68%),
+    radial-gradient(4.2px 4.2px at 12% 41%, var(--jy-noct-star-cool) 0 12%, transparent 64%),
+    radial-gradient(5.8px 5.8px at 47% 7%, var(--jy-noct-star-white) 0 8%, transparent 68%),
+    radial-gradient(4px 4px at 84% 19%, var(--jy-noct-star-magenta) 0 14%, transparent 64%);
+  background-size: 710px 670px, 900px 840px, 1060px 990px, 1210px 1140px, 1400px 1310px;
+  animation: jy-noct-stars-b 14s ease-in-out infinite alternate;
+  -webkit-mask-image: linear-gradient(135deg, black 0%, black 26%, rgba(0, 0, 0, 0.58) 60%, transparent 96%);
+  mask-image: linear-gradient(135deg, black 0%, black 26%, rgba(0, 0, 0, 0.58) 60%, transparent 96%);
+  will-change: opacity;
+}
+
+@keyframes jy-noct-stars-a {
+  from {
+    opacity: 0.62;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes jy-noct-stars-b {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.56;
+  }
 }
 
 /* 窄窗（≤520px）退化：该断点下 .juya-issue 撑满全宽（padding 20px 14px 48px）、两侧零空隙，
@@ -3102,12 +3199,10 @@
 @media (max-width: 520px) {
   [data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula {
     /* 取色来源：紫蓝 rgba(110,123,255) 与本变体 --jy-accent #6e7bff 同源（同上方主规则）；
-       对比度：本条峰值 alpha 0.055 下，vw=480 导语 --jy-muted 对合成底实算 4.6046:1 ≥ AA 4.5。
-       （注释置于规则体内：本规则位于 @media 块内，块头会把上方注释与规则隔开，
-        守卫「构成色注释」的证据面取「紧邻上文注释 + 规则体」，故溯源写在这里。） */
-    --jy-nebula-1: rgba(110, 123, 255, 0.055);
+       对比度：窄窗峰值 alpha 0.08 下，vw=480 导语 --jy-lead-text 对合成底由审计脚本实算。 */
+    --jy-nebula-1: rgba(110, 123, 255, 0.08);
     background-image:
-      radial-gradient(120% 26% at 50% 0%, var(--jy-nebula-1), transparent 74%);
+      radial-gradient(140% 46% at 50% 0%, var(--jy-nebula-1), transparent 80%);
   }
 }
 
@@ -3184,7 +3279,7 @@
      最深处 alpha 0.3 = 票面决策值。对本变体叠加 nebula 后的最坏合成底 #18192a 的 WCAG 对比度为 1.05:1
      （暗底上的边缘收束，本就不承载信息；真正的可读性由「遮罩内缘止于文字列缘」保证，见上方长注释）。
      提成局部 token 是为了让两侧共用同一深度值（改深度只能改这一处；守卫②按「全份唯一 + 实值恰为 0.3」双锁）。 */
-  --jy-window-mask: rgba(10, 10, 12, 0.3);
+  --jy-window-mask: rgba(14, 12, 24, 0.3);
 }
 
 [data-juya-variant='nocturne-dark'].jynoct .juya-issue::before {
@@ -3464,6 +3559,24 @@
     animation: none !important;
     opacity: 0.76;
   }
+
+  /* 2026-10-31 星尘夜空：亮星两层在 RM 下显式钉静态档（不靠「撤动画回默认 1」——
+     默认 1 是动画的最亮端，会比平均态更抢眼）。dust 的 RM 仍由全局 `.juya-scene-dust` 块处理。 */
+  [data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars {
+    animation: none !important;
+    opacity: 0.86;
+  }
+
+  [data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars::after {
+    animation: none !important;
+    opacity: 0.74;
+  }
+
+  /* 2026-10-31：nocturne 的 dust 覆写带 0,3,0 特异性，会压过全局 RM 块的 `.juya-scene-dust`
+     （0,1,0）—— 必须在同一特异性下再显式撤一次，否则 RM 下星尘仍在漂移。 */
+  [data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust {
+    animation: none !important;
+  }
 }
 
 /* 审计 F-11 回退：不支持 background-clip:text 的引擎上渐变被裁掉、color: transparent 会让标题整条隐形，
@@ -3685,6 +3798,19 @@
 
 [data-juya-variant='nocturne-light'].jynoct .juya-feed-item:hover {
   border-color: rgba(15, 15, 24, 0.2);
+}
+
+/* 2026-10-31 星尘夜空：订阅页卡片改为半透明毛玻璃 —— 星点与雾从卡面隐约透出（用户选 B，
+   随后明确「卡片背景可以用毛玻璃模糊」）。背景 0.68 + backdrop blur(18px) saturate(125%)；
+   只模糊卡面背后的星空，卡内文字保持锐利。性能边界：backdrop-filter 是新合成层，
+   收口时用 perf probe/真实窗口复核；不支持 backdrop-filter 的引擎回落到 0.68 半透明。
+   取色来源：卡面 rgba(20,19,28,·) 由 --jy-card #121216 向本变体靛蓝底色偏移一档；
+   WCAG 对比度（卡面合成层手算，背景取最亮雾 #1a1733）：--jy-text #c4c5cc 10.6:1、
+   --jy-muted #9a9ba6 6.6:1；亮星被 18px blur 摊平后最坏仍 ≥5:1，两档均 ≥ AA 4.5。 */
+[data-juya-variant='nocturne-dark'].jynoct .juya-feed-item {
+  background: rgba(20, 19, 28, 0.68);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  backdrop-filter: blur(18px) saturate(125%);
 }
 
 /* 第二轮定制排版：图文并排图恒在右（纪律排布），题注等宽；序号退化为灰色 # 小字 */
@@ -4127,6 +4253,8 @@
    只声明 `animation-play-state`：计算样式中的 opacity / filter 保持冻结当帧值，
    回到前台动画从原 currentTime 继续，不会有可见跳变（E2E 逐项断言）。 */
 [data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars,
+[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars::after,
 [data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead h1,
 [data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::before,
 [data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct .juya-masthead::after,

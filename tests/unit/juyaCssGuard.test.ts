@@ -793,12 +793,16 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     )
   })
 
-  it('⑥ 可达最坏面：导语滚到滚动口顶端时 --jy-muted 对真实合成底 ≥ 4.5（且留 ≥0.05 余量）', () => {
+  it('⑥ 可达最坏面：导语滚到滚动口顶端时 --jy-lead-text 对真实合成底 ≥ 4.5（且留 ≥0.05 余量）', () => {
+    // 2026-10-31 星尘夜空重做后，导语行实读 --jy-lead-text（#13 起），muted 只用于元信息；
+    // 静态模型仍取「首个雾层峰值 + 导语底 0.08」，与审计脚本 fogAt 同一几何（n1 145%×125% @ 0% 0%）。
     const block = variantBlock(NIGHT)
     const bg = tokenHex(block, '--jy-bg')
     const muted = tokenHex(block, '--jy-muted')
+    const leadText = tokenHex(block, '--jy-lead-text')
     const leadBg = tokenRgba(block, '--jy-lead-bg')
     expect(muted, `${NIGHT} --jy-muted 应为 6 位 hex`).not.toBeNaN()
+    expect(leadText, `${NIGHT} --jy-lead-text 应为 6 位 hex`).not.toBeNaN()
 
     // ---- 前提 1：场景层是**视口锚定**（sticky top:0）而非文档锚定 —— 这是「最坏面可达」的根因。
     //      原守卫用文档坐标（y≈45%）论证「导语不被 nebula 覆盖」，前提本身不成立。 ----
@@ -854,17 +858,16 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
     const fog = { rgb: n1.rgb, alpha: n1.alpha * cover }
     // 场景雾 → 底色，再叠导语底（source-over 逐层合成，顺序即 CSS 绘制顺序的逆）
     const surface = over(leadBg, over(fog, bg))
-    const model = contrast(muted, surface)
+    const model = contrast(leadText, surface)
 
-    // 六档视口真实浏览器实测（Playwright，独立端口 4198，deviceScaleFactor=1；把带导语的条目滚到
-    // 滚动口顶端、导语文字贴顶；dust 为 1~1.6px 装饰微粒，中性化后取背景梯度真值；鼠标移出条目以免
-    // `.juya-entry:hover` 的**同色第二层**底叠加 —— 那是独立交互态，不计入本守卫最坏面）。
-    // 修正轨迹（合 #5 收窄列 700px 后的同一口径复测；最坏档三次都是 vw=700）：
-    //   0.09 + 块级 drop-shadow（修前）4.2731 / 4.2563 / 4.3357 / 4.3984 / 4.4609 / 4.5642 ⇒ 4.2563
-    //   0.08 + 块级 drop-shadow         4.4915 / 4.4744 / 4.5541 / 4.6164 / 4.6735 / 4.7801 ⇒ 4.4744
-    //   0.08 + 外阴影竖线发光（现值）   4.6735 / 4.6567 / 4.7353 / 4.7966 / 4.8458 / 4.9105 ⇒ 4.6567
-    // 旧守卫断言的 4.80 面（首层雾覆盖为 0、且不含发光垫底贡献）比可达最坏面高 ≈0.5，是**不可达面**。
-    const MEASURED_WORST = 4.6567
+    // 六档视口真实浏览器实测（Playwright；把带导语的条目滚到滚动口顶端、导语文字贴顶；
+    // dust 为 1~1.6px 装饰微粒、亮星是稀疏大 tile（6px 中位数滤除），取背景梯度真值；
+    // 鼠标移出条目以免 `.juya-entry:hover` 叠加 —— 暗侧 hover 已撤背景微亮）。
+    // 2026-10-31 星尘夜空（n1 145%×125% / alpha 0.105 / 停靠 82%）的可达最坏面：
+    //   审计脚本（scripts/nocturne-contrast-audit.mjs，700 视口）6.4370；
+    //   E2E 栅格化实测（tests/e2e/contrast.spec.ts）6.5257。
+    // 旧值（muted 档 4.6567 / 0.055 窄窗 4.6046 / #18192a 合成面）全部过期，不作断言面。
+    const MEASURED_WORST = 6.437
     expect(model, `静态模型复算 ${model.toFixed(3)} 不得高于实测（模型应保守）`).toBeLessThanOrEqual(
       MEASURED_WORST + 0.02
     )
@@ -872,12 +875,16 @@ describe('nocturne 排版层级守卫（2026-10-12，#6；同日合并复核修�
       MEASURED_WORST - model,
       `静态模型与实测差 ${(MEASURED_WORST - model).toFixed(3)} 应在保守带内（≤0.15）`
     ).toBeLessThan(0.15)
-    // 票面 §6 / 需求 §3.1 的 AA 目标：可达最坏面 ≥ 4.5
+    // 需求 §3.1 的 AA 目标：可达最坏面 ≥ 4.5
     expect(model, `可达最坏面静态复算 ${model.toFixed(3)} 须 ≥ AA 4.5`).toBeGreaterThanOrEqual(4.5)
     expect(
       MEASURED_WORST,
-      '可达最坏面实测值（改 --jy-lead-bg alpha 或发光实现会撞这条，须同步复测）须 ≥ 4.5 且留 ≥0.05 余量'
+      '可达最坏面实算值（改 n1 alpha/几何或 --jy-lead-bg 会撞这条，须同步复测）须 ≥ 4.5 且留 ≥0.05 余量'
     ).toBeGreaterThanOrEqual(4.55)
+    // 同一最坏面上元信息（--jy-muted）也须达标：它是题注/日期的实际字色
+    expect(contrast(muted, surface), `同一雾面 muted 实算 ${contrast(muted, surface).toFixed(3)}`).toBeGreaterThanOrEqual(
+      4.5
+    )
   })
 
   it('⑦ 范围未越界：nocturne-light 的导语/栏目线相关取值与形态字节不变（本轮仅暗侧）', () => {
@@ -1782,7 +1789,9 @@ describe('nocturne 图文回流守卫（2026-10-12，#8：右列限 2 张，其�
 describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 + 发丝线 + hover 整行微亮）', () => {
   // 需求：docs/juyathemesworks/nocturne-dark.md §7.2（决策 10）。真值一律从 juya.css 规则里
   // regex 抠出后**自行 alpha 合成再实算**——tokenHex 读不了 rgba，本票相关 token 全是 rgba 字面量。
-  // 底色口径：概览区在页面上部，取三层 nebula **最坏全重叠**合成底（#2 已接线，正文列中心区不再是纯 #0a0a0c）。
+  // 底色口径（2026-10-31 星尘夜空）：概览区在页顶；`.juya-scene` 是 sticky ⇒ 概览滚到滚动口顶端时
+  // y=0。n1 是 145%×125% 的大雾（覆盖中心与右下），内容盒内最亮处在内容列左缘 x=24（700 视口）；
+  // 该点即审计脚本实算的 accent 最坏面 #181730 / 4.9334。旧「三层全重叠 #18192a」不可达，已废弃。
 
   const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   /** 以字面量选择器取规则块（extractBlock 收 regex，此处转义字面量，避免手写转义漂移） */
@@ -1811,19 +1820,37 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
       alpha: Number(m![4])
     }
   }
-  /** 三层 nebula 最坏全重叠合成底：绘制顺序为列表首个在最上，故合成序 3 → 2 → 1 */
-  const worstCaseSceneBase = (): number => {
+  /** 首个雾层（--jy-nebula-1）的几何与 rgba 实值：新设计的主雾，覆盖中心/右下 */
+  const n1Of = (): { rgba: { color: number; alpha: number }; rx: number; ry: number; cx: number; cy: number; stop: number } => {
     const neb = ruleOf("[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula {")
     expect(neb, 'nocturne 的 nebula 覆盖规则应存在（依赖 #2 已接线）').toBeTruthy()
-    const layers = [3, 2, 1].map((n) => {
-      const m = neb.match(
-        new RegExp(`--jy-nebula-${n}:\\s*rgba\\(\\s*([\\d.]+)\\s*,\\s*([\\d.]+)\\s*,\\s*([\\d.]+)\\s*,\\s*([\\d.]+)\\s*\\)`)
-      )
-      expect(m, `--jy-nebula-${n} 应为 rgba() 字面量`).toBeTruthy()
-      return { layer: (Number(m![1]) << 16) | (Number(m![2]) << 8) | Number(m![3]), alpha: Number(m![4]) }
-    })
-    const bg = tokenHex(variantBlock('nocturne-dark'), '--jy-bg')
-    return layers.reduce((acc, l) => over(l.layer, l.alpha, acc), bg)
+    const m = neb.match(
+      /radial-gradient\(\s*([\d.]+)%\s+([\d.]+)%\s+at\s*([\d.]+)%\s+([\d.]+)%\s*,\s*var\(--jy-nebula-1\)\s*,\s*transparent\s+([\d.]+)%\s*\)/
+    )
+    expect(m, '首层雾应为 var(--jy-nebula-1) 的椭圆径向渐变').toBeTruthy()
+    return {
+      rgba: rgbaOf(neb, '--jy-nebula-1'),
+      rx: Number(m![1]),
+      ry: Number(m![2]),
+      cx: Number(m![3]),
+      cy: Number(m![4]),
+      stop: Number(m![5])
+    }
+  }
+  /** 可达最亮场景面：视口 700×800、内容列左缘 x=24、y=0（sticky 场景 ⇒ 概览滚到滚动口顶端）。
+   *  n2（右上）/ n3（左下）在该点的支撑域为零，故单层 n1 即最坏合成面。 */
+  const brightestSceneBase = (): number => {
+    const l = n1Of()
+    const VW = 700
+    const VH = 800
+    const X = 24
+    const r = Math.hypot(X / ((l.rx / 100) * VW), 0 / ((l.ry / 100) * VH))
+    const cover = Math.max(0, 1 - r / (l.stop / 100))
+    return over(
+      l.rgba.color,
+      l.rgba.alpha * cover,
+      tokenHex(variantBlock('nocturne-dark'), '--jy-bg')
+    )
   }
 
   const INDEX_RULE = "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index {"
@@ -1917,21 +1944,36 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
     expect(note, 'hover 背景色必须带注释（取色来源）').toMatch(/--jy-accent|#6e7bff/)
     expect(note, '注释须给出对该底色的对比度实算').toMatch(/\d+\.\d+:1/)
 
-    // 实算：hover 底色 = accent @alpha 叠在 nebula 最坏合成底上，其上 --jy-text 不得跌破 4.5
+    // 实算：hover 底色 = accent @alpha 叠在可达最亮雾面上，其上 --jy-text 不得跌破 4.5
     const block = variantBlock('nocturne-dark')
-    const hoverBg = over(tokenHex(block, '--jy-accent'), alpha, worstCaseSceneBase())
+    const hoverBg = over(tokenHex(block, '--jy-accent'), alpha, brightestSceneBase())
     expect(contrast(tokenHex(block, '--jy-text'), hoverBg), 'hover 态目录正文对比度').toBeGreaterThanOrEqual(4.5)
   })
 
-  it('⑤ 目录区文本对「叠加 nebula 后」底色 ≥ 4.5（自写 alpha 合成，不经 tokenHex 读 rgba）', () => {
-    const base = worstCaseSceneBase()
-    expect(base, '三层 nebula 最坏全重叠合成底应为 #18192a（与 #2 记录一致，独立复算）').toBe(0x18192a)
+  it('⑤ 目录区文本对「叠加 nebula 后」底色 ≥ 4.5（自写几何合成，不经 tokenHex 读 rgba）', () => {
+    const base = brightestSceneBase()
+    expect(base, '可达最亮面（700 视口、内容列左缘、n1 单层峰值）= #181730（与审计脚本噪声面一致）').toBe(
+      0x181730
+    )
     const block = variantBlock('nocturne-dark')
     // 概览条目文本继承 .juya-root 的 --jy-text（.juya-overview a 只写 color: inherit）
     expect(css, '概览文本色应继承 --jy-text').toMatch(/\.juya-root \{[\s\S]*?color: var\(--jy-text\)/)
     expect(contrast(tokenHex(block, '--jy-text'), base), '目录正文/合成底').toBeGreaterThanOrEqual(4.5)
-    // 序号是承载目录序号的**文本**，同按 4.5 门槛
+    expect(contrast(tokenHex(block, '--jy-text'), base), '目录正文实算值（1e-4 容差）').toBeCloseTo(
+      10.1369,
+      3
+    )
+    // 序号是承载目录序号的**文本**，同按 4.5 门槛；accent 在这一面最紧（新设计 4.9334）
     expect(contrast(tokenHex(block, '--jy-accent'), base), '概览序号/合成底').toBeGreaterThanOrEqual(4.5)
+    expect(contrast(tokenHex(block, '--jy-accent'), base), '概览序号实算值（1e-4 容差）').toBeCloseTo(
+      4.9334,
+      3
+    )
+    // 设计记录的 n1 峰值面（x=0）：accent 4.9004，仍 ≥4.5；锁住「大雾抬底后序号仍可读」
+    const l = n1Of()
+    const peak = over(l.rgba.color, l.rgba.alpha, tokenHex(block, '--jy-bg'))
+    expect(peak, 'n1 设计峰值合成底 = #181830（设计事实）').toBe(0x181830)
+    expect(contrast(tokenHex(block, '--jy-accent'), peak), 'n1 峰值面 accent').toBeGreaterThanOrEqual(4.5)
   })
 
   it('⑥ 窄窗（≤520px）退化：撤掉横向外扩 + 微光收一档（该断点 .juya-issue 内边距仅 14px）', () => {
@@ -1950,16 +1992,18 @@ describe('nocturne 概览目录守卫（2026-10-12，#7：序号 accent 微光 +
 
 describe('nocturne 导语提亮与编号 accent 守卫（2026-10-20，#13 / SPEC 批次 B1）', () => {
   // issue #13 两条验收：
-  //  ① 导语文字改用**专用**记号 --jy-lead-text（不得再复用次要文字记号 --jy-muted）：对比度按
-  //     「页面底 + 8% 白底 + 可透出层最亮情形」实算，目标 ≈7:1 —— 须高于现状 muted、明显低于正文。
+  //  ① 导语文字改用**专用**记号 --jy-lead-text（不得再复用次要文字记号 --jy-muted）：
+  //     2026-10-31 星尘夜空抬底后（--jy-bg #0e0c18 / muted #9a9ba6），该记号在「n1 峰值 + 导语底」
+  //     的保守合成面上为 6.4272；可达最坏面（脚本 6.4370 @700 / E2E 6.5257）仍 ≥4.5 并高于 muted。
   //  ② 条目标题编号 `#N` 取 --jy-accent，**无微光、不降 alpha**，选择器必须是**后代形态**
   //     `.jynoct .juya-entry h3 .juya-index`（EntrySplit 把 h3 嵌在 `.juya-entry-row > .juya-entry-body`，
   //     子选择器打不中 —— 本仓已记录过两次的老坑）；概览序号的既有颜色/微光零改动。
   const NIGHT = 'nocturne-dark'
   const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-  /** 三层 nebula 的「最亮单层」合成面：三对支撑域两两不相交（任何像素最多被一层雾覆盖），
-   *  故逐层单独 source-over 后取亮度最大者即**可透出层最亮情形**。真值一律从规则抠（不手抄）。 */
+  /** 最亮雾面：n1 的 145%×125% 大雾覆盖中心与右下，其**自身锚点 (0,0)** 处 n2/n3 支撑域为零，
+   *  故「逐层单独 source-over 后取亮度最大者」在该点等于真实合成（可达最亮面 #181830）。
+   *  旧「三对支撑域两两不相交」前提已随 2026-10-31 设计废弃 —— 三层允许重叠，可达面由几何决定。 */
   const nebulaPeak = (): number => {
     const neb =
       css.match(
@@ -1989,7 +2033,7 @@ describe('nocturne 导语提亮与编号 accent 守卫（2026-10-20，#13 / SPEC
     return alphaOver(0xffffff, Number(m![1]), nebulaPeak())
   }
 
-  it('① 新增专用记号 --jy-lead-text：对「雾峰 + 导语底」合成面 ≈7:1（高于 muted、明显低于正文）', () => {
+  it('① 新增专用记号 --jy-lead-text：对「雾峰 + 导语底」合成面 ≥6.4（高于 muted、明显低于正文）', () => {
     const block = variantBlock(NIGHT)
     const leadText = tokenHex(block, '--jy-lead-text')
     const muted = tokenHex(block, '--jy-muted')
@@ -1997,16 +2041,19 @@ describe('nocturne 导语提亮与编号 accent 守卫（2026-10-20，#13 / SPEC
     expect(leadText, 'nocturne-dark 变体块须声明 --jy-lead-text（6 位 hex）').not.toBeNaN()
     const surface = leadSurface()
     const rLead = contrast(leadText, surface)
+    // 2026-10-31：抬底后目标从旧 ≈7:1 下调到「保守模型 ≥6.4」——审计脚本可达最坏面 6.4370、
+    // E2E 6.5257；下限 6.4 只比保守模型低 0.027，任何降色/提雾都会撞红。
     expect(
       rLead,
-      `--jy-lead-text 对合成面实算 ${rLead.toFixed(4)} 须 ≈7:1（下限 6.9）`
-    ).toBeGreaterThanOrEqual(6.9)
-    expect(rLead, `≈7:1 上限（实算 ${rLead.toFixed(4)}）`).toBeLessThanOrEqual(7.15)
-    // 「高于现状」：同一合成面上须明显强于 muted 档（现状 4.4915）
+      `--jy-lead-text 对合成面实算 ${rLead.toFixed(4)} 须 ≥6.4（保守模型下限）`
+    ).toBeGreaterThanOrEqual(6.4)
+    expect(rLead, `实算 ${rLead.toFixed(4)} 不得越过可达最坏面量级（≤6.5）`).toBeLessThanOrEqual(6.5)
+    // 「高于现状」：同一合成面上须强于 muted 档（muted 已从 #8a8b94 提亮到 #9a9ba6，档差收窄到 ≈1.37）
     expect(
       rLead - contrast(muted, surface),
-      `须明显强于现状 muted 档（${contrast(muted, surface).toFixed(4)}）`
-    ).toBeGreaterThan(1.5)
+      `须强于同面 muted 档（${contrast(muted, surface).toFixed(4)}）`
+    ).toBeGreaterThan(1.3)
+    expect(contrast(muted, surface), 'muted 同面仍须过 AA').toBeGreaterThanOrEqual(4.5)
     // 「明显低于正文」：与 --jy-text 保持一档层级差
     expect(
       contrast(text, surface) - rLead,
@@ -2690,7 +2737,7 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
     expect(sceneIdx, 'Scene 须在 .juya-issue 之前（场景在内容之下，z-index 0）').toBeLessThan(issueIdx)
   })
 
-  it('② 三层 alpha 取减半值 0.07 / 0.04 / 0.025、色相沿用需求 §3.1 左列，且覆盖写复合选择器', () => {
+  it('② 三层 alpha = 0.105 / 0.05 / 0.03（星尘夜空）、色相沿用需求 §3.1 左列，且覆盖写复合选择器', () => {
     const rule = nebulaOverride()
     expect(
       rule,
@@ -2706,30 +2753,42 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
       [90, 160, 255],
       [200, 90, 180]
     ])
-    expect(layers.map((l) => l.a), '三层 alpha 须为全强度的一半').toEqual([0.07, 0.04, 0.025])
+    // 2026-10-31：n1 从 0.07 抬到 0.105（让整页离开纯黑），n2/n3 微调；旧「减半 0.07/0.04/0.025」过期
+    expect(layers.map((l) => l.a), '三层 alpha 须为新设计值 0.105 / 0.05 / 0.03').toEqual([
+      0.105, 0.05, 0.03
+    ])
   })
 
-  it('③ 叠加态实算：减半三层叠加后 --jy-muted ≥ 4.5；全强度跌破 4.5（锁死禁用取值）', () => {
+  it('③ 可达最亮面实算：n1 峰值 / 内容左缘上 muted、text、lead 均 ≥4.5；n1 抬到 0.175 即跌破（锁禁用上界）', () => {
     const dark = variantBlock('nocturne-dark')
     const bg = tokenHex(dark, '--jy-bg')
     const muted = tokenHex(dark, '--jy-muted')
+    const text = tokenHex(dark, '--jy-text')
+    const leadText = tokenHex(dark, '--jy-lead-text')
+    const accent = tokenHex(dark, '--jy-accent')
     expect(bg, 'nocturne-dark --jy-bg 应为 6 位 hex').not.toBeNaN()
     expect(muted, 'nocturne-dark --jy-muted 应为 6 位 hex').not.toBeNaN()
-    const half = nebulaLayers(nebulaOverride())
-    // CSS 首个 background-image 画在最上层 ⇒ 自下而上合成时 --jy-nebula-1 最后叠（同 #1 守卫⑧实算）
-    const composited = over(bg, [...half].reverse())
+    const [n1] = nebulaLayers(nebulaOverride())
+    // 设计峰值面（n1 锚点 0%,0%）：三层可重叠，但该点只有 n1 有贡献
+    const peak = alphaOver((n1.r << 16) | (n1.g << 8) | n1.b, n1.a, bg)
+    expect(peak, 'n1 峰值合成底 = #181830（与审计脚本/设计记录一致）').toBe(0x181830)
+    expect(contrast(muted, peak), 'n1 峰值面 muted').toBeGreaterThanOrEqual(4.5)
+    expect(contrast(text, peak), 'n1 峰值面正文').toBeGreaterThanOrEqual(4.5)
     expect(
-      contrast(muted, composited),
-      '减半叠加（最坏情况三层全重叠）后 muted/合成底'
+      contrast(leadText, alphaOver(0xffffff, 0.08, peak)),
+      'n1 峰值 + 导语底 0.08 面'
     ).toBeGreaterThanOrEqual(4.5)
-    const full = half.map((l, i) => ({ ...l, a: [0.14, 0.08, 0.05][i] }))
-    expect(
-      contrast(muted, over(bg, [...full].reverse())),
-      '全强度必须跌破 AA —— 该取值禁止'
-    ).toBeLessThan(4.5)
+
+    // 可见区最亮处（700 视口内容列左缘 x=24）：accent 是本设计最紧的文本值（4.9334）
+    const cover = 1 - (24 / (1.45 * 700)) / 0.82
+    const contentEdge = alphaOver((n1.r << 16) | (n1.g << 8) | n1.b, n1.a * cover, bg)
+    expect(contrast(accent, contentEdge), '内容左缘 accent').toBeGreaterThanOrEqual(4.5)
+    // 反证（锁 alpha 上界）：n1 抬到 0.175 时同一面 accent 只有 4.49 < 4.5 —— 现行 0.105 不是随手值
+    const raised = alphaOver((n1.r << 16) | (n1.g << 8) | n1.b, 0.175 * cover, bg)
+    expect(contrast(accent, raised), 'n1 alpha 0.175 必须跌破 AA —— 该取值禁止').toBeLessThan(4.5)
   })
 
-  it('④ 正文列中心区零覆盖：三层雾锚在水平边缘，椭圆可见范围不得伸入中央带 35%–65%', () => {
+  it('④ 三层重叠是新设计：n1 覆盖中心、n2/n3 锚在右上/左下，几何逐值锁死', () => {
     const ellipses = nebulaEllipses(nebulaOverride())
     expect(ellipses, '三层雾应各为一条定位 radial-gradient').toHaveLength(3)
     expect(ellipses.map((e) => e.token)).toEqual([
@@ -2737,26 +2796,30 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
       '--jy-nebula-2',
       '--jy-nebula-3'
     ])
+    // 几何（设计已认可）：n1 145%×125% 左上大雾；n2 85%×95% 右上；n3 75%×80% 左下（抬升 136px）
     expect(
-      ellipses.filter((e) => e.cy <= 5).length,
-      '至少两层贴着页面顶部（需求「顶部与两侧边缘」）'
-    ).toBeGreaterThanOrEqual(2)
-    const CENTER_LO = 35
-    const CENTER_HI = 65
-    for (const e of ellipses) {
-      expect(Math.min(e.cx, 100 - e.cx), `${e.token} 须锚在左右边缘`).toBeLessThanOrEqual(15)
-      // 可见水平半幅 = 水平半径 × transparent 停靠点（alpha 在该停靠点归零）
-      const reach = e.rx * (e.stop / 100)
-      const inner = e.cx <= 50 ? e.cx + reach : e.cx - reach
-      // 椭圆径向距离沿 y 单调不减 ⇒ 峰值行不可达即整条水平线全高不可达
-      const ok = e.cx <= 50 ? inner <= CENTER_LO : inner >= CENTER_HI
-      expect(ok, `${e.token} 可见内缘 ${inner.toFixed(1)}% 侵入了中央带 ${CENTER_LO}–${CENTER_HI}%`).toBe(
-        true
-      )
-    }
+      ellipses.map((e) => [e.rx, e.ry, e.cx, e.cy, e.cyPx, e.stop]),
+      '三层半径 / 圆心 / 停靠点须为新设计值'
+    ).toEqual([
+      [145, 125, 0, 0, undefined, 82],
+      [85, 95, 100, 0, undefined, 78],
+      [75, 80, 0, Number.NaN, 136, 80]
+    ])
+    // 中心带被 n1 覆盖（旧「中心 35–65% 零覆盖」不变量已废弃）：50%/50% 处 n1 alpha > 0
+    const [n1] = nebulaEllipses(nebulaOverride())
+    const centerT = Math.hypot(0.5 / (n1.rx / 100), 0.5 / (n1.ry / 100))
+    expect(centerT, 'n1 在画面中心仍在支撑域内（新设计允许并刻意覆盖中心）').toBeLessThan(n1.stop / 100)
+    // 重叠：右上角 n1 与 n2 同时 >0；左下 n1 与 n3 同时 >0
+    const contributions = (x: number, y: number): number =>
+      ellipses.filter((e) => {
+        const cy = Number.isNaN(e.cy) ? 1 - e.cyPx! / 800 : e.cy / 100
+        return Math.hypot((x - e.cx / 100) / (e.rx / 100), (y - cy) / (e.ry / 100)) < e.stop / 100
+      }).length
+    expect(contributions(1, 0), '右上角应由 n1 + n2 重叠覆盖').toBeGreaterThanOrEqual(2)
+    expect(contributions(0, 0.95), '左下应由 n1 + n3 重叠覆盖').toBeGreaterThanOrEqual(2)
   })
 
-  it('⑤ 窄窗（≤520px）退化：正文列撑满全宽时 nebula 收束为顶部窄带（不占左右边缘，与 #5 遮罩互斥面为零）', () => {
+  it('⑤ 窄窗（≤520px）退化：收束为单条顶部窄带（140%×46% @50% 0%，alpha 0.08）', () => {
     const blocks = extractBlocks(css, /@media \(max-width: 520px\) \{/)
     const scoped = blocks.filter((b) =>
       b.includes("[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula")
@@ -2768,9 +2831,16 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
     )
     expect(rule, '退化规则体应可提取').toBeTruthy()
     const ellipses = nebulaEllipses(rule)
-    expect(ellipses, '收束为单条顶带（左右边缘雾全部撤除）').toHaveLength(1)
-    expect(ellipses[0].cy, '只贴页面顶部').toBeLessThanOrEqual(5)
-    expect(ellipses[0].ry, '纵向只覆盖刊头区（≤30% 场景高）').toBeLessThanOrEqual(30)
+    expect(ellipses, '收束为单条顶带（左右两条边缘雾全部撤除）').toHaveLength(1)
+    const [band] = ellipses
+    expect(
+      [band.rx, band.ry, band.cx, band.cy, band.stop],
+      '顶部窄带几何须为新设计值（140% 宽 / 46% 高 / 水平居中 / 贴顶 / 停靠 80%）'
+    ).toEqual([140, 46, 50, 0, 80])
+    const [n1] = nebulaLayers(rule)
+    expect(n1.a, '窄窗峰值 alpha = 0.08（旧 0.055 过期）').toBe(0.08)
+    // 水平支撑 140% × 80% = 112% ⇒ 整条视口宽（窄窗正文撑满，无侧边可锚），如实锁住
+    expect(band.rx * (band.stop / 100), '窄带横向覆盖整条视口（设计取舍）').toBeGreaterThanOrEqual(100)
     expect(rule, '不得引入贴底偏移').not.toMatch(/(?:^|[;\s])bottom\s*:/)
   })
 
@@ -2788,11 +2858,11 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
     expect(n3.cyPx, 'n3 须按 y2k 约定抬升 136px（at 0% calc(100% - 136px)）').toBe(136)
     expect(Number.isNaN(n3.cy), 'n3 的 y 锚点不应再是裸百分比（裸 100% 即未抬升的旧形态）').toBe(true)
     // 抬升只改这一个位置值：半径 / 停靠点 / alpha 一律不动（改任一项都要撞本组 ②/③）
-    expect([n3.rx, n3.ry, n3.stop], 'n3 的半径与 transparent 停靠点不得随抬升改动').toEqual([42, 44, 78])
+    expect([n3.rx, n3.ry, n3.stop], 'n3 的半径与 transparent 停靠点不得随抬升改动').toEqual([75, 80, 80])
     expect(
       nebulaLayers(neb)[2].a,
-      'n3 的 alpha 不得随抬升改动（仍为设计峰值 0.025）'
-    ).toBe(0.025)
+      'n3 的 alpha 不得随抬升改动（仍为星尘夜空设计峰值 0.03）'
+    ).toBe(0.03)
     // 另两层仍是顶部锚（未被误改）
     expect(
       ellipses.slice(0, 2).map((e) => [e.cx, e.cy]),
@@ -2835,31 +2905,24 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
     )
   })
 
-  it('⑧ dust 沿用共享层中性默认：本变体不覆写 --jy-scene-dust（覆写只会抬高存在感）', () => {
+  it('⑧ 共享 --jy-scene-dust token 仍唯一；暗侧星尘改用自有 --jy-noct-dust-* 记号', () => {
     // 剥注释后判定：注释里引用选择器形态（写作规范示例）不算实现
     const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '')
-    // #20 / SPEC B5 起，暗侧**允许且仅允许一条** dust 规则用于「破除点阵」的 background-size 覆写。
-    // 本守卫的原意（测试名）是「不覆写点色 token」，不是「一条 dust 规则都不许有」；故收窄为：
-    // 规则恰好一条、且其全部声明只能是 background-size —— token / 动画 / 透明度仍是零放行。
+    // 2026-10-31 星尘夜空起，暗侧 dust 有两条规则：①主覆写（十层星尘 + 动画 + 遮罩）；
+    // ②RM 块内的 animation:none 复位（nocturne 覆写特异性 0,3,0 压过全局 RM，必须同特异性再撤一次）。
+    // 暂停规则（只声明 animation-play-state）单独归「不可见暂停动画守卫」组。
     const dustRules = [...cssCode.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(
       ([, sel, body]) =>
         sel.includes("data-juya-variant='nocturne-dark'") &&
         sel.includes('.juya-scene-dust') &&
-        // 排除 #22 的不可见暂停规则：它只声明 animation-play-state（不碰点色/透明度），
-        // 逐条锁定在「不可见暂停动画守卫」组，不属于「点阵破除」覆写
         !/(?:^|[;\s])animation-play-state\s*:/.test(body)
     )
-    expect(dustRules.length, '暗侧 dust 覆写规则恰好一条（#20 点阵破除）').toBe(1)
-    const body = dustRules[0][2]
-    expect(body, '不得覆写 dust 点色 token').not.toContain('--jy-scene-dust')
-    expect(body, '不得改 dust 动画/透明度').not.toMatch(/\b(?:animation|transition|opacity)\b/)
-    expect(
-      body
-        .split(';')
-        .map((d) => d.split(':')[0]?.trim())
-        .filter(Boolean),
-      '唯一允许的声明是 background-size'
-    ).toEqual(['background-size'])
+    expect(dustRules.length, '暗侧 dust 规则恰好两条（星尘主覆写 + RM 复位）').toBe(2)
+    for (const [, , body] of dustRules) expect(body, '不得覆写共享 dust 点色 token').not.toContain('--jy-scene-dust')
+    const [main, reset] = dustRules.map(([, , body]) => body)
+    expect(main, '主覆写须定义 nocturne 自有冷白星尘记号').toContain('--jy-noct-dust-1')
+    expect(main, '主覆写须自带星尘漂移动画').toContain('animation: jy-noct-dust-drift')
+    expect(reset, 'RM 复位只撤动画').toMatch(/animation:\s*none\s*!important/)
     // 更强的一层：整份 css 里 `--jy-scene-dust:` 只出现一次（共享层声明），任何选择器都不得覆写它
     const tokenDecls = cssCode.match(/--jy-scene-dust\s*:/g) ?? []
     expect(tokenDecls, '--jy-scene-dust 只在共享层声明一次').toHaveLength(1)
@@ -2868,7 +2931,7 @@ describe('nocturne 场景接线守卫（2026-10-12，#2）', () => {
       rule.match(/--jy-scene-dust:\s*rgba\([^)]*?,\s*([\d.]+)\)/)?.[1] ?? 'NaN'
     )
     expect(alpha, '尘埃点色 alpha 应极低（≤0.2）').toBeLessThanOrEqual(0.2)
-    expect(noctSection(), '沿用判断须在 nocturne 段内留痕').toContain('--jy-scene-dust')
+    expect(noctSection(), '星尘设计依据须在 nocturne 段内留痕').toContain('--jy-noct-dust-1')
   })
 })
 
@@ -2977,11 +3040,14 @@ describe('nocturne 阅读窗守卫（2026-10-12，#5）', () => {
   it('② 遮罩深度实值 = alpha 0.3（票面锁定）；0.4 与 0.2 均不得出现', () => {
     const common = maskCommon()
     expect(common, '两侧遮罩须有共用规则（定位/宽度/深度）').toBeTruthy()
-    // 深度只允许有一处字面 rgba ⇒ 两侧必然同深（改深度只能改这一处）
+    // 深度只允许有一处字面 rgba ⇒ 两侧必然同深（改深度只能改这一处）。
+    // 2026-10-31：遮罩色 RGB 跟随新 --jy-bg #0e0c18（只做渐隐、不染色），不是旧 #0a0a0c。
+    const bg = tokenHex(variantBlock('nocturne-dark'), '--jy-bg')
+    const bgLiterals = `rgba(${(bg >> 16) & 0xff},${(bg >> 8) & 0xff},${bg & 0xff},0.3)`
     const literals = [...code.matchAll(new RegExp(`${MASK_VAR}:\\s*(rgba\\([^)]*\\))`, 'g'))].map(
       (m) => m[1].replace(/\s+/g, '')
     )
-    expect(literals, '深度 token 须全份唯一（避免两侧深度漂移）').toEqual(['rgba(10,10,12,0.3)'])
+    expect(literals, '深度 token 须全份唯一（避免两侧深度漂移），且 RGB = --jy-bg').toEqual([bgLiterals])
     const depth = rgbaOf(common, MASK_VAR)
     expect(depth[3], '遮罩最深处 alpha 须取票面决策值 0.3').toBe(0.3)
     const seen = [common, maskSide('before'), maskSide('after')]
@@ -3051,7 +3117,7 @@ describe('nocturne 阅读窗守卫（2026-10-12，#5）', () => {
     )
   })
 
-  it('⑤ 叠加 nebula 后正文对比度 ≥ 4.5（自写 alpha 合成；同时反证全强度与 0.4 两条失效侧）', () => {
+  it('⑤ 叠加 nebula 后正文对比度 ≥ 4.5（自写几何合成；同时反证遮罩 0.4 失效侧）', () => {
     const dark = variantBlock('nocturne-dark')
     const bg = tokenHex(dark, '--jy-bg')
     const text = tokenHex(dark, '--jy-text')
@@ -3075,7 +3141,9 @@ describe('nocturne 阅读窗守卫（2026-10-12，#5）', () => {
     ]
     expect([mask[0], mask[1], mask[2]], '遮罩色相须等于 --jy-bg').toEqual(bgRgb)
 
-    // 三层 nebula alpha/色相抠自 #2 落地的变体覆写规则（行首顶条，非窄窗态）
+    // 三层 nebula alpha/色相抠自 #2 落地的变体覆写规则（行首顶条，非窄窗态）。
+    // 2026-10-31 星尘夜空允许三层重叠，可达最亮面由 n1 的大雾决定：700 视口内容列左缘 (24,0)
+    // 的合成底为 #181730（审计脚本实算）；n1 峰值 (0,0) 为 #181830。
     const nebulaRules = [
       ...code.matchAll(
         /(?:^|\n)\[data-juya-variant='nocturne-dark'\]\.jynoct \.juya-scene-nebula \{[^}]*\}/g
@@ -3083,45 +3151,46 @@ describe('nocturne 阅读窗守卫（2026-10-12，#5）', () => {
     ].map((m) => m[0])
     const nebulaRule = nebulaRules.find((r) => r.includes('--jy-nebula-1')) ?? ''
     expect(nebulaRule, '须能抠到 #2 的三层 nebula 取值').toBeTruthy()
-    // CSS 首个 background-image 画在最上层 ⇒ 自下而上合成时 --jy-nebula-1 最后叠（同 #2 守卫③）
-    const layers = [1, 2, 3].map((n) => layerOf(rgbaOf(nebulaRule, `--jy-nebula-${n}`)))
-    const composited = [...layers].reverse().reduce((acc, l) => over(l, acc), bg)
-    expect(hex(composited), '减半三层全重叠的最坏合成底').toBe('#18192a')
+    const n1 = rgbaOf(nebulaRule, '--jy-nebula-1')
+    const n1Layer = layerOf(n1)
+    const peak = over(n1Layer, bg)
+    const cover = 1 - (24 / (1.45 * 700)) / 0.82
+    const contentEdge = over(layerOf([n1[0], n1[1], n1[2], n1[3] * cover]), bg)
+    expect(hex(peak), 'n1 峰值合成底 = #181830').toBe('#181830')
+    expect(hex(contentEdge), '700 视口内容列左缘合成底 = #181730（审计脚本最坏面）').toBe('#181730')
 
-    // 正文列中心区底色 = 该合成底（#2 已把雾锚在左右水平边缘，中心区零覆盖）。
     // 文本像素处遮罩 alpha = 0（几何闭环见 ③④：遮罩宽度 = 水平内边距）⇒ 正文对比度即下式。
     expect(contrast(text, bg), '裸 --jy-bg 上的正文对比度（未叠雾的基线）').toBeGreaterThan(
-      contrast(text, composited)
+      contrast(text, contentEdge)
     )
-    expect(contrast(text, composited), '正文 --jy-text 对 nebula 合成底').toBeGreaterThanOrEqual(4.5)
-    expect(contrast(text, composited), '正文实测值应显著高于门槛（锁住当前真值）').toBeGreaterThan(9)
-    expect(contrast(text, composited), '正文实测值（1e-4 容差，防止注释数值漂移）').toBeCloseTo(
-      10.0762,
+    expect(contrast(text, contentEdge), '正文 --jy-text 对可达最亮雾面').toBeGreaterThanOrEqual(4.5)
+    expect(contrast(text, contentEdge), '正文实测值应显著高于门槛（锁住当前真值）').toBeGreaterThan(9)
+    expect(contrast(text, contentEdge), '正文实测值（1e-4 容差，防止注释数值漂移）').toBeCloseTo(
+      10.1369,
       3
     )
     expect(
-      contrast(muted, composited),
-      '栏内 muted 文本（导语/元信息）对同一合成底亦须 ≥ 4.5'
+      contrast(muted, contentEdge),
+      '栏内 muted 文本（元信息）对同一合成底亦须 ≥ 4.5'
     ).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(muted, composited), 'muted 实测值（1e-4 容差）').toBeCloseTo(5.1192, 3)
+    expect(contrast(muted, contentEdge), 'muted 实测值（1e-4 容差）').toBeCloseTo(6.3228, 3)
+    // 导语专用记号在同一最亮面上同样达标（n1 峰值 + 导语底 0.08 = 6.4272）
+    expect(
+      contrast(tokenHex(dark, '--jy-lead-text'), over(layerOf([255, 255, 255, 0.08]), peak)),
+      '导语 --jy-lead-text 对 n1 峰值 + 导语底'
+    ).toBeGreaterThanOrEqual(4.5)
 
-    // 反证 a：#2 已禁的全强度三层 ⇒ muted 跌破 AA
-    const full = layers.map((l, i) => layerOf([l[1], l[2], l[0] & 0xff], [0.14, 0.08, 0.05][i]))
-    const fullBase = [...full].reverse().reduce((acc, l) => over(l, acc), bg)
-    expect(hex(fullBase), '全强度合成底').toBe('#262845')
-    expect(contrast(muted, fullBase), '全强度取值必须跌破 4.5').toBeLessThan(4.5)
-
-    // 反证 b：票面 §5「遮罩越深 → 对比度越低，0.4 逼近 AA 底线、不得采用」的失败侧。
-    // 口径：把「文字像素处戴着 alpha 深的遮罩」合成为最终字色，再对最坏合成底计对比度
+    // 反证：票面 §5「遮罩越深 → 对比度越低，0.4 逼近 AA 底线、不得采用」的失败侧。
+    // 口径：把「文字像素处戴着 alpha 深的遮罩」合成为最终字色，再对最亮合成底计对比度
     // （遮罩色 = --jy-bg，即向底色衰减）。实测 0.3 仍有余量、0.4 跌破 4.5 —— 与票面判定同侧
     //（本票几何使文字像素 alpha 恒为 0，故此式只是失败侧的反证，不代表本实现的实际字色）。
-    const fade = (a: number): number => contrast(over(layerOf(bgRgb, a), text), composited)
-    expect(fade(0.3), 'alpha 0.3 在最坏合成底上仍须达标').toBeGreaterThanOrEqual(4.5)
+    const fade = (a: number): number => contrast(over(layerOf(bgRgb, a), text), contentEdge)
+    expect(fade(0.3), 'alpha 0.3 在最亮合成底上仍须达标').toBeGreaterThanOrEqual(4.5)
     expect(fade(0.4), 'alpha 0.4 必须跌破 4.5（票面「不得采用」的失败侧）').toBeLessThan(4.5)
     expect(fade(0.4), '0.4 必须明显劣于 0.3').toBeLessThan(fade(0.3))
     // muted 文本同口径更早跌破：这正是本票选「遮罩内缘止于文字列缘、文字零衰减」几何的原因
     expect(
-      contrast(over(layerOf(bgRgb, 0.3), muted), composited),
+      contrast(over(layerOf(bgRgb, 0.3), muted), contentEdge),
       'muted 若同深衰减会跌破 AA'
     ).toBeLessThan(4.5)
   })
@@ -3309,14 +3378,15 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     // 变体前缀的**非选择器开头**出现处：只允许三种已登记形态——
     //   ① 滚动条 :has() 规则（各自列在滚动条守卫组里）；
     //   ② #12 的配色方案 :has() 规则（列在「暗侧原生件配色守卫」组里）；
-    //   ③ #22 的 6 条不可见暂停规则（`[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct …`，
+    //   ③ #22 的 8 条不可见暂停规则（dust / stars / stars::after / 刊头 h1 / 极光两层 /
+    //      订阅页入场 / 放大视图；`[data-app-hidden] [data-juya-variant='nocturne-dark'].jynoct …`，
     //      祖先先行是为把状态门挂在文档根元素上；变体前缀与 .jynoct 仍是紧贴的复合形态，
     //      列在「不可见暂停动画守卫」组里）。该弹坑是既有死形态守卫拦不住的（`[data-juya-variant='x'] .view-scroll` 不以 .jy 开头）
     const occurrences = (masked.match(new RegExp(`\\[${NOCT}`, 'g')) ?? []).length
     expect(
       occurrences - prefixed.length,
-      '非选择器开头处只允许 :has() 滚动条规则 / #12 配色规则 / #22 不可见暂停规则（改这里须同步对应守卫组）'
-    ).toBe(9)
+      '非选择器开头处只允许 :has() 滚动条规则 / #12 配色规则 / #22 八条不可见暂停规则（改这里须同步对应守卫组）'
+    ).toBe(11)
   })
 
   /** 规则体内的字面色值（剔除注释；含自定义属性声明——`--x: rgba()` 同样是构成色） */
@@ -3381,9 +3451,16 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
     //    全部为无变体前缀的共享形态（签名件亮暗两变体同值），故亮侧反证清单不变。
     // 概览统一两列（2026-10-25 用户指令）：分隔线选择器 li + li 改行首条目 nth-child(2n+3)，
     // 并新增 ≤640 单列回落 nth-child(n+2)（与宽屏同体），故 24 → 25 条。
+    // 2026-10-31 星尘夜空再新增四条，故 25 → 29 条：
+    //  · dust 主覆写（--jy-noct-dust-1/2/3 + 十层冷白星尘）；
+    //  · stars 主层与 ::after 远层（--jy-noct-star-* 四记号 + 大 tile 亮点）；
+    //  · 订阅页卡片毛玻璃（rgba(20,19,28,0.68) + backdrop blur 18px）。
     expect(registry).toEqual([
       "[data-juya-variant='nocturne-dark']",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-dust",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars",
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars::after",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-nebula",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-issue::before, [data-juya-variant='nocturne-dark'].jynoct .juya-issue::after",
       '.jynoct .juya-masthead h1',
@@ -3395,6 +3472,7 @@ describe('nocturne 收口守卫组（2026-10-12，#9：全段扫描式回归网�
       "[data-juya-variant='nocturne-dark'].jynoct .juya-lead",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-section > h2",
       '.jynoct .juya-feed-item:hover',
+      "[data-juya-variant='nocturne-dark'].jynoct .juya-feed-item",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-issue img",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview .juya-index",
       "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after",
@@ -3956,20 +4034,15 @@ describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20
   const SEP_ROW =
     "[data-juya-variant='nocturne-dark'].jynoct .juya-overview li:nth-child(2n + 3)::after"
   const bodyOf = (rule: string): string => rule.match(/\{([^}]*)\}/)?.[1] ?? ''
-  const propsOf = (rule: string): string[] =>
-    bodyOf(rule)
-      .split(';')
-      .map((d) => d.split(':')[0]?.trim())
-      .filter((p): p is string => Boolean(p))
   const sizesOf = (rule: string): Array<[number, number]> =>
     (decl(bodyOf(rule), 'background-size') ?? '')
       .split(',')
       .map((s) => s.trim().split(/\s+/).map((v) => Number.parseFloat(v)) as [number, number])
 
-  it('① 暗侧 dust 只覆写 background-size：共享预设 44/132 与 96s alternate 一字节不改', () => {
+  it('① 星尘夜空 dust：共享预设 44/132 与 jy-dust-drift 一字节不改，暗侧覆写成十层冷白星尘', () => {
     const shared = extractBlock(css, /(?:^|\n)\.juya-scene-dust \{/)
     expect(shared, '共享 dust 预设应存在').toBeTruthy()
-    // 共享层是 y2k / synthwave 也在用的预置：本票**不得**改它（隔离验证由归档逐字节比对兜底）
+    // 共享层是 y2k 也在用的预置：本设计**不得**改它（隔离验证由归档逐字节比对兜底）
     expect(decl(shared, 'background-size'), '共享 dust 尺寸必须保持 3×44 + 3×132').toBe(
       '44px 44px, 44px 44px, 44px 44px, 132px 132px, 132px 132px, 132px 132px'
     )
@@ -3982,47 +4055,119 @@ describe('nocturne 星尘破除点阵与概览焦点环守卫（2026-10-20，#20
     expect(override.split('{')[0].trim(), '必须写复合形态（变体属性与 .jynoct 同根、无空格）').toBe(
       DUST_OVERRIDE
     )
-    // 只允许一条声明（背景尺寸）；点色 token / 动画 / 透明度一律不得在这里覆写
-    expect(propsOf(override), '暗侧 dust 覆写只允许 background-size').toEqual(['background-size'])
-    expect(override, '不得覆写尘埃点色 token（沿用共享层中性白）').not.toContain('--jy-scene-dust')
-    expect(override, '不得自带 animation/transition（RM 复位继续由共享层承担）').not.toMatch(
-      /\b(?:animation|transition)\b/
+    const body = bodyOf(override)
+    // 2026-10-31：不再只改 background-size，而是整套 nocturne 星尘（自有冷白记号 + 十层 + 动画 + 遮罩）
+    expect(body.match(/radial-gradient\(/g) ?? [], '暗侧 dust 应为十层点阵').toHaveLength(10)
+    expect(body, '冷白点色记号 1（--jy-heading 派生）').toContain(
+      '--jy-noct-dust-1: rgba(220, 228, 255, 0.22)'
+    )
+    expect(body, '亮白点色记号 2').toContain('--jy-noct-dust-2: rgba(232, 238, 255, 0.34)')
+    expect(body, '极光亮脊冷青记号 3').toContain('--jy-noct-dust-3: rgba(214, 236, 255, 0.26)')
+    expect(decl(body, 'animation'), '暗侧星尘使用自有漂移关键帧').toBe(
+      'jy-noct-dust-drift 96s ease-in-out infinite alternate'
+    )
+    const mask =
+      'linear-gradient(135deg, black 0%, black 24%, rgba(0, 0, 0, 0.6) 58%, transparent 96%)'
+    expect(decl(body, '-webkit-mask-image'), '左上→右下密度递减遮罩（标准属性同步写）').toBe(mask)
+    expect(decl(body, 'mask-image'), '左上→右下密度递减遮罩').toBe(mask)
+    expect(override, '不得覆写共享层点色 token（沿用共享默认的语义仍在）').not.toContain(
+      '--jy-scene-dust'
     )
   })
 
-  it('② 六层尺寸互不相同且两两之比距最近整数 ≥ 0.1（脚本搜索所得值，非随手填）', () => {
+  it('② 十层尺寸两两比值距最近整数 ≥0.1（脚本搜索值），点数约 1461，关键帧只动位移/整体透明度', () => {
     const sizes = sizesOf(ruleOf(DUST_OVERRIDE))
-    expect(sizes, '六层各一个 background-size').toHaveLength(6)
+    expect(sizes, '十层各一个 background-size').toHaveLength(10)
     const values = sizes.map(([w, h]) => {
       expect(w, '平铺单元应为正方形（与共享层一致）').toBe(h)
       return w
     })
-    expect(new Set(values).size, '每层必须各用不同尺寸（同尺寸只是同格点的偏移拷贝）').toBe(6)
-    // 搜索空间：小尺寸 [38,60] × 大尺寸 [100,200]，3+3 组合共 295,137,150 组；
-    // 满足判据且 1280×800 点数 ∈ [1000,2500] 的解 2,546,089 组；取「最小两两余量」最大者
-    // （0.2241，判据门槛 0.1 的两倍以上），再按点数最接近共享原值 1764 定值。
+    expect(new Set(values).size, '每层必须各用不同尺寸（同尺寸只是同格点的偏移拷贝）').toBe(10)
     expect([...values].sort((a, b) => a - b), '锁定脚本搜索结果（防随手改）').toEqual([
-      38, 47, 58, 129, 161, 199
+      46, 55, 70, 83, 104, 122, 157, 175, 194, 258
     ])
+    let minDistance = Number.POSITIVE_INFINITY
     for (let i = 0; i < values.length; i++) {
       for (let j = i + 1; j < values.length; j++) {
         const ratio = Math.max(values[i], values[j]) / Math.min(values[i], values[j])
-        expect(
-          Math.abs(ratio - Math.round(ratio)),
-          `${Math.max(values[i], values[j])}/${Math.min(values[i], values[j])} = ${ratio.toFixed(4)} 距最近整数`
-        ).toBeGreaterThanOrEqual(0.1)
+        const distance = Math.abs(ratio - Math.round(ratio))
+        minDistance = Math.min(minDistance, distance)
+        expect(distance, `${Math.max(values[i], values[j])}/${Math.min(values[i], values[j])} = ${ratio.toFixed(4)} 距最近整数`).toBeGreaterThanOrEqual(0.1)
       }
     }
-    // 点数密度与共享层同量级（不因破除周期变密/变稀）
+    // 设计记录的最小余量 0.1084（83/157）：锁住「不是随手填的整数比」
+    expect(minDistance, '两两比值的最小余量（脚本搜索值）').toBeCloseTo(0.1084, 3)
+    // 点数密度（1280×800）：脚本记录 1461，接近改造前 1604
     const points = sizes.reduce((sum, [w, h]) => sum + (1280 / w) * (800 / h), 0)
-    expect(points, '1280×800 下尘埃点数仍为一两千点量级').toBeGreaterThanOrEqual(1000)
+    expect(points, '1280×800 下星尘点数').toBeCloseTo(1461.11, 1)
     expect(points, '不得堆到万点量级').toBeLessThanOrEqual(2500)
 
-    // keyframe 不改：alternate 往复 ⇒ 无接缝问题，终点位移不必是 size 整数倍
-    const kf = extractBlock(css, /@keyframes jy-dust-drift \{/)
-    expect(kf, '漂移关键帧应存在').toContain(
+    // 新关键帧：十层位移 + 整体透明度 0.68↔0.94；共享 jy-dust-drift 一字节不改
+    const kf = extractBlock(css, /@keyframes jy-noct-dust-drift \{/)
+    expect(kf, 'nocturne 星尘漂移关键帧应存在').toBeTruthy()
+    expect(kf, 'from 位移全零、透明度 0.68').toMatch(/from\s*\{[\s\S]* opacity:\s*0\.68/)
+    expect(kf, 'to 为十层不同位移、透明度 0.94').toMatch(
+      /to\s*\{[\s\S]*46px -92px[\s\S]*258px 129px[\s\S]*opacity:\s*0\.94/
+    )
+    const sharedKf = extractBlock(css, /@keyframes jy-dust-drift \{/)
+    expect(sharedKf, '共享漂移关键帧不改').toContain(
       'background-position: 44px -88px, -22px 44px, 33px 22px, 132px -66px, -66px 132px, 44px 44px'
     )
+  })
+
+  it('③ 亮星两层：6 + 5 层大 tile、11s/14s 错相慢闪、同一 135deg 遮罩、RM 钉 0.86/0.74', () => {
+    const STARS = "[data-juya-variant='nocturne-dark'].jynoct .juya-scene-stars"
+    const AFTER = `${STARS}::after`
+    const stars = ruleOf(STARS)
+    const after = ruleOf(AFTER)
+    expect(stars, '亮星主层规则应存在').toBeTruthy()
+    expect(after, '亮星远层 ::after 规则应存在').toBeTruthy()
+    expect(stars.split('{')[0].trim()).toBe(STARS)
+    expect(after.split('{')[0].trim()).toBe(AFTER)
+    expect(bodyOf(stars).match(/radial-gradient\(/g) ?? [], '主层 6 个亮点').toHaveLength(6)
+    expect(bodyOf(after).match(/radial-gradient\(/g) ?? [], '远层 5 个亮点').toHaveLength(5)
+    expect(sizesOf(stars).flat(), '主层大 tile 尺寸').toEqual([
+      640, 610, 830, 760, 980, 910, 1120, 1040, 1310, 1190, 1490, 1360
+    ])
+    expect(sizesOf(after).flat(), '远层大 tile 尺寸').toEqual([
+      710, 670, 900, 840, 1060, 990, 1210, 1140, 1400, 1310
+    ])
+    expect(decl(bodyOf(stars), 'animation'), '主层 11s 慢闪').toBe(
+      'jy-noct-stars-a 11s ease-in-out infinite alternate'
+    )
+    expect(decl(bodyOf(after), 'animation'), '远层 14s 反相慢闪').toBe(
+      'jy-noct-stars-b 14s ease-in-out infinite alternate'
+    )
+    const mask =
+      'linear-gradient(135deg, black 0%, black 26%, rgba(0, 0, 0, 0.58) 60%, transparent 96%)'
+    for (const [name, body] of [
+      ['主层', bodyOf(stars)],
+      ['远层', bodyOf(after)]
+    ] as const) {
+      expect(decl(body, 'mask-image'), `${name} 与 dust 同角同走向遮罩`).toBe(mask)
+      expect(decl(body, '-webkit-mask-image'), `${name} 标准属性同步写`).toBe(mask)
+    }
+    // 两处关键帧只动 opacity
+    expect(extractBlock(css, /@keyframes jy-noct-stars-a \{/)).toMatch(/opacity:\s*0\.62/)
+    expect(extractBlock(css, /@keyframes jy-noct-stars-b \{/)).toMatch(/opacity:\s*0\.56/)
+    // RM：两层显式钉静态档（默认 1 是动画最亮端，会比平均态更抢眼）；dust 同特异性再撤动画
+    const rm = extractBlocks(css, /@media \(prefers-reduced-motion: reduce\) \{/).find(
+      (b) => b.includes(DUST_OVERRIDE)
+    )
+    expect(rm, 'nocturne 星尘 RM 块应存在').toBeTruthy()
+    const rmStars = extractBlock(rm!, new RegExp(`${sel(STARS)}\\s*\\{`))
+    const rmAfter = extractBlock(rm!, new RegExp(`${sel(AFTER)}\\s*\\{`))
+    expect(decl(rmStars, 'opacity'), '主层 RM 静态档 0.86').toBe('0.86')
+    expect(decl(rmAfter, 'opacity'), '远层 RM 静态档 0.74').toBe('0.74')
+    expect(rmStars, '主层 RM 撤动画').toMatch(/animation:\s*none\s*!important/)
+    expect(rmAfter, '远层 RM 撤动画').toMatch(/animation:\s*none\s*!important/)
+    expect(extractBlock(rm!, new RegExp(`${sel(DUST_OVERRIDE)}\\s*\\{`)), 'dust RM 同特异性撤销').toMatch(
+      /animation:\s*none\s*!important/
+    )
+    // 共享 .juya-scene-stars 预设（y2k 星野）一字节不改
+    const shared = extractBlock(css, /(?:^|\n)\.juya-scene-stars \{/)
+    expect(shared, '共享星野预设不改').toContain('animation: jy-twinkle 5s ease-in-out infinite alternate')
+    expect(shared, '共享星野尺寸不改').toContain('background-size: 260px 260px, 180px 180px, 340px 340px')
   })
 
   it('③ 焦点环是完整声明（2px solid var(--jy-focus)）：只写 outline-color 在 Chromium 下不生效', () => {
@@ -4091,13 +4236,16 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
   const DARK = "[data-juya-variant='nocturne-dark'].jynoct"
 
   /** 本变体全部动画承载者（含伪元素）—— 逐一列举；新增动画必须同步加入本清单。
-   *  · `.juya-scene-dust`：Scene 的 dust 预设（96s 尘埃漂移）；
+   *  · `.juya-scene-dust`：Scene 的 dust 预设（jy-noct-dust-drift，96s 星尘漂移）；
+   *  · `.juya-scene-stars` / `::after`：亮星两层（jy-noct-stars-a/b，11s / 14s；伪元素必须单独选中）；
    *  · `.juya-masthead h1`：刊头呼吸（9s）；
    *  · `.juya-masthead::before` / `::after`：极光幕帘两层（24s / 31s，伪元素必须单独选中）；
    *  · `.juya-feed-item`：订阅页入场（220ms，共享规则但本变体订阅页同样命中）；
    *  · `.jynoct-lightbox img`：放大视图入场（160ms，dialog portal 到 body，变体标记挂 dialog 自身）。 */
   const CARRIERS = [
     `${DARK} .juya-scene-dust`,
+    `${DARK} .juya-scene-stars`,
+    `${DARK} .juya-scene-stars::after`,
     `${DARK} .juya-masthead h1`,
     `${DARK} .juya-masthead::before`,
     `${DARK} .juya-masthead::after`,
@@ -4105,14 +4253,14 @@ describe('nocturne 不可见暂停动画守卫（2026-10-20，#22 / SPEC 批次 
     "[data-juya-variant='nocturne-dark'].jynoct-lightbox img"
   ]
 
-  /** 非 nocturne 场景层（太阳/透视网格/星空只有 synthwave 与 y2k 暗挂载，本变体模板不渲染）。
+  /** 非 nocturne 场景层（太阳/透视网格只有 synthwave 渲染，本变体模板不渲染）。
    *  透视网格自 #36 起用双类选择器（.juya-scene-grid.juya-scene-grid-persp）压过地平网格规则；
-   *  #44 起网格动画挂在纹理层伪元素上，载体是 `…-persp::after`。 */
+   *  #44 起网格动画挂在纹理层伪元素上，载体是 `…-persp::after`。
+   *  注意：`.juya-scene-stars` 自 2026-10-31 起也是 nocturne 的载体，**不再**列在这里。 */
   const FOREIGN_SCENE = [
     '.juya-scene-sun',
     '.juya-scene-grid.juya-scene-grid-persp',
-    '.juya-scene-grid.juya-scene-grid-persp::after',
-    '.juya-scene-stars'
+    '.juya-scene-grid.juya-scene-grid-persp::after'
   ]
 
   /** 全 css 的叶规则（花括号内的声明块；媒体查询/@keyframes 外壳天然不匹配） */
@@ -5482,7 +5630,7 @@ describe('nocturne 订阅页头版极光带守卫（2026-10-24，#77：阅读页
     }
   })
 
-  it('③ 静帧纪律：全部新规则零 animation/transition，且 nocturne 段关键帧集合不增', () => {
+  it('③ 静帧纪律：全部新规则零 animation/transition；新增关键帧只来自 dust / stars 场景层', () => {
     for (const [name, rule] of [
       ['共用', sharedRule()],
       ['前层', beforeRule()],
@@ -5496,12 +5644,17 @@ describe('nocturne 订阅页头版极光带守卫（2026-10-24，#77：阅读页
         `${name} 不得新增动效（V2 静帧纪律：签名件取阅读页动画的静帧值，不搬动画）`
       ).not.toMatch(/(?:^|[;{\s])(?:animation|transition)\s*:/)
     }
+    // 2026-10-31 星尘夜空：段内关键帧新增 dust 漂移与亮星两层（它们是 Scene 子层，不属于头版）；
+    // 头版自身仍零关键帧、零 animation（上面逐条已断）。
     const kfs = [...noctSection().matchAll(/@keyframes ([\w-]+) \{/g)].map((m) => m[1]).sort()
-    expect(kfs, 'nocturne 段关键帧集合（头版静帧不得新增关键帧）').toEqual([
+    expect(kfs, 'nocturne 段关键帧集合 = 四个旧件 + 三个星尘夜空场景层件（头版自身仍零关键帧）').toEqual([
       'jy-noct-aurora-far',
       'jy-noct-aurora-near',
+      'jy-noct-dust-drift',
       'jy-noct-glow',
-      'jy-noct-lightbox-in'
+      'jy-noct-lightbox-in',
+      'jy-noct-stars-a',
+      'jy-noct-stars-b'
     ])
   })
 

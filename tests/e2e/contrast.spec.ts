@@ -13,10 +13,11 @@ import { loadApp, openFirstArticle, activeTab } from './setup'
  *  做法（不采信目测，也不改任何背景层）：
  *    ① 把导语文字设为透明（只去掉字形绘制，雾/底色/遮罩全在）；
  *    ② 截「文字列宽 × 首行 6 行」的条带 → 自写 PNG 解码读真实像素；
- *    ③ **逐列取 6 行中位数**（滤掉 dust 的 1~1.6px 中性点）→ 列间取最坏；
+ *    ③ **逐列取 6 行中位数**（滤掉 dust 的 1~1.6px 中性点；亮星是 4~7px 稀疏大 tile 装饰层，
+ *       落在条带内的概率极低，偶尔命中也被 6 行中位数滤掉）→ 列间取最坏；
  *    ④ 对该像素的合成底算导语文字记号（#13 起为 --jy-lead-text）的 WCAG 对比度。
  *  解析式实算（scripts/nocturne-contrast-audit.mjs）与实测的关系：解析式取雾峰像素（y=0、x=文字
- *  列左缘）并逐层取整，比实测**保守 0.05~0.12**（实测含浏览器渐变栅格化与逐列中位数口径）。
+ *  列左缘）并逐层取整，比实测**保守**（当前星尘夜空档：700 +0.089 / 800 +0.159）。
  */
 
 const decodePng = (buf: Buffer) => {
@@ -122,8 +123,9 @@ const readLeadText = (): number => {
 const LEAD_TEXT = readLeadText()
 const LEAD_TEXT_LUM = lum(LEAD_TEXT)
 
-/** 冻结动效：刊头 9s 呼吸 + dust 96s 漂移会让像素逐次不同；冻结后测量可复现
- *  （dust 无静态 opacity ⇒ 冻结于最亮档 1，属于对己方最不利的一侧，偏保守）。 */
+/** 冻结动效：刊头 9s 呼吸 + dust 96s 漂移 + 亮星 11s/14s 慢闪会让像素逐次不同；
+ *  冻结后测量可复现（dust 动画区间 0.68–0.94、亮星 0.56–1，关键帧以外没有静态 opacity ⇒
+ *  冻结保留在 1，是两者的最亮档，属于对己方最不利的一侧，偏保守）。 */
 const FREEZE =
   '*, *::before, *::after { animation: none !important; transition: none !important; }'
 

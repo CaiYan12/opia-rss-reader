@@ -213,7 +213,7 @@ function IssueView({ article, issue, onOpenLink, variantId }: JuyaIssueProps): J
 
   return (
     <div className={`juya-root ${VARIANT_CLASS}`} data-juya-variant={variantId}>
-      <Scene dust nebula />
+      <Scene dust nebula stars />
       <div className="juya-issue" onClick={lightboxEnabled ? handleContentClick : undefined}>
         <header className="juya-masthead">
           <h1>{issue.heading || article.title}</h1>
@@ -248,12 +248,17 @@ function FeedList({ articles, variantId, layout }: JuyaFeedProps): JSX.Element {
       variantClass={VARIANT_CLASS}
       layout={layout}
       scene={
-        /* 订阅页头版（#74）：亮暗两变体都挂载（#67 明确解除亮侧冻结，范围仅限头版）；
+        /* 订阅页夜空（2026-10-31）：与阅读页同一套 Scene（dust + nebula + stars），
+           挂在头版之前、卡片列表之下；卡片半透明后星点从卡面透出。
+           头版（#74）：亮暗两变体都挂载（#67 明确解除亮侧冻结，范围仅限头版）；
            期号日期留在卡片上，头版只承载源身份。 */
-        <NocturneFeedMasthead
-          sourceName={activeSource?.name ?? ''}
-          sourceUrl={activeSource?.url ?? ''}
-        />
+        <>
+          <Scene dust nebula stars />
+          <NocturneFeedMasthead
+            sourceName={activeSource?.name ?? ''}
+            sourceUrl={activeSource?.url ?? ''}
+          />
+        </>
       }
       renderItem={(a, _i, mode, gates, delay) => (
         <DefaultFeedItem a={a} mode={mode} gates={gates} delay={delay} onOpen={() => void openArticle(a)} />

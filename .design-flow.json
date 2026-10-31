@@ -1,7 +1,7 @@
 {
-  "stage": "acceptance",
+  "stage": "polish",
   "track": "code-first",
-  "updated": "2026-10-24",
+  "updated": "2026-10-31",
   "history": [
     {
       "stage": "brief",
@@ -227,6 +227,15 @@
         "收尾：PR #84 合并 main（2ddc670）并同步远端；CI 三处环境差异修复（wabi 字体断言×2、storeService 毫秒竞态）",
         "清理：46 分支 / worktree / opia-wt / TEMP 脚本 / test-results；wabi 封版段自 pilot（1228a9d）移植入库"
       ]
+    },
+    {
+      "stage": "polish",
+      "date": "2026-10-31",
+      "outputs": [
+        "nocturne-dark 星尘夜空（用户转述朋友反馈；grill Q1–Q9；两页 Scene / 10 层星尘 + 2 层亮星 / 深靛蓝夜空 / 毛玻璃订阅卡）",
+        "src/renderer/juya/juya.css + src/renderer/juya/templates/nocturne.tsx",
+        "5 张 nocturne 归档重生成（RM 证据 PASS）；对比度审计 70 text + 14 UI PASS；守卫/审计/E2E/文档收口，全量 verify exit 0（25 文件 627 单测 / 266 E2E / 5 归档一致）"
+      ]
     }
   ],
   "outputs": {
@@ -258,7 +267,10 @@
     "mastheadV2Ledger": "out/feed-masthead-v2-implementation-2026-10-24/ledger.md",
     "mastheadV2Evidence": "out/feed-masthead-v2-implementation-2026-10-24/evidence/",
     "mastheadV2FinalTip": "773d06b (含概览两列统一)",
-    "spec67Closed": "2026-10-25 用户全认可后关闭"
+    "spec67Closed": "2026-10-25 用户全认可后关闭",
+    "nocturneStardust": "src/renderer/juya/juya.css + templates/nocturne.tsx",
+    "nocturneStardustArchives": "docs/juyathemesworks/nocturne-dark-*.png（5 张，2026-10-31 重生成）",
+    "nocturneStardustReview": "out/nocturne-stardust-2026-10-31/（本机证据，gitignored）"
   },
   "decisions": [
     "用户点名 /design-flow + /frontend-design（2026-10-11，橘鸦风格修复阶段）",
@@ -300,11 +312,13 @@
     "2026-10-24 用户在明确“新补充 SPEC 父工单＋三张子票”的发布范围后指令继续，已发布 #63、#64、#65、#66，均 ready-for-agent；第三票原生依赖前两票，正文与原生关系已回读核对。尚未实施，旧 #57–#62 保持。",
     "用户再次明确调用 implement-spec，沿用 GPT-6 Luna xhigh 逐票并行；64/65 前沿，66 收口；强风格、正文克制，用户视觉认可仍待实际确认。",
     "wabi 视觉补强已按 GPT-6 Luna xhigh 逐票并行完成并收口；最终候选 c26118432ea9ef9ed9562832ff3170e49e3c558b，574 单测／190 E2E／5 归档一致，52 状态与隐藏真实 Electron 通过；双轴评审无待修项。用户视觉认可仍待确认，未封版、推送或发行。",
-    "2026-10-24 用户视觉反馈：V1 头版过于简陋干练、不足以体现风格（点名 y2k 缺窗口标题/关闭钮，参考其阅读页头图）；经两轮 grill 确认八风格头版 V2 清单。Round1 边界：分层施力（y2k/nocturne/editorial/newsprint90s 大补、folio/synthwave 适度、pop 两小件、wabi 不动）；参照系=各风格阅读页刊头词汇库（头版=刊头语言的订阅源版）；信息结构（源名+订阅源+host，无日期）与 V1 主材质不动；高度软规则（允许增高、首屏仍瞥见第一张卡）；动效一律静帧（最严解释「克制」，共享场景层照旧）。Round2 清单：y2k=系统窗口标题栏（真实源名 .EXE — 运行中，DOM+aria-hidden、长名 ellipsis）+_ □ × 三钮（× 同阅读页 on-accent）不加状态栏；nocturne=极光带静帧（z-index -1、两端 mask、零新增色相、取 RM 钉定 opacity 0.81/0.76）+底边渐变发丝线+h1 冷辉光静帧；editorial=L 形裁切角标+host 题注化（刻意不搬栏目序号——订阅源无真实序号语义，编号即造假信息）；newsprint90s=三栏报头 grid 1fr auto 1fr 底对齐（左 kicker/中楷体源名 6px 字距量级/右 host）+窄窗回落居中堆叠；folio=印章水印（72×72 rotate -8deg opacity .12 multiply）+左右朱丝栏竖线；synthwave=卡内扫描线静纹+domain 下霓虹辉光细线；pop=h1 印刷硬影 3px 3px 0（同阅读页）+爆炸星 SVG 点缀；wabi=不动（V1 已是工艺封面基准，动它风险大于收益）。共享层零改动；GLOSSARY 无新增词；验证=逐风格定向 E2E+守卫更新+全量 verify+headless 截图。流程裁定：主代理直接实施、轻量管线不发布 issue；用户明确指令——未经允许不立 SPEC/TICKET、不开工 implement，三者为独立阶段门。"
+    "2026-10-24 用户视觉反馈：V1 头版过于简陋干练、不足以体现风格（点名 y2k 缺窗口标题/关闭钮，参考其阅读页头图）；经两轮 grill 确认八风格头版 V2 清单。Round1 边界：分层施力（y2k/nocturne/editorial/newsprint90s 大补、folio/synthwave 适度、pop 两小件、wabi 不动）；参照系=各风格阅读页刊头词汇库（头版=刊头语言的订阅源版）；信息结构（源名+订阅源+host，无日期）与 V1 主材质不动；高度软规则（允许增高、首屏仍瞥见第一张卡）；动效一律静帧（最严解释「克制」，共享场景层照旧）。Round2 清单：y2k=系统窗口标题栏（真实源名 .EXE — 运行中，DOM+aria-hidden、长名 ellipsis）+_ □ × 三钮（× 同阅读页 on-accent）不加状态栏；nocturne=极光带静帧（z-index -1、两端 mask、零新增色相、取 RM 钉定 opacity 0.81/0.76）+底边渐变发丝线+h1 冷辉光静帧；editorial=L 形裁切角标+host 题注化（刻意不搬栏目序号——订阅源无真实序号语义，编号即造假信息）；newsprint90s=三栏报头 grid 1fr auto 1fr 底对齐（左 kicker/中楷体源名 6px 字距量级/右 host）+窄窗回落居中堆叠；folio=印章水印（72×72 rotate -8deg opacity .12 multiply）+左右朱丝栏竖线；synthwave=卡内扫描线静纹+domain 下霓虹辉光细线；pop=h1 印刷硬影 3px 3px 0（同阅读页）+爆炸星 SVG 点缀；wabi=不动（V1 已是工艺封面基准，动它风险大于收益）。共享层零改动；GLOSSARY 无新增词；验证=逐风格定向 E2E+守卫更新+全量 verify+headless 截图。流程裁定：主代理直接实施、轻量管线不发布 issue；用户明确指令——未经允许不立 SPEC/TICKET、不开工 implement，三者为独立阶段门。",
+      "2026-10-31 用户转述朋友反馈（nocturne-dark 背景星辰不明显、纯黑），两轮 grill Q1–Q9 + 追加「卡片背景可以用毛玻璃模糊」后实施：仅 nocturne-dark、两页 Scene（dust+nebula+stars）、深靛蓝黑 #0e0c18 + 斜向雾、十层星尘 + 两层亮星（左上密→右下疏、11s/14s 慢闪）、订阅卡 rgba(20,19,28,0.68)+blur(18px) saturate(125%)；视觉候选已获用户认可并授权提交，守卫/审计/E2E/文档收口中；未 push。"
   ],
   "blocked": [
     "真机核对项累计：pop 拼贴比例/蓝沟槽饱和度/色带观感、滚动条各材质底观感与 zoom 下 8px 固定宽、多标签隔离（keep-alive）、DPR 3px→2.86px 伪差；thumb 圆润风格 4px 与卡片圆角不同构为文档化决策",
-    "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务"
+    "pop ①b 字体栈、②a 纯 CSS 自由化四项未批未做；基层「 ↗」读屏 alt、共享 `.juya-scene` 100vh 根因另开任务",
+    "毛玻璃 backdrop-filter 的 perf probe / 真实窗口复核（2026-10-31 星尘夜空；静态归档无法证明合成成本）"
   ],
-  "next": "本轮全部收尾完成（2026-10-25）：PR #84 已合并 main（2ddc670）并同步远端，46 个轮次分支、worktree、opia-wt 与临时脚本已清理；open issue 清零。后续新需求另行立项。"
+  "next": "2026-10-31 星尘夜空：全量 verify exit 0；按用户授权提交（SHA 见 git log），push 另需指令。"
 }

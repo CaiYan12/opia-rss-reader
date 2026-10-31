@@ -102,7 +102,7 @@ test('八风格逐一断言阅读页根节点结构类', async ({ page }) => {
   }
 })
 
-test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、暗夜暗侧挂 dust + nebula 氛围层', async ({
+test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场景、暗夜暗侧挂 dust + nebula + stars 星尘夜空', async ({
   page
 }) => {
   await loadApp(page, 'dark')
@@ -115,7 +115,7 @@ test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场
   await openFirstArticle(page)
   await expect(activeTab(page).locator('.juya-root .juya-scene')).toBeHidden()
 
-  // #2 起 nocturne-dark 挂载 dust + nebula（旧断言「计数为 0」锁的是改造前状态，非回归）
+  // #2 起 nocturne-dark 挂载 dust + nebula；2026-10-31 星尘夜空加入 stars（旧断言「计数为 0」锁的是改造前状态，非回归）
   await loadApp(page, 'nocturne')
   await openFirstArticle(page)
   const noctScene = activeTab(page).locator('.juya-root .juya-scene')
@@ -123,6 +123,7 @@ test('场景层：蒸汽梦核暗侧挂 synthwave 场景、千禧亮侧隐藏场
   await expect(noctScene).toBeVisible()
   await expect(noctScene.locator('.juya-scene-dust')).toHaveCount(1)
   await expect(noctScene.locator('.juya-scene-nebula')).toHaveCount(1)
+  await expect(noctScene.locator('.juya-scene-stars')).toHaveCount(1)
 })
 
 test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio 订阅页挂信笺刊头且其余风格不受影响', async ({ page }) => {
@@ -167,12 +168,44 @@ test('订阅页场景（#40）：蒸汽梦核式订阅页挂完整场景，folio
   await expect(folioRoot.locator('.juya-scene')).toHaveCount(0)
 
   // 未接线的风格订阅页 DOM 不受影响：无 folio 头版，且订阅页本就无场景层
-  for (const scenario of ['y2k', 'pop', 'newsprint', 'nocturne'] as const) {
+  for (const scenario of ['y2k', 'pop', 'newsprint'] as const) {
     await loadApp(page, scenario)
     const otherRoot = activeTab(page).locator('.juya-root')
     await expect(otherRoot.locator('.jyfolio-feed-masthead')).toHaveCount(0)
     await expect(otherRoot.locator('.juya-scene')).toHaveCount(0)
   }
+
+  // 2026-10-31 星尘夜空：nocturne 订阅页也挂 Scene（dust + nebula + stars），
+  // 在 FeedShell 的 scene 槽内、NocturneFeedMasthead 之前；卡片改为半透明毛玻璃。
+  await loadApp(page, 'nocturne')
+  const noctFeedRoot = activeTab(page).locator('.juya-root.jynoct')
+  await expect(noctFeedRoot).toHaveAttribute('data-juya-variant', 'nocturne-dark')
+  const feedScene = noctFeedRoot.locator('.juya-scene')
+  await expect(feedScene).toHaveCount(1)
+  await expect(feedScene.locator('.juya-scene-dust')).toHaveCount(1)
+  await expect(feedScene.locator('.juya-scene-nebula')).toHaveCount(1)
+  await expect(feedScene.locator('.juya-scene-stars')).toHaveCount(1)
+  await expect(noctFeedRoot.locator('.jynoct-feed-masthead')).toHaveCount(1)
+  const slotOrder = await noctFeedRoot.evaluate((el) => {
+    const kids = [...el.children]
+    return {
+      scene: kids.findIndex((c) => c.classList.contains('juya-scene')),
+      masthead: kids.findIndex((c) => c.classList.contains('jynoct-feed-masthead')),
+      feed: kids.findIndex((c) => c.classList.contains('juya-feed'))
+    }
+  })
+  expect(slotOrder.scene, 'Scene 应挂在 .juya-root 直接子层').toBeGreaterThanOrEqual(0)
+  expect(slotOrder.masthead, '星尘层在头版之前（FeedShell 的 scene 槽）').toBeGreaterThan(slotOrder.scene)
+  expect(slotOrder.feed, '头版在卡片列表之前').toBeGreaterThan(slotOrder.masthead)
+  const firstCard = noctFeedRoot.locator('.juya-feed-item').first()
+  await expect(firstCard).toBeVisible()
+  const glass = await firstCard.evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return { bg: cs.backgroundColor, backdrop: cs.backdropFilter }
+  })
+  expect(glass.bg, '订阅卡半透明底（星点从卡面透出）').toBe('rgba(20, 19, 28, 0.68)')
+  expect(glass.backdrop, '卡面毛玻璃').toContain('blur(18px)')
+  expect(glass.backdrop, '卡面毛玻璃（饱和补偿；计算值归一为 1.25）').toContain('saturate(1.25)')
 })
 
 test('订阅页亮侧（#41）：日间版场景同样挂载，网格底边在可视区内，条目同为 18px 毛玻璃', async ({

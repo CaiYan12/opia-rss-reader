@@ -18,24 +18,30 @@
  *
  * 复现口径（三档状态，务必分清）：
  *   · **非 RM 冻结档**（本脚本写盘的 4 张非 RM 图）：注入 `animation: none !important`。
- *     为什么必须冻结：刊头 9s 呼吸（`jy-noct-glow`）与 dust 96s 漂移（`jy-dust-drift`）
- *     会让归档图**逐次不同**，归档就失去「同一张图可被反复核对」的意义。
+ *     为什么必须冻结：刊头 9s 呼吸（`jy-noct-glow`）、dust 96s 漂移（`jy-noct-dust-drift`，
+ *     2026-10-31 星尘夜空起为 nocturne 专属十层关键帧；旧名 `jy-dust-drift` 仅其余风格的共享预设）
+ *     与亮星两层 11s / 14s 慢闪（`jy-noct-stars-a/b`）会让归档图**逐次不同**，归档就失去
+ *     「同一张图可被反复核对」的意义。
  *   · **RM 档**（`nocturne-dark-reduced-motion-1280-阅读页.png`）：**只**走
  *     `page.emulateMedia({ reducedMotion: 'reduce' })`，**不注入任何冻结**。
  *     它的可复现性由浏览器自身的 RM 降级保证（见下「RM 证据」）。
  *   · **非 RM 未冻结档**（只用于证据探针，不写盘）：动画在跑，用于证明「动画真的会改像素」。
  *
- * RM 图与「刊头与概览」图的关系（2026-10-25 勘正：两者**已不**逐字节相同，且非疏漏）：
+ * RM 图与「刊头与概览」图的关系（2026-10-25 勘正；2026-10-31 星尘夜空扩充分岔面）：
  *   043827d→c79ae16 期两图确曾逐字节相同（动画全停 ⇒ 静态渲染一致）。自 75dee1f 刊头极光带
  *   起**按设计分岔**：RM 块把极光两层伪元素显式钉死在中间档 opacity（::before 0.81 /
  *   ::after 0.76，「半开的幕帘」，取舍见 juya.css 极光 RM 块注释），而本脚本的 FREEZE 只撤
  *   动画、回落到无 opacity 声明的 1 档（最亮组合）⇒ 两图稳定相差约 5 万 px，全部落在刊头
  *   极光带内（实测 HEAD 50,753px / maxΔ26，bbox x315-964 y132-220；75dee1f 当期 50,292px/Δ27，
- *   此后随刊头微调在 5 万附近浮动）。「RM 只取消动画、保留静态辉光」的等价性从来不靠「图一样」
- *   论证——由本脚本**并排打印计算样式**来证；两档各自的可复现性也独立成立（非 RM 逐字节、
- *   RM 容差内，见 RM_NOISE）。
+ *   此后随刊头微调在 5 万附近浮动）。
+ *   2026-10-31 星尘夜空起，亮星两层也按设计分岔：RM 把 `.juya-scene-stars` 钉 0.86、
+ *   `::after` 钉 0.74（动画区间 0.62↔1 / 1↔0.56 的静态档），冻结档同样回落到 1。
+ *   ⇒ RM 与冻结档的差异面 = **极光带 + 星点两层**（星尘为 1~7px 稀疏点，像素差占比小但确实存在）。
+ *   「RM 只取消动画、保留静态辉光/静态星点档」的等价性从来不靠「图一样」论证——由本脚本
+ *   **并排打印计算样式**来证；两档各自的可复现性也独立成立（非 RM 逐字节、RM 容差内，见 RM_NOISE）。
  *   真正能区分「RM 生效」与「同一帧复制一份」的证据是：
- *     ① 非 RM 下同元素 `animationName` 是关键帧名、RM 下是 `none`；
+ *     ① 非 RM 下同元素 `animationName` 是关键帧名（含 jy-noct-dust-drift / jy-noct-stars-a/b）、
+ *        RM 下是 `none`；
  *     ② 静态辉光（`filter: drop-shadow`）在两档下都保留（RM 只取消动画、不取消静态辉光）；
  *     ③ 非 RM 未冻结档把动画 seek 到不同时刻 → 像素确有差异（动画是活的）；
  *     ④ RM 档隔一段时间截两次 → SHA256 完全相同（动画确实被 RM 停住了）。
@@ -100,7 +106,9 @@ const VERIFY_ONLY = process.argv.slice(2).includes('--verify')
 const FREEZE =
   '*, *::before, *::after { animation: none !important; transition: none !important; }'
 
-/** 动画 seek 探针的取样时刻：9s 呼吸关键帧的中点（`alternate` 下即 `to` 端，辉光最亮档）。 */
+/** 动画 seek 探针的取样时刻：9s 呼吸关键帧的中点（`alternate` 下即 `to` 端，辉光最亮档）。
+ *  同一时刻也落在 11s / 14s 亮星与 96s 星尘的各自相位内 —— 探针只为「动画是活的」取证，
+ *  不要求命中某一层的极值。 */
 const SEEK_MS = 4500
 
 // ------------------------------------------------------------------ 前置检查
@@ -497,7 +505,7 @@ check(
 )
 check(
   rDust.b?.animationName === 'none',
-  'RM：.juya-scene-dust animationName = none（96s dust 漂移被 RM 取消）',
+  'RM：.juya-scene-dust animationName = none（96s 星尘漂移 jy-noct-dust-drift 被 RM 取消）',
   `实测 ${fmt(rDust.b?.animationName)}`
 )
 check(
@@ -516,8 +524,8 @@ check(
   `实测 ${fmt(rMast.a?.animationName)}`
 )
 check(
-  rDust.a?.animationName === 'jy-dust-drift',
-  '非 RM 对照：.juya-scene-dust animationName = jy-dust-drift（关键帧名，非 none）',
+  rDust.a?.animationName === 'jy-noct-dust-drift',
+  '非 RM 对照：.juya-scene-dust animationName = jy-noct-dust-drift（关键帧名，非 none）',
   `实测 ${fmt(rDust.a?.animationName)}`
 )
 check(
@@ -573,13 +581,14 @@ console.log(
     `${sameAsFrozen ? '逐字节相同' : '不同'}`
 )
 console.log(
-  '    说明（2026-10-25 勘正）：两图自 75dee1f 刊头极光带起**按设计**不再逐字节相同——RM 块把' +
-    '\n    极光两层伪元素钉死在中间档 opacity（0.81/0.76「半开的幕帘」），冻结档只撤动画、回落 1 档，' +
-    '\n    稳定相差约 5 万 px 且全部落在刊头极光带内（实测与分叉考古见文件头勘正段）。「RM 只取消' +
-    '\n    动画、保留静态辉光」的等价性由上面 [1][2][3] 的并排计算样式与像素量化佐证，不靠两图互为逐字节。'
+  '    说明（2026-10-25 勘正，2026-10-31 扩充）：两图自 75dee1f 刊头极光带起**按设计**不再逐字节相同——' +
+    '\n    RM 块把极光两层伪元素钉死在中间档 opacity（0.81/0.76「半开的幕帘」），冻结档只撤动画、回落 1 档，' +
+    '\n    当时差异全部落在刊头极光带内。2026-10-31 星尘夜空又让亮星两层分岔：RM 钉 0.86 / 0.74，' +
+    '\n    冻结档回落 1 ⇒ 差异面扩为「极光带 + 星点两层」，星点稀疏故像素差占比仍小。「RM 只取消动画、' +
+    '\n    保留静态辉光与静态星点档」的等价性由上面 [1][2][3] 的并排计算样式与像素量化佐证，不靠两图相同。'
 )
 if (!sameAsFrozen) {
-  console.log('    （两图不同是 75dee1f 极光设计分岔以来的常态，非异常；见文件头勘正说明。）')
+  console.log('    （两图不同是 75dee1f 极光 + 2026-10-31 亮星设计分岔以来的常态，非异常；见文件头勘正说明。）')
 }
 
 console.log('\n════════ 归档一致性 ════════')

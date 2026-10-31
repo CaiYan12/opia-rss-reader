@@ -67,6 +67,30 @@
 
 **封版（2026-10-12）→ 解冻（2026-10-20）**：用户确认可封版后该风格冻结；2026-10-20 用户指令「继续优化 nocturne 的风格表现」→ SPEC #10，冻结解除，改由票据范围约束。
 
+### 星尘夜空与毛玻璃订阅卡（2026-10-31，封版例外）
+
+触发：用户转述朋友反馈「暗夜精修式暗色下背景星辰不明显、背景纯黑，不符合设计直觉」。grill 两轮定稿（Q1–Q9），用户随后明确「卡片背景可以用毛玻璃模糊」，并认可视觉候选、授权提交。
+
+范围与决策：
+
+- 只动 `nocturne-dark`；亮侧、其余七风格、共享层、应用主题、依赖未动。
+- 两页都挂 `<Scene dust nebula stars />`：阅读页在 `.juya-issue` 前，订阅页在头版前、卡片列表下。
+- 深靛蓝黑底 `--jy-bg #0e0c18`；`--jy-muted` 提亮到 `#9a9ba6`；顶部中央洗光删除，改由 Scene 雾承担。
+- 雾：n1 `145%×125% at 0% 0%` α0.105 / n2 `85%×95% at 100% 0%` α0.05 / n3 `75%×80% at 0% calc(100% - 136px)` α0.03；三层允许重叠、覆盖中心；窄窗单顶带 α0.08。
+- 星尘：dust 覆写十层（尺寸 46/55/70/83/104/122/157/175/194/258，点数 1461 @1280×800），135° mask 左上密→右下疏；亮星两层（11s/14s 错相慢闪）；星点均为装饰层，不参与文字 AA。
+- 订阅卡：`rgba(20,19,28,0.68)` + `backdrop-filter: blur(18px) saturate(125%)`（不支持模糊的引擎回落半透明）。
+- RM / 不可见暂停：星尘、亮星与 `::after` 均显式复位或暂停；`.juya-root` 仍无 animation。
+
+验证（2026-10-31）：
+
+- `npm run typecheck` exit 0；`npm run build:dir` 成功。
+- `node scripts/nocturne-visual-walkthrough.mjs`：5 张归档重生成，RM 证据全 PASS。
+- `node scripts/nocturne-contrast-audit.mjs`：70 text + 14 UI PASS，exit 0；480 / 700 / 800 导语 E2E 实测 **6.7330 / 6.5257 / 6.6061**。
+- `npx vitest run tests/unit/juyaCssGuard.test.ts` exit 0（259 passed）；定向 Playwright（`feed` / `nocturne-pause` / `contrast`）exit 0（45 passed）。
+- 全量 `npm run verify` exit 0：typecheck 0；Vitest **25 文件 627 项**；Playwright **266 项**；对比度审计 text 70 + ui 14 PASS；5 张归档逐字节一致、RM 证据全 PASS。
+
+边界：星点是装饰层，不参与文字 AA；订阅卡文字对比按合成层手算 ≥5:1；`backdrop-filter` 是新的合成层，perf probe / 真实窗口复核待做；静态归档帧中卡后星点稀疏，滚动或亮星经过卡后时最明显。
+
 ## folio（纸感精读式）
 
 四轮全部完成（2026-10-11）。验证 tsc 0 / vitest 291 / Playwright 85 / SDD 全流程评审 + 最终验收 PASS。
